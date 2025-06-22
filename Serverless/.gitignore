@@ -1,4 +1,3 @@
-
 # Created by https://www.gitignore.io/api/macos,linux,windows,sublimetext,dotsettings,visualstudio,visualstudiocode
 
 ### DotSettings ###
@@ -401,5 +400,7 @@ __pycache__/
 # By default, sensitive information, such as encrypted password
 # should be stored in the .pubxml.user file.
 
+# Ignore AWS SAM build artifacts
+.aws-sam/
 
 # End of https://www.gitignore.io/api/macos,linux,windows,sublimetext,dotsettings,visualstudio,visualstudiocode

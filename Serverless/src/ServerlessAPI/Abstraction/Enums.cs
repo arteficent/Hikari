@@ -1,10 +1,15 @@
 namespace Lambda.Abstraction
 {
-    internal enum Format
+    public enum ContentType
     {
         None = 0,
-        MP3 = 1,
-        WAV = 2,
-        FLAC = 3,
+        AudioMpeg,        // audio/mpeg
+        AudioWav,         // audio/wav
+        AudioFlac,        // audio/flac
+        ImageJpeg,        // image/jpeg
+        ImagePng,         // image/png
+        ApplicationOctet, // application/octet-stream
+        ApplicationJson,  // application/json
+        TextPlain         // text/plain
     }
 }

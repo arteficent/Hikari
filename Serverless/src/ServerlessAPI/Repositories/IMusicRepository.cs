@@ -5,7 +5,7 @@ namespace ServerlessAPI.Repositories;
 /// <summary>
 /// Sample DynamoDB Table book CRUD
 /// </summary>
-internal interface IMusicRepository
+public interface IMusicRepository
 {
     /// <summary>
     /// Include new book to the DynamoDB Table
@@ -26,7 +26,7 @@ internal interface IMusicRepository
     /// </summary>
     /// <param name="limit">limit (default=10)</param>
     /// <returns>Collection of books</returns>
-    Task<IList<Music>> GetBooksAsync(int limit = 10);
+    Task<IList<Music>> GetMusicAsync(int limit = 10);
 
     /// <summary>
     /// Get book by PK

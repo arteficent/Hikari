@@ -3,10 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Lambda.Abstraction
 {
-    internal class UploadRequest
+    public class UploadRequest
     {
         [Required]
-        public string? Binary { get; set; }
+        public string? SongBinary { get; set; }
+        [Required]
+        public string? CoverBinary { get; set; }
         [Required]
         public Music? Metadata { get; set; }
     }

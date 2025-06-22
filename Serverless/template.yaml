@@ -15,7 +15,7 @@ Globals:
   Api:
     TracingEnabled: true
 Resources:
-  NetCodeWebAPIServerless:
+  ServerlessAPI:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       Description: A simple example includes a .NET Core WebAPI App with DynamoDB
@@ -26,11 +26,11 @@ Resources:
       MemorySize: 1024
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
-          SAMPLE_TABLE: !Ref SampleTable
+          YUME_TABLE: !Ref YumeTable
       Policies:
         # Give Create/Read/Update/Delete Permissions to the SampleTable
       - DynamoDBCrudPolicy:
-          TableName: !Ref SampleTable
+          TableName: !Ref YumeTable
       Events:
         ProxyResource:
           Type: HttpApi
@@ -46,10 +46,10 @@ Resources:
             Method: ANY
 
   # DynamoDB table to store item: {id: &lt;ID&gt;, name: &lt;NAME&gt;}
-  SampleTable:
-    Type: AWS::Serverless::SimpleTable
+  YumeTable:
+    Type: AWS::Serverless::YumeTable
     Properties:
-      TableName: ServerlessBookCatalog
+      TableName: Music
       PrimaryKey:
         Name: Id
         Type: String

@@ -1,15 +1,15 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
+using Microsoft.Extensions.Options;
 using ServerlessAPI.Entities;
 
 namespace ServerlessAPI.Repositories;
 
-internal class MusicRepository : IMusicRepository
+public class MusicRepository : IMusicRepository
 {
     private readonly IDynamoDBContext context;
     private readonly ILogger<MusicRepository> logger;
-
-    public MusicRepository(IDynamoDBContext context, ILogger<MusicRepository> logger)
+    public MusicRepository(IDynamoDBContext context, ILogger<MusicRepository> logger, IOptions<Lambda.Abstraction.AmazonWebServicesConstants> awsConstants)
     {
         this.context = context;
         this.logger = logger;
@@ -20,7 +20,7 @@ internal class MusicRepository : IMusicRepository
         try
         {
             music.Id = Guid.NewGuid();
-            await context.SaveAsync(music);
+            await context.SaveAsync<Music>(music);
             logger.LogInformation("New music '{Title}' (Id: {Id}) is added.", music.Title, music.Id);
         }
         catch (Exception ex)
@@ -40,9 +40,8 @@ internal class MusicRepository : IMusicRepository
             await context.DeleteAsync<Music>(music.Id);
             Music deletedMusic = await context.LoadAsync<Music>(music.Id, new DynamoDBContextConfig
             {
-                ConsistentRead = true
+                ConsistentRead = true,
             });
-
             result = deletedMusic == null;
         }
         catch (Exception ex)
@@ -63,7 +62,7 @@ internal class MusicRepository : IMusicRepository
 
         try
         {
-            await context.SaveAsync(music);
+            await context.SaveAsync<Music>(music);
             logger.LogInformation("Music '{Title}' (Id: {Id}) is updated.", music.Title, music.Id);
         }
         catch (Exception ex)
@@ -88,7 +87,7 @@ internal class MusicRepository : IMusicRepository
         }
     }
 
-    public async Task<IList<Music>> GetBooksAsync(int limit = 10)
+    public async Task<IList<Music>> GetMusicAsync(int limit = 10)
     {
         var result = new List<Music>();
 
@@ -104,7 +103,7 @@ internal class MusicRepository : IMusicRepository
             var scanConfig = new ScanOperationConfig()
             {
                 Limit = limit,
-                Filter = filter
+                Filter = filter,
             };
             var queryResult = context.FromScanAsync<Music>(scanConfig);
 

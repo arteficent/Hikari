@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ServerlessAPI.Entities
 {
-    internal class Music
+    public class Music
     {
         [Key]
         public Guid Id { get; set; }
@@ -24,7 +24,9 @@ namespace ServerlessAPI.Entities
         [Required]
         public int SizeInBytes { get; set; }
         [Required]
-        public Format Format { get; set; }
+        public ContentType MusicFormat { get; set; }
+        [Required]
+        public ContentType CoverFormat { get; set; } // e.g., jpg, png, webp
         [Required]
         public string? CoverPath { get; set; } // music/cover/{artist}/{album}/{title}.{format}
         [Required]

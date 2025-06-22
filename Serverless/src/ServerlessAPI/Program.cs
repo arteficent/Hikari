@@ -2,7 +2,9 @@ using System.Text.Json;
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.Model;
 using Lambda.Abstraction;
+using Microsoft.Extensions.Options;
 using ServerlessAPI.Repositories;
 
 
@@ -14,7 +16,7 @@ builder.Logging
         .AddJsonConsole();
 
 // Add services to the container.
-builder.Services.Configure<AmazonWebServicesConstants>(builder.Configuration.GetSection("AmazonWebServicesConstants"));
+builder.Services.Configure<AmazonWebServicesConstants>(builder.Configuration.GetSection("AmazonWebServiceConstants"));
 builder.Services
         .AddControllers()
         .AddJsonOptions(options =>
@@ -22,7 +24,7 @@ builder.Services
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         });
 
-string region = Environment.GetEnvironmentVariable("AWS_REGION") ?? RegionEndpoint.USEast2.SystemName;
+string region = Environment.GetEnvironmentVariable("AWS_REGION") ?? RegionEndpoint.APSouth1.SystemName;
 builder.Services
         .AddSingleton<IAmazonDynamoDB>(new AmazonDynamoDBClient(RegionEndpoint.GetBySystemName(region)))
         .AddScoped<IDynamoDBContext, DynamoDBContext>()
@@ -32,8 +34,19 @@ builder.Services
 // with a Lambda function contained in the Amazon.Lambda.AspNetCoreServer package, which marshals the request into the ASP.NET Core hosting framework.
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
 
+// Add Swagger services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 
 var app = builder.Build();
+
+// Enable Swagger middleware in development and Lambda
+if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Lambda")
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
