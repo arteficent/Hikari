@@ -17,7 +17,9 @@ namespace ServerlessAPI.Entities
         [Required]
         public string? Genre { get; set; }
         [Required]
-        public string? ReleaseDate { get; set; }
+        public DateTime? ReleaseDate { get; set; }
+        [Required]
+        public DateTime? LastModified { get; set; }
         public string? Duration { get; set; }
         [Required]
         public int Bitrate { get; set; }
@@ -25,10 +27,6 @@ namespace ServerlessAPI.Entities
         public int SizeInBytes { get; set; }
         [Required]
         public ContentType MusicFormat { get; set; }
-        [Required]
-        public ContentType CoverFormat { get; set; } // e.g., jpg, png, webp
-        [Required]
-        public string? CoverPath { get; set; } // music/cover/{artist}/{album}/{title}.{format}
         [Required]
         public string? StoragePath { get; set; }  // music/song/{artist}/{album}/{title}.{format}
         public string? Lyrics { get; set; }

@@ -2,6 +2,10 @@
 using Amazon.DynamoDBv2.DocumentModel;
 using Microsoft.Extensions.Options;
 using ServerlessAPI.Entities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ServerlessAPI.Repositories;
 
@@ -87,7 +91,7 @@ public class MusicRepository : IMusicRepository
         }
     }
 
-    public async Task<IList<Music>> GetMusicAsync(int limit = 10)
+    public async Task<IList<Music>> GetMusicAsync(int limit = 10, Func<Music, bool>? filter = null)
     {
         var result = new List<Music>();
 
@@ -98,18 +102,18 @@ public class MusicRepository : IMusicRepository
                 return result;
             }
 
-            var filter = new ScanFilter();
-            filter.AddCondition("Id", ScanOperator.IsNotNull);
             var scanConfig = new ScanOperationConfig()
             {
                 Limit = limit,
-                Filter = filter,
+                Filter = new ScanFilter()
             };
+            scanConfig.Filter.AddCondition("Id", ScanOperator.IsNotNull);
             var queryResult = context.FromScanAsync<Music>(scanConfig);
 
             do
             {
-                result.AddRange(await queryResult.GetNextSetAsync());
+                var nextSet = await queryResult.GetNextSetAsync();
+                result.AddRange(nextSet);
             }
             while (!queryResult.IsDone && result.Count < limit);
         }
@@ -119,6 +123,10 @@ public class MusicRepository : IMusicRepository
             return new List<Music>();
         }
 
+        if (filter != null)
+        {
+            return result.Where(filter).Take(limit).ToList();
+        }
         return result;
     }
 }

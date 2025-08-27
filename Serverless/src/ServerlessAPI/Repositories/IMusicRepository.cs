@@ -1,4 +1,7 @@
 ﻿using ServerlessAPI.Entities;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ServerlessAPI.Repositories;
 
@@ -25,8 +28,9 @@ public interface IMusicRepository
     /// List book from DynamoDb Table with items limit (default=10)
     /// </summary>
     /// <param name="limit">limit (default=10)</param>
+    /// <param name="filter">optional filter for more efficient querying</param>
     /// <returns>Collection of books</returns>
-    Task<IList<Music>> GetMusicAsync(int limit = 10);
+    Task<IList<Music>> GetMusicAsync(int limit = 10, Func<Music, bool>? filter = null);
 
     /// <summary>
     /// Get book by PK

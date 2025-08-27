@@ -1,0 +1,11 @@
+{
+  "Id": "b1a7e6e2-1c2b-4f8e-9b2e-123456789abc",
+  "Title": "Dream Song (Remastered)",
+  "Artist": "Yume",
+  "Album": "Nightfall",
+  "Genre": "Ambient",
+  "Tags": ["chill", "sleep", "remastered"],
+  "MusicFormat": "mp3",
+  "StoragePath": "songs/nightfall/dreamsong.mp3",
+  "SizeInBytes": 123456
+}

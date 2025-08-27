@@ -30,7 +30,7 @@ namespace Lambda.Controllers
         {
             _logger.LogInformation($"Upload request received for new song: {uploadRequestModel?.Metadata?.Title} with key: {uploadRequestModel?.Metadata?.StoragePath}");
 
-            if (uploadRequestModel?.Metadata == null || string.IsNullOrEmpty(uploadRequestModel.SongBinary) || string.IsNullOrEmpty(uploadRequestModel.CoverBinary))
+            if (uploadRequestModel?.Metadata == null || string.IsNullOrEmpty(uploadRequestModel.SongBinary))
             {
                 return BadRequest("Invalid upload request.");
             }
@@ -41,14 +41,6 @@ namespace Lambda.Controllers
                 Key = uploadRequestModel.Metadata.StoragePath,
                 InputStream = new MemoryStream(Convert.FromBase64String(uploadRequestModel.SongBinary)),
                 ContentType = ContentTypeExtensions.ToMimeString(uploadRequestModel.Metadata.MusicFormat)
-            };
-
-            var putCoverRequest = new PutObjectRequest
-            {
-                BucketName = _awsConstants.Value.BucketName,
-                Key = uploadRequestModel.Metadata.CoverPath,
-                InputStream = new MemoryStream(Convert.FromBase64String(uploadRequestModel.CoverBinary)),
-                ContentType = ContentTypeExtensions.ToMimeString(uploadRequestModel.Metadata.CoverFormat)
             };
 
             Amazon.S3.AmazonS3Client? client = null;
@@ -66,17 +58,16 @@ namespace Lambda.Controllers
                 // 2. Upload to S3  
                 client = new Amazon.S3.AmazonS3Client(Amazon.RegionEndpoint.GetBySystemName(_regionName));
                 var songResponse = await client.PutObjectAsync(putSongRequest);
-                var coverResponse = await client.PutObjectAsync(putCoverRequest);
-                if (songResponse.HttpStatusCode == System.Net.HttpStatusCode.OK && coverResponse.HttpStatusCode == System.Net.HttpStatusCode.OK)
+                if (songResponse.HttpStatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    _logger.LogInformation($"Song and cover for {uploadRequestModel.Metadata.Title} uploaded successfully.");
+                    _logger.LogInformation($"Song for {uploadRequestModel.Metadata.Title} uploaded successfully.");
                     return Ok(new { Message = "Upload successful" });
                 }
                 else
                 {
                     // S3 upload failed, rollback DB  
                     await _musicRepository.DeleteAsync(uploadRequestModel.Metadata);
-                    _logger.LogError($"Failed to upload song or cover for {uploadRequestModel.Metadata.Title}. Status codes: Song={songResponse.HttpStatusCode}, Cover={coverResponse.HttpStatusCode}");
+                    _logger.LogError($"Failed to upload song for {uploadRequestModel.Metadata.Title}. Status codes: Song={songResponse.HttpStatusCode}");
                     return StatusCode(500, "Upload failed");
                 }
             }

@@ -8,8 +8,6 @@ namespace Lambda.Abstraction
         [Required]
         public string? SongBinary { get; set; }
         [Required]
-        public string? CoverBinary { get; set; }
-        [Required]
         public Music? Metadata { get; set; }
     }
 }
