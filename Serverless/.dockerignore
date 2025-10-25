@@ -1,0 +1,16 @@
+bin/
+obj/
+*.md
+*.json
+*.yaml
+*.yml
+Dockerfile
+.git/
+.gitignore
+.vscode/
+*.user
+*.suo
+*.log
+node_modules/
+.env
+.idea/
