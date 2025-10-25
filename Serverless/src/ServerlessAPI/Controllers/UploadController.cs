@@ -35,6 +35,10 @@ namespace Lambda.Controllers
                 return BadRequest("Invalid upload request.");
             }
 
+            // Check if song with the same StoragePath already exists
+            var existingSongs = await _musicRepository.GetMusicAsync(1, m => m.StoragePath == uploadRequestModel.Metadata.StoragePath);
+            bool songExists = existingSongs.Any();
+
             var putSongRequest = new PutObjectRequest
             {
                 BucketName = _awsConstants.Value.BucketName,
@@ -47,12 +51,19 @@ namespace Lambda.Controllers
             bool dbCreated = false;
             try
             {
-                // 1. Create DB record  
-                dbCreated = await _musicRepository.CreateAsync(uploadRequestModel.Metadata);
-                if (!dbCreated)
+                if (!songExists)
                 {
-                    _logger.LogError($"Failed to create DB record for song {uploadRequestModel.Metadata.Title}.");
-                    return StatusCode(500, "Failed to create DB record.");
+                    // 1. Create DB record  
+                    dbCreated = await _musicRepository.CreateAsync(uploadRequestModel.Metadata);
+                    if (!dbCreated)
+                    {
+                        _logger.LogError($"Failed to create DB record for song {uploadRequestModel.Metadata.Title}.");
+                        return StatusCode(500, "Failed to create DB record.");
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation($"Song with storage path {uploadRequestModel.Metadata.StoragePath} already exists. Skipping DB creation.");
                 }
 
                 // 2. Upload to S3  
@@ -61,12 +72,13 @@ namespace Lambda.Controllers
                 if (songResponse.HttpStatusCode == System.Net.HttpStatusCode.OK)
                 {
                     _logger.LogInformation($"Song for {uploadRequestModel.Metadata.Title} uploaded successfully.");
-                    return Ok(new { Message = "Upload successful" });
+                    return Ok(new { Message = songExists ? "Song binary updated" : "Upload successful" });
                 }
                 else
                 {
                     // S3 upload failed, rollback DB  
-                    await _musicRepository.DeleteAsync(uploadRequestModel.Metadata);
+                    if (!songExists)
+                        await _musicRepository.DeleteAsync(uploadRequestModel.Metadata);
                     _logger.LogError($"Failed to upload song for {uploadRequestModel.Metadata.Title}. Status codes: Song={songResponse.HttpStatusCode}");
                     return StatusCode(500, "Upload failed");
                 }

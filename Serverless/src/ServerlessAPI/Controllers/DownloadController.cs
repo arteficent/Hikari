@@ -6,8 +6,6 @@ using Microsoft.Extensions.Options;
 using ServerlessAPI.Abstraction;
 using ServerlessAPI.Entities;
 using ServerlessAPI.Repositories;
-using System;
-using System.Linq;
 
 namespace Lambda.Controllers
 {

@@ -2,9 +2,7 @@ using System.Text.Json;
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
-using Amazon.DynamoDBv2.Model;
 using Lambda.Abstraction;
-using Microsoft.Extensions.Options;
 using ServerlessAPI.Repositories;
 
 
@@ -30,10 +28,9 @@ builder.Services
         .AddScoped<IDynamoDBContext, DynamoDBContext>()
         .AddScoped<IMusicRepository, MusicRepository>();
 
-// Add AWS Lambda support. When running the application as an AWS Serverless application, Kestrel is replaced
-// with a Lambda function contained in the Amazon.Lambda.AspNetCoreServer package, which marshals the request into the ASP.NET Core hosting framework.
-builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
-
+// Remove Lambda hosting registration. Keep AWS SDK configuration and services for S3/DynamoDB
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -41,8 +38,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Enable Swagger middleware in development and Lambda
-if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Lambda")
+// Enable Swagger middleware in development
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -52,6 +49,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapGet("/", () => "Welcome to running ASP.NET Core Minimal API on AWS Lambda");
+app.MapGet("/", () => "Welcome to running ASP.NET Core on Kestrel");
 
 app.Run();
