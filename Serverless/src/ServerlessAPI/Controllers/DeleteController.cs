@@ -5,25 +5,26 @@ using ServerlessAPI.Repositories;
 using ServerlessAPI.Entities;
 using ServerlessAPI.Abstraction;
 using Microsoft.Extensions.Options;
-using Lambda.Abstraction;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Lambda.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Roles = "Admin")]
     public class DeleteController : ControllerBase
     {
         private readonly ILogger<DeleteController> _logger;
         private readonly IMusicRepository _musicRepository;
         private readonly IAmazonS3 _s3Client;
-        private readonly IOptions<AmazonWebServicesConstants> _awsConstants;
+        private readonly ServerlessAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
 
-        public DeleteController(ILogger<DeleteController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<AmazonWebServicesConstants> awsConstant)
+        public DeleteController(ILogger<DeleteController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> awsConstant)
         {
             _logger = logger;
             _musicRepository = musicRepository;
             _s3Client = s3Client;
-            _awsConstants = awsConstant;
+            _awsConstants = awsConstant?.Value ?? new ServerlessAPI.Abstraction.AmazonWebServicesConstants();
         }
 
         [HttpPost("delete")]
@@ -47,7 +48,7 @@ namespace Lambda.Controllers
                     {
                         var deleteObjectRequest = new DeleteObjectRequest
                         {
-                            BucketName = _awsConstants.Value.BucketName, // Replace with your bucket name or fetch from config
+                            BucketName = _awsConstants.BucketName, // Replace with your bucket name or fetch from config
                             Key = music.StoragePath
                         };
                         await _s3Client.DeleteObjectAsync(deleteObjectRequest);

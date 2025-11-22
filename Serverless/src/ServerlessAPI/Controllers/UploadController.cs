@@ -1,8 +1,10 @@
-using Amazon;
+using Amazon.S3;
 using Amazon.S3.Model;
 using Lambda.Abstraction;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using ServerlessAPI.Abstraction;
 using ServerlessAPI.Repositories;
 
 
@@ -10,19 +12,20 @@ namespace Lambda.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Roles = "Admin")]
     public class UploadController : ControllerBase
     {
         private readonly ILogger<UploadController> _logger;
-        private readonly IOptions<AmazonWebServicesConstants> _awsConstants;
         private readonly IMusicRepository _musicRepository;
-        private readonly string _regionName;
+        private readonly IAmazonS3 _client;
+        private readonly ServerlessAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
 
-        public UploadController(ILogger<UploadController> logger, IOptions<AmazonWebServicesConstants> awsConstants, IMusicRepository musicRepository)
+        public UploadController(ILogger<UploadController> logger, IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> awsConstants, IMusicRepository musicRepository, IAmazonS3 client)
         {
-            _awsConstants = awsConstants;
+            _awsConstants = awsConstants?.Value ?? new ServerlessAPI.Abstraction.AmazonWebServicesConstants();
             _logger = logger;
             _musicRepository = musicRepository;
-            _regionName = Environment.GetEnvironmentVariable("AWS_REGION") ?? RegionEndpoint.APSouth1.SystemName;
+            _client = client;
         }
 
         [HttpPost("upload")]
@@ -41,13 +44,12 @@ namespace Lambda.Controllers
 
             var putSongRequest = new PutObjectRequest
             {
-                BucketName = _awsConstants.Value.BucketName,
+                BucketName = _awsConstants.BucketName,
                 Key = uploadRequestModel.Metadata.StoragePath,
                 InputStream = new MemoryStream(Convert.FromBase64String(uploadRequestModel.SongBinary)),
                 ContentType = ContentTypeExtensions.ToMimeString(uploadRequestModel.Metadata.MusicFormat)
             };
 
-            Amazon.S3.AmazonS3Client? client = null;
             bool dbCreated = false;
             try
             {
@@ -67,8 +69,7 @@ namespace Lambda.Controllers
                 }
 
                 // 2. Upload to S3  
-                client = new Amazon.S3.AmazonS3Client(Amazon.RegionEndpoint.GetBySystemName(_regionName));
-                var songResponse = await client.PutObjectAsync(putSongRequest);
+                var songResponse = await _client.PutObjectAsync(putSongRequest);
                 if (songResponse.HttpStatusCode == System.Net.HttpStatusCode.OK)
                 {
                     _logger.LogInformation($"Song for {uploadRequestModel.Metadata.Title} uploaded successfully.");
@@ -99,10 +100,6 @@ namespace Lambda.Controllers
                 }
                 _logger.LogError(ex, $"An error occurred while uploading song {uploadRequestModel.Metadata.Title}");
                 return StatusCode(500, "Internal server error");
-            }
-            finally
-            {
-                client?.Dispose();
             }
         }
     }

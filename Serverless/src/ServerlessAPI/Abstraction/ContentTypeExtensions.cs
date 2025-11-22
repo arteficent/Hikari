@@ -11,6 +11,7 @@ namespace Lambda.Abstraction
                 ContentType.AudioFlac => "audio/flac",
                 ContentType.ImageJpeg => "image/jpeg",
                 ContentType.ImagePng => "image/png",
+                ContentType.ImageGif => "image/gif",
                 ContentType.ApplicationOctet => "application/octet-stream",
                 ContentType.ApplicationJson => "application/json",
                 ContentType.TextPlain => "text/plain",

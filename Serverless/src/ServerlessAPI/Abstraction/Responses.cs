@@ -1,10 +1,9 @@
-using ServerlessAPI.Entities;
-
 namespace ServerlessAPI.Abstraction
 {
+
     public class DownloadResponse
     {
-        public Music Metadata { get; set; } = default!;
+        public ServerlessAPI.Entities.Music? Metadata { get; set; }
         public string? SongBinary { get; set; }
     }
 }

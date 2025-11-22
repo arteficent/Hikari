@@ -1,8 +1,5 @@
-using Amazon;
-using Amazon.S3.Model;
-using Lambda.Abstraction;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using ServerlessAPI.Repositories;
 using ServerlessAPI.Entities;
 
@@ -11,6 +8,7 @@ namespace Lambda.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Roles = "Admin")]
     public class EditController : ControllerBase
     {
         private readonly ILogger<EditController> _logger;

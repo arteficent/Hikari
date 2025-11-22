@@ -1,11 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
-using Amazon.DynamoDBv2.DocumentModel;
 using Microsoft.Extensions.Options;
 using ServerlessAPI.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using ServerlessAPI.Abstraction;
 
 namespace ServerlessAPI.Repositories;
 
@@ -13,10 +9,13 @@ public class MusicRepository : IMusicRepository
 {
     private readonly IDynamoDBContext context;
     private readonly ILogger<MusicRepository> logger;
-    public MusicRepository(IDynamoDBContext context, ILogger<MusicRepository> logger, IOptions<Lambda.Abstraction.AmazonWebServicesConstants> awsConstants)
+    private readonly Abstraction.AmazonWebServicesConstants awsConstants;
+
+    public MusicRepository(IDynamoDBContext context, ILogger<MusicRepository> logger, IOptions<Abstraction.AmazonWebServicesConstants> awsOptions)
     {
         this.context = context;
         this.logger = logger;
+        this.awsConstants = awsOptions != null ? awsOptions.Value : new Abstraction.AmazonWebServicesConstants();
     }
 
     public async Task<bool> CreateAsync(Music music)
@@ -93,40 +92,19 @@ public class MusicRepository : IMusicRepository
 
     public async Task<IList<Music>> GetMusicAsync(int limit = 10, Func<Music, bool>? filter = null)
     {
-        var result = new List<Music>();
-
         try
         {
-            if (limit <= 0)
-            {
-                return result;
-            }
-
-            var scanConfig = new ScanOperationConfig()
-            {
-                Limit = limit,
-                Filter = new ScanFilter()
-            };
-            scanConfig.Filter.AddCondition("Id", ScanOperator.IsNotNull);
-            var queryResult = context.FromScanAsync<Music>(scanConfig);
-
-            do
-            {
-                var nextSet = await queryResult.GetNextSetAsync();
-                result.AddRange(nextSet);
-            }
-            while (!queryResult.IsDone && result.Count < limit);
+            var scan = context.ScanAsync<Music>(new List<ScanCondition>());
+            var all = await scan.GetRemainingAsync();
+            var list = all.AsQueryable();
+            if (filter != null)
+                list = list.Where(filter).AsQueryable();
+            return list.Take(limit).ToList();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to list music from DynamoDb Table.");
+            logger.LogError(ex, "Failed to scan music table.");
             return new List<Music>();
         }
-
-        if (filter != null)
-        {
-            return result.Where(filter).Take(limit).ToList();
-        }
-        return result;
     }
 }

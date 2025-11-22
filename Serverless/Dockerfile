@@ -21,6 +21,11 @@ COPY aspnetcore.pfx /https/aspnetcore.pfx
 ENV ASPNETCORE_URLS="http://+:3346;https://+:3445"
 ENV ASPNETCORE_Kestrel__Certificates__Default__Password="yume"
 ENV ASPNETCORE_Kestrel__Certificates__Default__Path="/https/aspnetcore.pfx"
+ENV AWS_REGION="ap-south-1"
+ENV AWS_ACCESS_KEY_ID="AKIA2UWBD73JXEXK4TOZ"
+ENV AWS_SECRET_ACCESS_KEY="YkMYiIR8g3gP+M1ozg1qDYZBcHgmabLoDGzuyhfO"
+ENV JWT_KEY="your_jwt_secret_key"
+ENV JWT_ISSUER="your_jwt_issuer"
 EXPOSE 3346 3445
 
 COPY --from=build /app/publish .

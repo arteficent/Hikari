@@ -7,9 +7,15 @@ namespace Lambda.Abstraction
         AudioWav,         // audio/wav
         AudioFlac,        // audio/flac
         ImageJpeg,        // image/jpeg
-        ImagePng,         // image/png
+        ImagePng,
+        ImageGif,// image/png
         ApplicationOctet, // application/octet-stream
         ApplicationJson,  // application/json
         TextPlain         // text/plain
+    }
+    public enum Role
+    {
+        User,
+        Admin
     }
 }

@@ -1,24 +1,25 @@
 using Amazon.S3;
 using Amazon.S3.Model;
-using Lambda.Abstraction;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using ServerlessAPI.Abstraction;
 using ServerlessAPI.Entities;
 using ServerlessAPI.Repositories;
+using ServerlessAPI.Abstraction;
 
 namespace Lambda.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Roles = "User,Admin")]
     public class DownloadController : ControllerBase
     {
         private readonly ILogger<DownloadController> _logger;
         private readonly IMusicRepository _musicRepository;
         private readonly IAmazonS3 _s3Client;
-        private readonly IOptions<AmazonWebServicesConstants> _awsConstants;
+        private readonly IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> _awsConstants;
 
-        public DownloadController(ILogger<DownloadController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<AmazonWebServicesConstants> awsConstants)
+        public DownloadController(ILogger<DownloadController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> awsConstants)
         {
             _logger = logger;
             _musicRepository = musicRepository;

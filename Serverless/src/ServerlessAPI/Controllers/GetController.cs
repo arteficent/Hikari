@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using ServerlessAPI.Repositories;
 using ServerlessAPI.Entities;
-using System;
-using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Lambda.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Roles = "User,Admin")]
     public class GetController : ControllerBase
     {
         private readonly ILogger<GetController> _logger;
