@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Lambda.Abstraction;
-using ServerlessAPI.Entities;
+using ServerAPI.Entities;
 
-namespace ServerlessAPI.Abstraction
+namespace ServerAPI.Abstraction
 {
     public class CreateUserRequest
     {

@@ -1,9 +1,9 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Microsoft.Extensions.Options;
-using ServerlessAPI.Entities;
-using ServerlessAPI.Abstraction;
+using ServerAPI.Entities;
+using ServerAPI.Abstraction;
 
-namespace ServerlessAPI.Repositories;
+namespace ServerAPI.Repositories;
 
 public class MusicRepository : IMusicRepository
 {

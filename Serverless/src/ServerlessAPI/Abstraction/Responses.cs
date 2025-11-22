@@ -1,9 +1,9 @@
-namespace ServerlessAPI.Abstraction
+namespace ServerAPI.Abstraction
 {
 
     public class DownloadResponse
     {
-        public ServerlessAPI.Entities.Music? Metadata { get; set; }
+        public ServerAPI.Entities.Music? Metadata { get; set; }
         public string? SongBinary { get; set; }
     }
 }

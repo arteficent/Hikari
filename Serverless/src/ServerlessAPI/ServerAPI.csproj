@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ServerlessAPI.Tests" />
+    <InternalsVisibleTo Include="ServerAPI.Tests" />
   </ItemGroup>
 
 </Project>

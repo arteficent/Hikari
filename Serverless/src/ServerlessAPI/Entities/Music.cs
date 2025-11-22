@@ -2,7 +2,7 @@ using Lambda.Abstraction;
 using System.ComponentModel.DataAnnotations;
 using Amazon.DynamoDBv2.DataModel;
 
-namespace ServerlessAPI.Entities
+namespace ServerAPI.Entities
 {
     [DynamoDBTable("Music")]
     public class Music

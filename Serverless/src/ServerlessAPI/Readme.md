@@ -45,6 +45,6 @@ If already installed check if new version is available.
 
 Deploy application
 ```
-    cd "Serverless/src/ServerlessAPI"
+    cd "Serverless/src/ServerAPI"
     sam deploy
 ```

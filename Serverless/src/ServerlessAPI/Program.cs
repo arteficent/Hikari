@@ -2,15 +2,15 @@ using System.Text.Json;
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
-using ServerlessAPI.Repositories;
+using ServerAPI.Repositories;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using ServerlessAPI.Middleware;
-using ServerlessAPI.Services;
+using ServerAPI.Middleware;
+using ServerAPI.Services;
 using Microsoft.AspNetCore.Authorization;
-using ServerlessAPI.Abstraction;
+using ServerAPI.Abstraction;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -130,7 +130,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ServerlessAPI", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ServerAPI", Version = "v1" });
     // Add JWT auth to swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -152,7 +152,7 @@ app.UseDeveloperExceptionPage();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ServerlessAPI V1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ServerAPI V1");
     c.RoutePrefix = "swagger"; // serve at /swagger
 });
 

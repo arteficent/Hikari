@@ -1,4 +1,4 @@
-namespace ServerlessAPI.Abstraction
+namespace ServerAPI.Abstraction
 {
     public class AmazonWebServicesConstants
     {

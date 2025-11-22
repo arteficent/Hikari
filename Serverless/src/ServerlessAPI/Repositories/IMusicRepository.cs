@@ -1,6 +1,6 @@
-﻿using ServerlessAPI.Entities;
+﻿using ServerAPI.Entities;
 
-namespace ServerlessAPI.Repositories;
+namespace ServerAPI.Repositories;
 
 /// <summary>
 /// Sample DynamoDB Table book CRUD

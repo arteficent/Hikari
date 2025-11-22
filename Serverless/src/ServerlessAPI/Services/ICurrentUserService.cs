@@ -1,6 +1,6 @@
-using ServerlessAPI.Entities;
+using ServerAPI.Entities;
 
-namespace ServerlessAPI.Services
+namespace ServerAPI.Services
 {
     public interface ICurrentUserService
     {

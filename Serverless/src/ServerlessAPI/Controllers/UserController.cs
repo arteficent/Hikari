@@ -3,12 +3,12 @@ using Lambda.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using ServerlessAPI.Abstraction;
-using ServerlessAPI.Entities;
-using ServerlessAPI.Repositories;
-using ServerlessAPI.Services;
+using ServerAPI.Abstraction;
+using ServerAPI.Entities;
+using ServerAPI.Repositories;
+using ServerAPI.Services;
 
-namespace ServerlessAPI.Controllers
+namespace ServerAPI.Controllers
 {
     [ApiController]
     [Route("[controller]")]

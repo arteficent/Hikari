@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Amazon.DynamoDBv2.DataModel;
 using Lambda.Abstraction;
 
-namespace ServerlessAPI.Entities
+namespace ServerAPI.Entities
 {
     [DynamoDBTable("Users")]
     public class User

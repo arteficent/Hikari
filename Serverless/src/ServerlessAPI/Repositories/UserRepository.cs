@@ -1,10 +1,10 @@
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
-using ServerlessAPI.Entities;
+using ServerAPI.Entities;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ServerlessAPI.Repositories
+namespace ServerAPI.Repositories
 {
     public class UserRepository : IUserRepository
     {

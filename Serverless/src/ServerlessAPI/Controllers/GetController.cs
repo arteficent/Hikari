@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using ServerlessAPI.Repositories;
-using ServerlessAPI.Entities;
+using ServerAPI.Repositories;
+using ServerAPI.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Lambda.Controllers

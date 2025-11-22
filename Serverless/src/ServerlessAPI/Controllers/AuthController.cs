@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using ServerlessAPI.Abstraction;
-using ServerlessAPI.Repositories;
+using ServerAPI.Abstraction;
+using ServerAPI.Repositories;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ServerlessAPI.Controllers
+namespace ServerAPI.Controllers
 {
     [ApiController]
     [AllowAnonymous]

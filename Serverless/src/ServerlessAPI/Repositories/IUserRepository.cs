@@ -1,6 +1,6 @@
-using ServerlessAPI.Entities;
+using ServerAPI.Entities;
 
-namespace ServerlessAPI.Repositories
+namespace ServerAPI.Repositories
 {
     public interface IUserRepository
     {

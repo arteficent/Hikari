@@ -1,9 +1,9 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
-using ServerlessAPI.Repositories;
-using ServerlessAPI.Entities;
-using ServerlessAPI.Abstraction;
+using ServerAPI.Repositories;
+using ServerAPI.Entities;
+using ServerAPI.Abstraction;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 
@@ -17,14 +17,14 @@ namespace Lambda.Controllers
         private readonly ILogger<DeleteController> _logger;
         private readonly IMusicRepository _musicRepository;
         private readonly IAmazonS3 _s3Client;
-        private readonly ServerlessAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
+        private readonly ServerAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
 
-        public DeleteController(ILogger<DeleteController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> awsConstant)
+        public DeleteController(ILogger<DeleteController> logger, IMusicRepository musicRepository, IAmazonS3 s3Client, IOptions<ServerAPI.Abstraction.AmazonWebServicesConstants> awsConstant)
         {
             _logger = logger;
             _musicRepository = musicRepository;
             _s3Client = s3Client;
-            _awsConstants = awsConstant?.Value ?? new ServerlessAPI.Abstraction.AmazonWebServicesConstants();
+            _awsConstants = awsConstant?.Value ?? new ServerAPI.Abstraction.AmazonWebServicesConstants();
         }
 
         [HttpPost("delete")]

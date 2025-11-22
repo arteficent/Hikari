@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
-using ServerlessAPI.Repositories;
-using ServerlessAPI.Entities;
-using ServerlessAPI.Services;
+using ServerAPI.Repositories;
+using ServerAPI.Entities;
+using ServerAPI.Services;
 
-namespace ServerlessAPI.Middleware
+namespace ServerAPI.Middleware
 {
     public class CurrentUserMiddleware
     {

@@ -4,8 +4,8 @@ using Lambda.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using ServerlessAPI.Abstraction;
-using ServerlessAPI.Repositories;
+using ServerAPI.Abstraction;
+using ServerAPI.Repositories;
 
 
 namespace Lambda.Controllers
@@ -18,11 +18,11 @@ namespace Lambda.Controllers
         private readonly ILogger<UploadController> _logger;
         private readonly IMusicRepository _musicRepository;
         private readonly IAmazonS3 _client;
-        private readonly ServerlessAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
+        private readonly ServerAPI.Abstraction.AmazonWebServicesConstants _awsConstants;
 
-        public UploadController(ILogger<UploadController> logger, IOptions<ServerlessAPI.Abstraction.AmazonWebServicesConstants> awsConstants, IMusicRepository musicRepository, IAmazonS3 client)
+        public UploadController(ILogger<UploadController> logger, IOptions<ServerAPI.Abstraction.AmazonWebServicesConstants> awsConstants, IMusicRepository musicRepository, IAmazonS3 client)
         {
-            _awsConstants = awsConstants?.Value ?? new ServerlessAPI.Abstraction.AmazonWebServicesConstants();
+            _awsConstants = awsConstants?.Value ?? new ServerAPI.Abstraction.AmazonWebServicesConstants();
             _logger = logger;
             _musicRepository = musicRepository;
             _client = client;
