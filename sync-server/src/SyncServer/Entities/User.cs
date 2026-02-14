@@ -4,7 +4,7 @@ using SyncServer.Abstraction;
 
 namespace SyncServer.Entities
 {
-    [DynamoDBTable("User")]
+    [DynamoDBTable("Users")]
     public class User
     {
         [DynamoDBHashKey]
