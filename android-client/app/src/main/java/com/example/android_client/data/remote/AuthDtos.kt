@@ -1,4 +1,4 @@
-package com.example.android_client
+package com.example.android_client.data.remote
 
 import kotlinx.serialization.Serializable
 
@@ -7,3 +7,6 @@ data class LoginRequest(val email: String, val password: String)
 
 @Serializable
 data class LoginResponse(val token: String, val refreshToken: String)
+
+@Serializable
+data class RefreshTokenRequest(val refreshToken: String)

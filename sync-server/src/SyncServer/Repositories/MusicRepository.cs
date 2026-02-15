@@ -2,6 +2,7 @@ using Amazon.DynamoDBv2.DataModel;
 using Microsoft.Extensions.Options;
 using SyncServer.Entities;
 using SyncServer.Abstraction;
+using Amazon.DynamoDBv2.DocumentModel;
 
 namespace SyncServer.Repositories;
 
@@ -81,7 +82,12 @@ public class MusicRepository : IMusicRepository
     {
         try
         {
-            return await context.LoadAsync<Music>(id);
+            var scan = context.ScanAsync<Music>(new List<ScanCondition>
+            {
+                new ScanCondition("Id", ScanOperator.Equal, id)
+            });
+            var results = await scan.GetRemainingAsync();
+            return results.FirstOrDefault();
         }
         catch (Exception ex)
         {

@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.android_client.data.local.AuthRepository
+import com.example.android_client.data.local.SettingsRepository
+import com.example.android_client.data.local.SyncPreferencesRepository
+import com.example.android_client.data.remote.ApiClient
+import com.example.android_client.data.remote.LoginRequest
+import com.example.android_client.service.SyncService
+import com.example.android_client.ui.login.LoginScreen
+import com.example.android_client.ui.songlist.SongListScreen
 import com.example.android_client.ui.theme.AndroidclientTheme
 import kotlinx.coroutines.launch
 
@@ -45,13 +55,46 @@ class MainActivity : ComponentActivity() {
             AndroidclientTheme {
                 val serverDomain by settingsRepository.serverDomain.collectAsState(initial = null)
                 val token by authRepository.token.collectAsState(initial = null)
+                val refreshToken by authRepository.refreshToken.collectAsState(initial = null)
                 val scope = rememberCoroutineScope()
+
+                var isRefreshing by remember { mutableStateOf(true) }
+
+                LaunchedEffect(serverDomain) {
+                    val currentDomain = serverDomain
+                    val currentRefreshToken = refreshToken
+
+                    if (currentDomain != null && token == null && currentRefreshToken != null) {
+                        scope.launch {
+                            try {
+                                val loginResponse = apiClient.refreshToken(currentDomain, currentRefreshToken)
+                                authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
+                            } catch (e: Exception) {
+                                // If refresh fails, clear the invalid tokens to force a login
+                                authRepository.clearTokens()
+                            } finally {
+                                isRefreshing = false
+                            }
+                        }
+                    } else {
+                        isRefreshing = false
+                    }
+                }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val currentDomain = serverDomain
                     val currentToken = token
 
-                    if (currentDomain == null) {
+                    if (isRefreshing) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Text("Restoring session...", modifier = Modifier.padding(top = 16.dp))
+                        }
+                    } else if (currentDomain == null) {
                         ServerDomainScreen(
                             modifier = Modifier.padding(innerPadding),
                             onContinueClicked = { domain ->
@@ -87,7 +130,12 @@ class MainActivity : ComponentActivity() {
                             syncService = syncService,
                             apiClient = apiClient,
                             serverDomain = currentDomain,
-                            syncPreferencesRepository = syncPreferencesRepository
+                            syncPreferencesRepository = syncPreferencesRepository,
+                            onLogout = {
+                                scope.launch {
+                                    authRepository.clearTokens()
+                                }
+                            }
                         )
                     }
                 }

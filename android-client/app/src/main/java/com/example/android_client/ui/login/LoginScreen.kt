@@ -1,4 +1,4 @@
-package com.example.android_client
+package com.example.android_client.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

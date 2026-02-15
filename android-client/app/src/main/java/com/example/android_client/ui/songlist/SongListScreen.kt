@@ -1,4 +1,4 @@
-package com.example.android_client
+package com.example.android_client.ui.songlist
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,6 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.android_client.data.local.SyncPreferencesRepository
+import com.example.android_client.data.remote.ApiClient
+import com.example.android_client.data.remote.Music
+import com.example.android_client.service.SyncService
+import com.example.android_client.util.displayNameForMusic
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -41,7 +47,8 @@ fun SongListScreen(
     syncService: SyncService,
     apiClient: ApiClient,
     serverDomain: String,
-    syncPreferencesRepository: SyncPreferencesRepository
+    syncPreferencesRepository: SyncPreferencesRepository,
+    onLogout: () -> Unit
 ) {
     var songs by remember { mutableStateOf<List<Music>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -55,8 +62,8 @@ fun SongListScreen(
     var releaseFromFilter by remember { mutableStateOf("") }
     var releaseToFilter by remember { mutableStateOf("") }
     var shouldSyncFilter by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf(1) }
-    var pageSize by remember { mutableStateOf(25) }
+    var page by remember { mutableIntStateOf(1) }
+    var pageSize by remember { mutableIntStateOf(25) }
     var canNextPage by remember { mutableStateOf(true) }
 
     val scope = rememberCoroutineScope()
@@ -198,6 +205,9 @@ fun SongListScreen(
             }) {
                 Text("Sync Songs")
             }
+            Button(onClick = onLogout) {
+                Text("Logout")
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
@@ -255,8 +265,6 @@ fun SongListScreen(
                                         syncPreferencesRepository.setSyncEnabled(song.id, checked)
                                         if (checked) {
                                             syncPreferencesRepository.setSyncEntry(song.id, songDisplayName(song))
-                                        } else {
-                                            syncPreferencesRepository.removeSyncEntry(song.id)
                                         }
                                     }
                                 }
@@ -270,8 +278,7 @@ fun SongListScreen(
 }
 
 private fun songDisplayName(song: Music): String {
-    val fromPath = song.storagePath?.substringAfterLast('/')?.trim()
-    return if (!fromPath.isNullOrBlank()) fromPath else "${song.id}.bin"
+    return displayNameForMusic(song)
 }
 
 private fun parseLocalDateInput(value: String): LocalDate? {

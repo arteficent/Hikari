@@ -1,5 +1,7 @@
-package com.example.android_client
+package com.example.android_client.data.remote
 
+import android.util.Log
+import com.example.android_client.data.local.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -8,13 +10,17 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 
 class ApiClient(private val authRepository: AuthRepository) {
+
+    private val TAG = "ApiClient"
 
     private val client = HttpClient(CIO) {
         engine {
@@ -41,10 +47,23 @@ class ApiClient(private val authRepository: AuthRepository) {
     }
 
     suspend fun login(serverDomain: String, loginRequest: LoginRequest): LoginResponse {
-        return client.post(getUrl(serverDomain, "/Auth/login")) {
+        Log.d(TAG, "login() called with serverDomain: $serverDomain, loginRequest: $loginRequest")
+        val response: LoginResponse = client.post(getUrl(serverDomain, "/Auth/login")) {
             contentType(ContentType.Application.Json)
             setBody(loginRequest)
         }.body()
+        Log.d(TAG, "login() response: $response")
+        return response
+    }
+
+    suspend fun refreshToken(serverDomain: String, refreshToken: String): LoginResponse {
+        Log.d(TAG, "refreshToken() called with serverDomain: $serverDomain, refreshToken: $refreshToken")
+        val response: LoginResponse = client.post(getUrl(serverDomain, "/Auth/refresh")) {
+            contentType(ContentType.Application.Json)
+            setBody(RefreshTokenRequest(refreshToken))
+        }.body()
+        Log.d(TAG, "refreshToken() response: $response")
+        return response
     }
 
     suspend fun getSongs(
@@ -60,8 +79,9 @@ class ApiClient(private val authRepository: AuthRepository) {
         releaseTo: String? = null,
         lastModifiedSince: String? = null
     ): List<Music> {
+        Log.d(TAG, "getSongs() called with serverDomain: $serverDomain, page: $page, pageSize: $pageSize, genre: $genre, album: $album, artist: $artist, titlePrefix: $titlePrefix, playlist: $playlist, releaseFrom: $releaseFrom, releaseTo: $releaseTo, lastModifiedSince: $lastModifiedSince")
         val token = authRepository.token.first()
-        return client.get(getUrl(serverDomain, "/Get/songs")) {
+        val response: List<Music> = client.get(getUrl(serverDomain, "/Get/songs")) {
             header("Authorization", "Bearer $token")
             url {
                 page?.let { parameters.append("page", it.toString()) }
@@ -76,6 +96,8 @@ class ApiClient(private val authRepository: AuthRepository) {
                 lastModifiedSince?.let { parameters.append("lastModifiedSince", it) }
             }
         }.body()
+        Log.d(TAG, "getSongs() response: ${response.size} songs")
+        return response
     }
 
     suspend fun downloadSongs(
@@ -91,8 +113,9 @@ class ApiClient(private val authRepository: AuthRepository) {
         releaseTo: String? = null,
         lastModifiedSince: String? = null
     ): List<DownloadResponse> {
+        Log.d(TAG, "downloadSongs() called with serverDomain: $serverDomain, page: $page, pageSize: $pageSize, genre: $genre, album: $album, artist: $artist, titlePrefix: $titlePrefix, playlist: $playlist, releaseFrom: $releaseFrom, releaseTo: $releaseTo, lastModifiedSince: $lastModifiedSince")
         val token = authRepository.token.first()
-        return client.get(getUrl(serverDomain, "/Download/songs")) {
+        val response: List<DownloadResponse> = client.get(getUrl(serverDomain, "/Download/songs")) {
             header("Authorization", "Bearer $token")
             url {
                 page?.let { parameters.append("page", it.toString()) }
@@ -107,15 +130,25 @@ class ApiClient(private val authRepository: AuthRepository) {
                 lastModifiedSince?.let { parameters.append("lastModifiedSince", it) }
             }
         }.body()
+        Log.d(TAG, "downloadSongs() response: ${response.size} songs")
+        return response
     }
 
-    suspend fun downloadSongById(serverDomain: String, songId: String): DownloadResponse {
+    suspend fun downloadSongById(serverDomain: String, songId: String): DownloadResponse? {
+        Log.d(TAG, "downloadSongById() called with serverDomain: $serverDomain, songId: $songId")
         val token = authRepository.token.first()
-        return client.get(getUrl(serverDomain, "/Download/song")) {
+        val response: HttpResponse = client.get(getUrl(serverDomain, "/Download/song")) {
             header("Authorization", "Bearer $token")
             url {
                 parameters.append("id", songId)
             }
-        }.body()
+        }
+        if (!response.status.isSuccess()) {
+            Log.e(TAG, "downloadSongById() failed with status: ${response.status}")
+            return null
+        }
+        val responseObject: DownloadResponse = response.body()
+        Log.d(TAG, "downloadSongById() response: $responseObject")
+        return responseObject
     }
 }

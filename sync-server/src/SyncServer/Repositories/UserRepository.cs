@@ -35,7 +35,12 @@ namespace SyncServer.Repositories
         {
             try
             {
-                return await context.LoadAsync<User>(id);
+                var scan = context.ScanAsync<User>(new List<ScanCondition>
+                {
+                    new ScanCondition("Id", ScanOperator.Equal, id)
+                });
+                var results = await scan.GetRemainingAsync();
+                return results.FirstOrDefault();
             }
             catch (Exception ex)
             {
