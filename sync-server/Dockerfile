@@ -19,7 +19,7 @@ WORKDIR /app
 COPY aspnetcore.pfx /https/aspnetcore.pfx
 
 ENV ASPNETCORE_URLS="http://+:3346;https://+:3445"
-ENV ASPNETCORE_Kestrel__Certificates__Default__Password="yume"
+ENV ASPNETCORE_Kestrel__Certificates__Default__Password="hikari"
 ENV ASPNETCORE_Kestrel__Certificates__Default__Path="/https/aspnetcore.pfx"
 
 # IMPORTANT: Pass these as --build-arg or via docker-compose environment/secrets.

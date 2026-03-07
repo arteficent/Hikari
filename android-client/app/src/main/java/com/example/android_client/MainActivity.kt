@@ -25,14 +25,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.android_client.data.local.AuthRepository
-import com.example.android_client.data.local.SettingsRepository
-import com.example.android_client.data.local.SyncPreferencesRepository
-import com.example.android_client.data.remote.ApiClient
-import com.example.android_client.data.remote.LoginRequest
-import com.example.android_client.service.SyncService
-import com.example.android_client.ui.login.LoginScreen
-import com.example.android_client.ui.songlist.SongListScreen
+import com.example.android_client.core.storage.AuthRepository
+import com.example.android_client.core.storage.SettingsRepository
+import com.example.android_client.core.storage.SyncPreferencesRepository
+import com.example.android_client.core.network.ApiClient
+import com.example.android_client.core.network.LoginRequest
+import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.ContentPluginRegistry
+import com.example.android_client.content.plugins.MusicPlugin
+import com.example.android_client.core.sync.ContentSyncService
+import com.example.android_client.ui.screens.ContentHubScreen
+import com.example.android_client.ui.screens.LoginScreen
 import com.example.android_client.ui.theme.AndroidclientTheme
 import kotlinx.coroutines.launch
 
@@ -42,7 +45,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var authRepository: AuthRepository
     private lateinit var syncPreferencesRepository: SyncPreferencesRepository
     private lateinit var apiClient: ApiClient
-    private lateinit var syncService: SyncService
+
+    // ── Plugin infrastructure ──
+    private val pluginRegistry = ContentPluginRegistry()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +55,10 @@ class MainActivity : ComponentActivity() {
         authRepository = AuthRepository(this)
         syncPreferencesRepository = SyncPreferencesRepository(this)
         apiClient = ApiClient(authRepository)
+
+        // Register content plugins (add new plugins here)
+        pluginRegistry.register(MusicPlugin())
+
         enableEdgeToEdge()
         setContent {
             AndroidclientTheme {
@@ -125,9 +134,13 @@ class MainActivity : ComponentActivity() {
                             error = error
                         )
                     } else {
-                        syncService = SyncService(apiClient, this, currentDomain, syncPreferencesRepository)
-                        SongListScreen(
-                            syncService = syncService,
+                        // Plugin-based hub screen
+                        val appContext = applicationContext
+                        ContentHubScreen(
+                            pluginRegistry = pluginRegistry,
+                            syncServiceFactory = { plugin: ContentPlugin ->
+                                ContentSyncService(apiClient, appContext, currentDomain, syncPreferencesRepository, plugin)
+                            },
                             apiClient = apiClient,
                             serverDomain = currentDomain,
                             syncPreferencesRepository = syncPreferencesRepository,
@@ -147,6 +160,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String) -> Unit) {
     var serverDomain by remember { mutableStateOf("") }
+    var validationError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -155,11 +169,24 @@ fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String
     ) {
         OutlinedTextField(
             value = serverDomain,
-            onValueChange = { serverDomain = it },
+            onValueChange = {
+                serverDomain = it
+                validationError = null
+            },
             label = { Text("Server Domain") },
+            isError = validationError != null,
+            supportingText = validationError?.let { { Text(it) } },
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        Button(onClick = { onContinueClicked(serverDomain) }) {
+        Button(onClick = {
+            val domain = serverDomain.trim()
+            when {
+                domain.isBlank() -> validationError = "Domain cannot be empty"
+                domain.contains(" ") -> validationError = "Domain cannot contain spaces"
+                !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
+                else -> onContinueClicked(domain)
+            }
+        }) {
             Text("Continue")
         }
     }

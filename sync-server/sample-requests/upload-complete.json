@@ -1,0 +1,16 @@
+{
+  "item": {
+    "title": "Dream Song",
+    "contentType": "music",
+    "format": "audio/mpeg",
+    "storagePath": "music/song/Nightfall/Dream Song.mp3",
+    "metadata": {
+      "artist": "Yume",
+      "album": "Nightfall",
+      "genre": "Ambient",
+      "releaseDate": "2025-01-01",
+      "duration": "3:30",
+      "bitrate": 320
+    }
+  }
+}

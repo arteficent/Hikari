@@ -1,32 +1,45 @@
-# Yume Sync Server
+# Hikari Sync Server
 
-A self-hosted backend for the Yume music sync infrastructure. Mobile clients sync their local music library with cloud storage (AWS S3 + DynamoDB). Music listening happens offline via a local player — this server only handles metadata management, binary storage, user authentication, and sync operations.
+A self-hosted, plugin-based backend for the Hikari content sync infrastructure. Mobile clients sync their local content library with cloud storage (AWS S3 + DynamoDB). Content consumption happens offline via local apps — this server only handles metadata management, binary storage, user authentication, and sync operations.
+
+The architecture is **content-type agnostic**: music, books, manga, or any future content type is handled through a plugin system. Each plugin defines its own metadata schema, validation rules, storage paths, and query filters.
 
 ## Architecture Overview
 
 ```
-Mobile App (offline player)
+Mobile App (offline player / reader)
     │
     ▼  HTTPS / REST
-┌─────────────────────────────────┐
-│        Sync Server (ASP.NET)    │
-│  ┌──────────┐  ┌─────────────┐ │
-│  │ Auth JWT  │  │ Controllers │ │
-│  └──────────┘  └──────┬──────┘ │
-│                       │        │
-│  ┌──────────┐  ┌──────▼──────┐ │
-│  │Middleware │  │Repositories │ │
-│  └──────────┘  └──────┬──────┘ │
-└───────────────────────┼────────┘
-                        │
-        ┌───────────────┼───────────────┐
-        ▼                               ▼
-   AWS DynamoDB                     AWS S3
-  (Music + User                  (Song binary
-   metadata)                      files)
+┌──────────────────────────────────────┐
+│          Sync Server (ASP.NET)       │
+│                                      │
+│  ┌────────────┐  ┌────────────────┐  │
+│  │  Identity   │  │    Content     │  │
+│  │ Auth + JWT  │  │  Controller    │  │
+│  │ Users/Admin │  │ (generic CRUD) │  │
+│  └────────────┘  └───────┬────────┘  │
+│                          │           │
+│  ┌────────────┐  ┌───────▼────────┐  │
+│  │Configuration│  │Plugin Registry │  │
+│  │ AWS + JWT   │  │ ┌───────────┐ │  │
+│  │  settings   │  │ │MusicPlugin│ │  │
+│  └────────────┘  │ │ BookPlugin│…│  │
+│                  │ └───────────┘ │  │
+│                  └───────┬───────┘  │
+│                          │          │
+│  ┌───────────────────────▼───────┐  │
+│  │  Content Repository (DynamoDB) │  │
+│  └───────────────────────────────┘  │
+└──────────────────┬───────────────────┘
+                   │
+       ┌───────────┼───────────┐
+       ▼                       ▼
+  AWS DynamoDB              AWS S3
+ (Content + User          (Binary
+  metadata)                files)
 ```
 
-**Stack:** .NET 8, ASP.NET Core Minimal Hosting, AWS SDK (S3, DynamoDB), JWT Bearer Auth, Swagger/OpenAPI
+**Stack:** .NET 10 Preview, ASP.NET Core, AWS SDK (S3, DynamoDB), JWT Bearer Auth, Swagger/OpenAPI
 
 ---
 
@@ -48,10 +61,11 @@ Mobile App (offline player)
 
 ## Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (preview) or later
 - An AWS account with:
-  - An S3 bucket (default: `yume-song`)
-  - Two DynamoDB tables: `Music` (hash key: `Id` of type `String`) and `User` (hash key: `Id` of type `String`, GSI `email-index` on `Email`)
+  - An S3 bucket (default: `Hikari-song`)
+  - A DynamoDB table: `User` (hash key: `Id` of type `String`, GSI `email-index` on `Email`)
+  - Content tables are created per-plugin (e.g., `Music` with hash key `Id` of type `String`)
   - IAM credentials with S3 and DynamoDB access
 - (Optional) [Docker](https://www.docker.com/) for containerized deployment
 - (Optional) [OpenSSL](https://www.openssl.org/) or PowerShell for generating HTTPS certificates
@@ -61,55 +75,75 @@ Mobile App (offline player)
 ## Project Structure
 
 ```
-Serverless/
+sync-server/
 ├── sync-server.sln                  # Solution file
 ├── Dockerfile                       # Multi-stage Docker build
 ├── README.md                        # This file
 ├── sample-requests/                 # Example JSON payloads for API testing
 │   ├── upload.json
+│   ├── upload-complete.json
 │   ├── upload-batch.json
 │   ├── download.json
 │   ├── get.json
 │   ├── edit.json
 │   └── delete.json
 ├── src/
-│   └── SyncServer/
-│       ├── sync-server.csproj       # Project file
-│       ├── Program.cs               # Application entry point & DI configuration
-│       ├── appsettings.json         # Base configuration (DO NOT put secrets here)
-│       ├── appsettings.Development.json
-│       ├── Abstraction/             # DTOs, enums, options, request/response models
-│       │   ├── Options.cs           # AmazonWebServicesConstants, JwtConstants
-│       │   ├── Requests.cs          # CreateUserRequest, UploadRequest, etc.
-│       │   ├── Responses.cs         # DownloadResponse
-│       │   ├── Enums.cs             # ContentType, Role
-│       │   └── ContentTypeExtensions.cs
-│       ├── Controllers/
-│       │   ├── AuthController.cs    # Login, token refresh (AllowAnonymous)
-│       │   ├── UserController.cs    # User CRUD, password change
-│       │   ├── AdminController.cs   # List users, manage roles (Admin only)
-│       │   ├── UploadController.cs  # Upload song binary + metadata (Admin only)
-│       │   ├── DownloadController.cs# Download songs with binary (User/Admin)
-│       │   ├── GetController.cs     # Get song metadata only (User/Admin)
-│       │   ├── EditController.cs    # Edit song metadata (Admin only)
-│       │   └── DeleteController.cs  # Delete songs from S3 + DB (Admin only)
-│       ├── Entities/
-│       │   ├── Music.cs             # DynamoDB Music entity
-│       │   └── User.cs              # DynamoDB User entity
-│       ├── Middleware/
-│       │   └── CurrentUserMiddleware.cs  # Loads authenticated user into context
-│       ├── Repositories/
-│       │   ├── IMusicRepository.cs
-│       │   ├── MusicRepository.cs
-│       │   ├── IUserRepository.cs
-│       │   └── UserRepository.cs
-│       ├── Services/
-│       │   ├── ICurrentUserService.cs
-│       │   └── CurrentUserService.cs
-│       └── Properties/
-│           └── launchSettings.json
+│   ├── sync-server.csproj           # Project file
+│   ├── Program.cs                   # Application entry point & DI configuration
+│   ├── appsettings.json             # Base configuration (DO NOT put secrets here)
+│   ├── appsettings.Development.json
+│   ├── Configuration/               # Application-wide settings
+│   │   └── AppSettings.cs           # AmazonWebServicesConstants, JwtSettings
+│   ├── Identity/                    # Authentication, users, and authorization
+│   │   ├── Controllers/             # API controllers
+│   │   │   ├── AuthController.cs
+│   │   │   ├── UserController.cs
+│   │   │   └── AdminController.cs
+│   │   ├── Dtos/                    # Request/response DTOs
+│   │   │   └── AuthDtos.cs
+│   │   ├── Filters/                 # Swagger/OpenAPI filters
+│   │   │   └── CreateUserRequestSchemaFilter.cs
+│   │   ├── Middlewares/             # Request pipeline middleware
+│   │   │   └── CurrentUserMiddleware.cs
+│   │   ├── Services/                # Identity services
+│   │   │   ├── ICurrentUserService.cs
+│   │   │   └── CurrentUserService.cs
+│   │   ├── Repositories/            # Data access
+│   │   │   ├── IUserRepository.cs
+│   │   │   └── UserRepository.cs
+│   │   └── Models/                  # Domain models
+│   │       ├── User.cs
+│   │       └── Role.cs
+│   ├── Content/                     # Plugin-based content management
+│   │   ├── Controllers/             # Content API controllers
+│   │   │   └── ContentController.cs
+│   │   ├── Dtos/                    # Content request/response DTOs
+│   │   │   └── ContentDtos.cs
+│   │   ├── Models/                  # Content entities
+│   │   │   └── ContentItem.cs
+│   │   ├── Contracts/               # Plugin contracts/interfaces
+│   │   │   └── IContentPlugin.cs
+│   │   ├── Registries/              # Plugin registries
+│   │   │   └── ContentPluginRegistry.cs
+│   │   ├── Repositories/            # Data access
+│   │   │   └── ContentRepository.cs
+│   │   └── Plugins/
+│   │       └── MusicPlugin.cs       # Music content plugin (table: Music, S3: music/)
+│   └── Properties/
+│       └── launchSettings.json
 └── tests/                           # Test project (placeholder)
 ```
+
+### Domain-based organization
+
+The codebase is organized by **domain** rather than technical layer:
+
+| Folder | Purpose |
+|--------|---------|
+| `Configuration/` | AWS and JWT option classes bound from env vars / appsettings |
+| `Identity/` | Contextual identity modules: controllers, DTOs, middleware, services, repositories, models |
+| `Content/` | Contextual content modules: controllers, DTOs, models, contracts, registries, repositories |
+| `Content/Plugins/` | Concrete content-type plugins (Music, and any future types) |
 
 ---
 
@@ -122,8 +156,7 @@ All secrets must be provided via **environment variables** — never commit real
 ```json
 {
   "AmazonWebServiceConstants": {
-    "BucketName": "yume-song",
-    "SongTableName": "Music",
+    "BucketName": "Hikari-song",
     "UserTableName": "User",
     "AwsRegion": "",
     "AccessKey": "",
@@ -138,6 +171,8 @@ All secrets must be provided via **environment variables** — never commit real
 }
 ```
 
+> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `MusicPlugin` uses `"Music_v2"`). There is no global env var for content tables.
+
 Environment variables override the JSON values at runtime (see [Environment Variables](#environment-variables)).
 
 ---
@@ -148,8 +183,8 @@ Environment variables override the JSON values at runtime (see [Environment Vari
 
 ```bash
 git clone <your-repo-url>
-cd Serverless
-dotnet restore src/SyncServer/sync-server.csproj
+cd sync-server
+dotnet restore src/sync-server.csproj
 ```
 
 ### 2. Set environment variables
@@ -160,10 +195,10 @@ On Windows (PowerShell):
 $env:AWS_REGION = "ap-south-1"
 $env:AWS_ACCESS_KEY_ID = "<your-access-key>"
 $env:AWS_SECRET_ACCESS_KEY = "<your-secret-key>"
-$env:AWS_BUCKET = "yume-song"
+$env:AWS_BUCKET = "Hikari-song"
 $env:JWT_KEY = "<a-strong-random-key-min-32-chars>"
-$env:JWT_ISSUER = "yume-sync-server"
-$env:JWT_AUDIENCE = "yume-mobile-app"
+$env:JWT_ISSUER = "Hikari-sync-server"
+$env:JWT_AUDIENCE = "Hikari-mobile-app"
 $env:JWT_DURATION_HOURS = "12"
 ```
 
@@ -173,19 +208,19 @@ On Linux/macOS:
 export AWS_REGION="ap-south-1"
 export AWS_ACCESS_KEY_ID="<your-access-key>"
 export AWS_SECRET_ACCESS_KEY="<your-secret-key>"
-export AWS_BUCKET="yume-song"
+export AWS_BUCKET="Hikari-song"
 export JWT_KEY="<a-strong-random-key-min-32-chars>"
-export JWT_ISSUER="yume-sync-server"
-export JWT_AUDIENCE="yume-mobile-app"
+export JWT_ISSUER="Hikari-sync-server"
+export JWT_AUDIENCE="Hikari-mobile-app"
 export JWT_DURATION_HOURS="12"
 ```
 
 ### 3. Ensure AWS resources exist
 
-- **S3 Bucket:** Create `yume-song` (or your custom name) in your target region.
+- **S3 Bucket:** Create `Hikari-song` (or your custom name) in your target region.
 - **DynamoDB Tables:**
-  - `Music` — Partition key: `Id` (String)
   - `User` — Partition key: `Id` (String), GSI: `email-index` on `Email` (String)
+  - `Music` — Partition key: `Id` (String) *(created by MusicPlugin; additional plugin tables follow the same pattern)*
 
 ---
 
@@ -194,25 +229,25 @@ export JWT_DURATION_HOURS="12"
 ### Debug build
 
 ```bash
-dotnet build src/SyncServer/sync-server.csproj
+dotnet build src/sync-server.csproj
 ```
 
 ### Release build
 
 ```bash
-dotnet build src/SyncServer/sync-server.csproj -c Release
+dotnet build src/sync-server.csproj -c Release
 ```
 
 ### Publish (self-contained, ready-to-deploy)
 
 ```bash
-dotnet publish src/SyncServer/sync-server.csproj -c Release -o ./publish
+dotnet publish src/sync-server.csproj -c Release -o ./publish
 ```
 
 For Linux deployment targets:
 
 ```bash
-dotnet publish src/SyncServer/sync-server.csproj -c Release -r linux-x64 --self-contained -o ./publish
+dotnet publish src/sync-server.csproj -c Release -r linux-x64 --self-contained -o ./publish
 ```
 
 ---
@@ -220,7 +255,7 @@ dotnet publish src/SyncServer/sync-server.csproj -c Release -r linux-x64 --self-
 ## Running Locally
 
 ```bash
-dotnet run --project src/SyncServer/sync-server.csproj
+dotnet run --project src/sync-server.csproj
 ```
 
 The server starts on:
@@ -242,7 +277,7 @@ Swagger UI is available at: `https://localhost:3445/swagger`
 
 ### Visual Studio Code
 
-1. Open the `Serverless/` folder
+1. Open the `sync-server/` folder
 2. Install the **C# Dev Kit** extension
 3. Create `.vscode/launch.json`:
 
@@ -254,16 +289,16 @@ Swagger UI is available at: `https://localhost:3445/swagger`
       "name": "SyncServer",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/SyncServer/bin/Debug/net8.0/SyncServer.dll",
+      "program": "${workspaceFolder}/src/bin/Debug/net10.0/SyncServer.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/src/SyncServer",
+      "cwd": "${workspaceFolder}/src",
       "stopAtEntry": false,
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "AWS_REGION": "ap-south-1",
         "JWT_KEY": "your-dev-secret-key-at-least-32-characters-long",
-        "JWT_ISSUER": "yume-dev",
-        "JWT_AUDIENCE": "yume-dev"
+        "JWT_ISSUER": "Hikari-dev",
+        "JWT_AUDIENCE": "Hikari-dev"
       }
     }
   ]
@@ -275,7 +310,7 @@ Swagger UI is available at: `https://localhost:3445/swagger`
 ### CLI Debugging
 
 ```bash
-dotnet run --project src/SyncServer/sync-server.csproj --launch-profile SyncServer
+dotnet run --project src/sync-server.csproj --launch-profile SyncServer
 ```
 
 ### Viewing Logs
@@ -283,7 +318,7 @@ dotnet run --project src/SyncServer/sync-server.csproj --launch-profile SyncServ
 The server uses structured JSON logging. In development, logs go to stdout. Use `dotnet run` and observe console output, or pipe through `jq` for readability:
 
 ```bash
-dotnet run --project src/SyncServer/sync-server.csproj 2>&1 | jq .
+dotnet run --project src/sync-server.csproj 2>&1 | jq .
 ```
 
 ---
@@ -296,37 +331,37 @@ PowerShell (Windows):
 
 ```powershell
 $cert = New-SelfSignedCertificate -DnsName "localhost" -CertStoreLocation "cert:\LocalMachine\My"
-$password = ConvertTo-SecureString -String "yume" -Force -AsPlainText
+$password = ConvertTo-SecureString -String "Hikari" -Force -AsPlainText
 Export-PfxCertificate -Cert $cert -FilePath ".\aspnetcore.pfx" -Password $password
 ```
 
 Linux/macOS:
 
 ```bash
-dotnet dev-certs https -ep ./aspnetcore.pfx -p yume
+dotnet dev-certs https -ep ./aspnetcore.pfx -p Hikari
 ```
 
 ### Build the image
 
 ```bash
-docker build -f Dockerfile -t yume-sync-server .
+docker build -f Dockerfile -t Hikari-sync-server .
 ```
 
 ### Run the container
 
 ```bash
 docker run -d \
-  --name yume-sync \
+  --name Hikari-sync \
   -p 3346:3346 \
   -p 3445:3445 \
   -e AWS_REGION="ap-south-1" \
   -e AWS_ACCESS_KEY_ID="<your-key>" \
   -e AWS_SECRET_ACCESS_KEY="<your-secret>" \
-  -e AWS_BUCKET="yume-song" \
+  -e AWS_BUCKET="Hikari-song" \
   -e JWT_KEY="<strong-secret-min-32-chars>" \
-  -e JWT_ISSUER="yume-sync-server" \
-  -e JWT_AUDIENCE="yume-mobile-app" \
-  yume-sync-server
+  -e JWT_ISSUER="Hikari-sync-server" \
+  -e JWT_AUDIENCE="Hikari-mobile-app" \
+  Hikari-sync-server
 ```
 
 ### Verify it's running
@@ -354,30 +389,30 @@ curl http://localhost:3346/swagger/v1/swagger.json
    AWS_REGION=ap-south-1
    AWS_ACCESS_KEY_ID=<production-key>
    AWS_SECRET_ACCESS_KEY=<production-secret>
-   AWS_BUCKET=yume-song
+   AWS_BUCKET=Hikari-song
    JWT_KEY=<production-jwt-secret-64-chars-recommended>
-   JWT_ISSUER=yume-sync-server
-   JWT_AUDIENCE=yume-mobile-app
+   JWT_ISSUER=Hikari-sync-server
+   JWT_AUDIENCE=Hikari-mobile-app
    JWT_DURATION_HOURS=12
    ```
 
 5. **Run with Docker:**
 
    ```bash
-   docker build -f Dockerfile -t yume-sync-server .
+   docker build -f Dockerfile -t Hikari-sync-server .
    docker run -d \
-     --name yume-sync \
+     --name Hikari-sync \
      --restart unless-stopped \
      -p 443:3445 \
      -p 80:3346 \
      --env-file .env \
-     yume-sync-server
+     Hikari-sync-server
    ```
 
 6. **Reverse proxy (recommended):** Place nginx or Caddy in front for TLS termination:
 
    ```nginx
-   # /etc/nginx/sites-available/yume
+   # /etc/nginx/sites-available/Hikari
    server {
        listen 443 ssl;
        server_name sync.yourdomain.com;
@@ -431,25 +466,25 @@ docker compose up -d
 1. **Publish:**
 
    ```bash
-   dotnet publish src/SyncServer/sync-server.csproj -c Release -r linux-x64 --self-contained -o /opt/yume-sync
+  dotnet publish src/sync-server.csproj -c Release -r linux-x64 --self-contained -o /opt/Hikari-sync
    ```
 
-2. **Create systemd service** (`/etc/systemd/system/yume-sync.service`):
+2. **Create systemd service** (`/etc/systemd/system/Hikari-sync.service`):
 
    ```ini
    [Unit]
-   Description=Yume Sync Server
+   Description=Hikari Sync Server
    After=network.target
 
    [Service]
    Type=exec
-   WorkingDirectory=/opt/yume-sync
-   ExecStart=/opt/yume-sync/SyncServer
+   WorkingDirectory=/opt/Hikari-sync
+   ExecStart=/opt/Hikari-sync/SyncServer
    Restart=always
    RestartSec=10
    User=www-data
    Environment=ASPNETCORE_URLS=http://+:5000
-   EnvironmentFile=/opt/yume-sync/.env
+   EnvironmentFile=/opt/Hikari-sync/.env
 
    [Install]
    WantedBy=multi-user.target
@@ -459,14 +494,17 @@ docker compose up -d
 
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl enable yume-sync
-   sudo systemctl start yume-sync
-   sudo systemctl status yume-sync
+   sudo systemctl enable Hikari-sync
+   sudo systemctl start Hikari-sync
+   sudo systemctl status Hikari-sync
    ```
 
 ### Production Checklist
 
-- [ ] **Never** expose Swagger in production — disable it or gate behind admin auth
+- [x] **Swagger disabled in production** — only enabled when `ASPNETCORE_ENVIRONMENT=Development`
+- [x] **JWT key validated at startup** — server fails fast if key is missing or < 32 bytes
+- [x] **HTTPS metadata required in production** — `RequireHttpsMetadata` is `true` except in Development
+- [x] **Password validation enforced** — minimum 8 characters on create and change-password
 - [ ] Use a proper JWT secret (64+ random characters)
 - [ ] Set `ASPNETCORE_ENVIRONMENT=Production` (disables dev exception pages)
 - [ ] Use IAM roles instead of access keys when running on AWS infrastructure
@@ -476,6 +514,7 @@ docker compose up -d
 - [ ] Set up health check monitoring
 - [ ] Back up DynamoDB tables regularly
 - [ ] Rotate JWT signing keys periodically
+- [ ] Migrate refresh tokens from in-memory to persistent storage (DynamoDB/Redis) for multi-instance deployments
 
 ---
 
@@ -501,27 +540,47 @@ All endpoints require JWT Bearer authentication unless marked `[AllowAnonymous]`
 | `POST` | `/User/{id}/change-password` | User/Admin | Change password |
 | `DELETE` | `/User/{id}` | User/Admin | Delete user |
 
-### Music (metadata only)
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `GET` | `/Get/songs?page=&pageSize=&genre=&album=&titlePrefix=` | User/Admin | List/search music metadata |
-
-### Music (with binary)
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `GET` | `/Download/songs?page=&pageSize=&genre=&album=` | User/Admin | Download music with base64 binary |
-| `POST` | `/Upload` | Admin | Upload new song (metadata + base64 binary) |
-| `PUT` | `/Edit` | Admin | Update song metadata |
-| `DELETE` | `/Delete` | Admin | Delete songs (S3 binary + DB metadata) |
-
 ### Admin
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | `GET` | `/Admin/users` | Admin | List all users |
 | `POST` | `/Admin/users/{id}/roles` | Admin | Set user roles |
+
+### Content (plugin-based, generic)
+
+All content operations use the route prefix `/content/{contentType}` where `{contentType}` matches a registered plugin (e.g., `music`).
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| `POST` | `/content/{contentType}/upload-init` | Admin | Generate presigned S3 URL for direct binary upload |
+| `POST` | `/content/{contentType}/upload-complete` | Admin | Finalize metadata after client uploads directly to S3 |
+| `GET` | `/content/{contentType}/items` | User/Admin | List/search items (pagination, filters via plugin) |
+| `GET` | `/content/{contentType}/download` | User/Admin | Get presigned download URLs for matched items |
+| `GET` | `/content/{contentType}/download/{id}` | User/Admin | Get a presigned download URL for one item |
+| `PUT` | `/content/{contentType}/edit` | Admin | Update item metadata |
+| `DELETE` | `/content/{contentType}/delete` | Admin | Delete items (S3 binary + DB metadata) |
+| `GET` | `/content/plugins` | User/Admin | List all registered content plugins |
+
+Direct upload flow:
+1. Call `POST /content/{contentType}/upload-init` with metadata to receive `uploadUrl` and `requiredHeaders`.
+2. Upload the binary directly from client to S3 using HTTP `PUT` on `uploadUrl`.
+3. Call `POST /content/{contentType}/upload-complete` with the same item metadata and generated `storagePath`.
+
+#### Music plugin filters (`contentType=music`)
+
+| Query Param | Description |
+|-------------|-------------|
+| `page` | Page number (default 1) |
+| `pageSize` | Items per page (default 50) |
+| `titlePrefix` | Filter by title prefix |
+| `artist` | Filter by artist |
+| `album` | Filter by album |
+| `genre` | Filter by genre |
+| `playlist` | Filter by playlist |
+| `releaseFrom` | Release date range start (YYYY-MM-DD) |
+| `releaseTo` | Release date range end (YYYY-MM-DD) |
+| `lastModifiedSince` | Only items modified after this ISO timestamp |
 
 ---
 
@@ -532,14 +591,49 @@ All endpoints require JWT Bearer authentication unless marked `[AllowAnonymous]`
 | `AWS_REGION` | Yes | — | AWS region (e.g., `ap-south-1`) |
 | `AWS_ACCESS_KEY_ID` | Yes* | — | AWS access key (*use IAM roles on EC2) |
 | `AWS_SECRET_ACCESS_KEY` | Yes* | — | AWS secret key |
-| `AWS_BUCKET` | No | `yume-song` | S3 bucket name |
-| `AWS_SONG_TABLE_NAME` | No | `Music` | DynamoDB table for songs |
+| `AWS_BUCKET` | No | `Hikari-song` | S3 bucket name |
 | `AWS_USER_TABLE_NAME` | No | `User` | DynamoDB table for users |
 | `JWT_KEY` | Yes | — | HMAC-SHA256 signing key (min 32 chars) |
 | `JWT_ISSUER` | Yes | — | JWT issuer claim |
 | `JWT_AUDIENCE` | Yes | — | JWT audience claim |
 | `JWT_DURATION_HOURS` | No | `12` | JWT token lifetime in hours |
 | `ASPNETCORE_ENVIRONMENT` | No | `Production` | Set to `Development` for dev mode |
+
+> **Note:** Content-type DynamoDB table names are defined per-plugin (e.g., `MusicPlugin` hardcodes `"Music"`). There is no global env var for content tables.
+
+---
+
+## Adding a New Content Plugin
+
+To add support for a new content type (e.g., books, manga):
+
+1. **Create a plugin class** in `Content/Plugins/`:
+
+   ```csharp
+   // Content/Plugins/BookPlugin.cs
+   namespace SyncServer.Content.Plugins;
+
+   public class BookPlugin : IContentPlugin
+   {
+       public string ContentType => "book";
+       public string TableName => "Book";
+       public string StoragePrefix => "book/";
+
+       public string? ValidateMetadata(Dictionary<string, string>? metadata) { ... }
+       public string BuildStoragePath(ContentItem item) { ... }
+       public IEnumerable<ScanCondition> BuildQueryFilters(IQueryCollection query) { ... }
+   }
+   ```
+
+2. **Register it** in `Program.cs`:
+
+   ```csharp
+   builder.Services.AddSingleton<IContentPlugin, BookPlugin>();
+   ```
+
+3. **Create the DynamoDB table** with the name matching `TableName` (partition key: `Id`, type `String`).
+
+The generic `ContentController` and `ContentRepository` will automatically handle all CRUD operations for the new type via `/content/book/...` routes.
 
 ---
 
