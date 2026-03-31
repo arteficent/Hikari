@@ -9,10 +9,13 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.headers
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -169,5 +172,62 @@ class ApiClient(private val authRepository: AuthRepository) {
             return null
         }
         return response.body()
+    }
+
+    /**
+     * Initialize upload and receive presigned URL for direct object storage upload.
+     */
+    suspend fun uploadInit(
+        serverDomain: String,
+        contentType: String,
+        request: ContentUploadInitRequest
+    ): ContentUploadInitResponse {
+        val token = authRepository.token.first()
+        return client.post(getUrl(serverDomain, "/content/$contentType/upload-init")) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    /**
+     * Upload binary payload directly to storage using a pre-signed URL.
+     */
+    suspend fun uploadBinary(uploadUrl: String, bytes: ByteArray, headersFromServer: Map<String, String>) {
+        val providedContentType = headersFromServer[HttpHeaders.ContentType] ?: headersFromServer["content-type"]
+        val resolvedContentType = providedContentType?.let { ContentType.parse(it) } ?: ContentType.Application.OctetStream
+
+        val response = client.put(uploadUrl) {
+            contentType(resolvedContentType)
+            headers {
+                headersFromServer.forEach { (k, v) ->
+                    // Ktor sets Content-Type separately; avoid duplicate header entries.
+                    if (!k.equals(HttpHeaders.ContentType, ignoreCase = true)) {
+                        append(k, v)
+                    }
+                }
+            }
+            setBody(bytes)
+        }
+
+        if (!response.status.isSuccess()) {
+            error("Direct upload failed with status ${response.status}")
+        }
+    }
+
+    /**
+     * Finalize upload metadata in the sync server after the binary upload succeeds.
+     */
+    suspend fun uploadComplete(
+        serverDomain: String,
+        contentType: String,
+        request: ContentUploadCompleteRequest
+    ): ContentUploadCompleteResponse {
+        val token = authRepository.token.first()
+        return client.post(getUrl(serverDomain, "/content/$contentType/upload-complete")) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
     }
 }

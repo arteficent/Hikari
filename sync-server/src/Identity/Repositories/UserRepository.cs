@@ -54,7 +54,7 @@ namespace SyncServer.Identity.Repositories
             {
                 var config = new QueryOperationConfig
                 {
-                    IndexName = "Email",
+                    IndexName = "email-index",
                     KeyExpression = new Expression
                     {
                         ExpressionStatement = "Email = :v_Email",

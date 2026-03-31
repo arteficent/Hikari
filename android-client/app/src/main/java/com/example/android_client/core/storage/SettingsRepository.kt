@@ -19,9 +19,18 @@ class SettingsRepository(private val context: Context) {
     }
 
     private val serverDomainKey = stringPreferencesKey("server_domain")
+    private val themeKey = stringPreferencesKey("hikari_theme")
 
     val serverDomain: Flow<String?> = context.dataStore.data.map {
         it[serverDomainKey]
+    }
+
+    val themeName: Flow<String> = context.dataStore.data.map {
+        it[themeKey] ?: "Wisteria"
+    }
+
+    suspend fun saveTheme(name: String) {
+        context.dataStore.edit { it[themeKey] = name }
     }
 
     suspend fun saveServerDomain(domain: String) {

@@ -171,7 +171,7 @@ All secrets must be provided via **environment variables** — never commit real
 }
 ```
 
-> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `MusicPlugin` uses `"Music_v2"`). There is no global env var for content tables.
+> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `MusicPlugin` uses `"Music"`). There is no global env var for content tables.
 
 Environment variables override the JSON values at runtime (see [Environment Variables](#environment-variables)).
 

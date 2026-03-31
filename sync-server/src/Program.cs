@@ -202,6 +202,6 @@ app.UseMiddleware<CurrentUserMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapGet("/", () => "Welcome to running ASP.NET Core on Kestrel");
+app.MapGet("/", () => "Welcome to running ASP.NET Core on Kestrel").AllowAnonymous();
 
 app.Run();

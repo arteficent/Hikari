@@ -9,16 +9,27 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.network.ContentItem
+import com.example.android_client.ui.theme.PaperSurface
 import java.io.File
 
 /**
@@ -248,12 +259,121 @@ class MusicPlugin : ContentPlugin {
         val artist = meta["artist"] ?: ""
         val album = meta["album"] ?: ""
         val genre = meta["genre"] ?: ""
-        ListItem(
-            headlineContent = { Text(item.title) },
-            supportingContent = { Text("$artist • $album • $genre") },
-            trailingContent = {
-                Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
-            }
+        PaperSurface(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
+            ListItem(
+                headlineContent = { Text(item.title) },
+                supportingContent = { Text("$artist • $album • $genre") },
+                trailingContent = {
+                    Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+                }
+            )
+        }
+    }
+
+    // ── Upload support ───────────────────────────────────────
+
+    override val uploadMimeFilter = "audio/*"
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    override fun UploadFormFields(fields: MutableMap<String, String>) {
+        OutlinedTextField(
+            value = fields["artist"] ?: "",
+            onValueChange = { fields["artist"] = it },
+            label = { Text("Artist *") },
+            modifier = Modifier.fillMaxWidth()
         )
+        OutlinedTextField(
+            value = fields["album"] ?: "",
+            onValueChange = { fields["album"] = it },
+            label = { Text("Album *") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = fields["genre"] ?: "",
+            onValueChange = { fields["genre"] = it },
+            label = { Text("Genre *") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Format dropdown matching server's musicFormat enum
+        val formatOptions = listOf("AudioMpeg" to "MP3", "AudioWav" to "WAV", "AudioFlac" to "FLAC")
+        var expanded by remember { mutableStateOf(false) }
+        val currentFormat = fields["musicFormat"] ?: "AudioMpeg"
+        val currentLabel = formatOptions.firstOrNull { it.first == currentFormat }?.second ?: "MP3"
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = currentLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Format") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                formatOptions.forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = { fields["musicFormat"] = value; expanded = false }
+                    )
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = fields["releaseDate"] ?: "",
+            onValueChange = { fields["releaseDate"] = it },
+            label = { Text("Release Date (YYYY-MM-DD)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = fields["language"] ?: "",
+            onValueChange = { fields["language"] = it },
+            label = { Text("Language") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = fields["countryOfOrigin"] ?: "",
+            onValueChange = { fields["countryOfOrigin"] = it },
+            label = { Text("Country of Origin") },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+
+    override fun validateUploadFields(fields: Map<String, String>): String? {
+        if (fields["artist"].isNullOrBlank()) return "Artist is required."
+        if (fields["album"].isNullOrBlank()) return "Album is required."
+        if (fields["genre"].isNullOrBlank()) return "Genre is required."
+        val fmt = fields["musicFormat"] ?: "AudioMpeg"
+        if (fmt !in setOf("AudioMpeg", "AudioWav", "AudioFlac")) return "Invalid music format."
+        return null
+    }
+
+    override fun buildUploadMetadata(title: String, fields: Map<String, String>): Map<String, String> {
+        val meta = linkedMapOf(
+            "title" to title,
+            "artist" to (fields["artist"]?.trim() ?: ""),
+            "album" to (fields["album"]?.trim() ?: ""),
+            "genre" to (fields["genre"]?.trim() ?: ""),
+            "musicFormat" to (fields["musicFormat"] ?: "AudioMpeg")
+        )
+        fields["releaseDate"]?.takeIf { it.isNotBlank() }?.let { meta["releaseDate"] = it.trim() }
+        fields["language"]?.takeIf { it.isNotBlank() }?.let { meta["language"] = it.trim() }
+        fields["countryOfOrigin"]?.takeIf { it.isNotBlank() }?.let { meta["countryOfOrigin"] = it.trim() }
+        return meta
+    }
+
+    override fun resolveUploadMimeType(fields: Map<String, String>): String {
+        return when (fields["musicFormat"] ?: "AudioMpeg") {
+            "AudioWav" -> "audio/wav"
+            "AudioFlac" -> "audio/flac"
+            else -> "audio/mpeg"
+        }
     }
 }

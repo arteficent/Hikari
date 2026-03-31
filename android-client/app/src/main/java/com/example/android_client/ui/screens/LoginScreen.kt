@@ -4,8 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +24,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.android_client.ui.theme.AndroidclientTheme
+import com.example.android_client.ui.theme.PaperSurface
 
 @Composable
 fun LoginScreen(
@@ -36,32 +41,41 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        error?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
-        Row {
-            Button(onClick = { onBackClicked() }) {
-                Text("Back")
-            }
-            Button(onClick = { onLoginClicked(email, password) }) {
-                Text("Login")
+        PaperSurface(modifier = Modifier.padding(horizontal = 32.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Sign In", style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+                error?.let {
+                    Text(
+                        text = it,
+                        color = Color.Red,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+                Row {
+                    Button(onClick = { onBackClicked() }) {
+                        Text("Back")
+                    }
+                    Button(onClick = { onLoginClicked(email, password) }) {
+                        Text("Login")
+                    }
+                }
             }
         }
     }

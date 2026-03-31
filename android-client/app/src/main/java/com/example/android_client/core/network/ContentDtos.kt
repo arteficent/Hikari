@@ -1,5 +1,6 @@
 package com.example.android_client.core.network
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -40,4 +41,31 @@ data class PluginInfo(
     val contentType: String,
     val displayName: String,
     val allowedMimeTypes: List<String> = emptyList()
+)
+
+@Serializable
+data class ContentUploadInitRequest(
+    val item: ContentItem,
+    val urlExpiresInMinutes: Int = 15
+)
+
+@Serializable
+data class ContentUploadInitResponse(
+    val item: ContentItem,
+    val uploadUrl: String,
+    val expiresAtUtc: String? = null,
+    val requiredHeaders: Map<String, String> = emptyMap()
+)
+
+@Serializable
+data class ContentUploadCompleteRequest(
+    val item: ContentItem
+)
+
+@Serializable
+data class ContentUploadCompleteResponse(
+    val message: String,
+    val item: ContentItem,
+    @SerialName("Message") val legacyMessage: String? = null,
+    @SerialName("Item") val legacyItem: ContentItem? = null
 )

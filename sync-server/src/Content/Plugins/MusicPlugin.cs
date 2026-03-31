@@ -13,7 +13,7 @@ public class MusicPlugin : IContentPlugin
 {
     public string ContentType => "music";
     public string DisplayName => "Music";
-    public string TableName => "Music_v2";
+    public string TableName => "Music";
     public string StoragePrefix => "music/song/";
 
     public IReadOnlySet<string> AllowedMimeTypes { get; } = new HashSet<string>

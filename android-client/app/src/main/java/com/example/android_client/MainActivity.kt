@@ -6,10 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,8 +39,11 @@ import com.example.android_client.content.ContentPluginRegistry
 import com.example.android_client.content.plugins.MusicPlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.screens.ContentHubScreen
+import com.example.android_client.ui.screens.ContentPickerScreen
 import com.example.android_client.ui.screens.LoginScreen
 import com.example.android_client.ui.theme.AndroidclientTheme
+import com.example.android_client.ui.theme.HikariTheme
+import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +68,10 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            AndroidclientTheme {
+            val themeName by settingsRepository.themeName.collectAsState(initial = "Wisteria")
+            val hikariTheme = HikariTheme.fromName(themeName)
+
+            AndroidclientTheme(hikariTheme = hikariTheme) {
                 val serverDomain by settingsRepository.serverDomain.collectAsState(initial = null)
                 val token by authRepository.token.collectAsState(initial = null)
                 val refreshToken by authRepository.refreshToken.collectAsState(initial = null)
@@ -134,22 +144,36 @@ class MainActivity : ComponentActivity() {
                             error = error
                         )
                     } else {
-                        // Plugin-based hub screen
+                        // Post-login: content type selection then hub
                         val appContext = applicationContext
-                        ContentHubScreen(
-                            pluginRegistry = pluginRegistry,
-                            syncServiceFactory = { plugin: ContentPlugin ->
-                                ContentSyncService(apiClient, appContext, currentDomain, syncPreferencesRepository, plugin)
-                            },
-                            apiClient = apiClient,
-                            serverDomain = currentDomain,
-                            syncPreferencesRepository = syncPreferencesRepository,
-                            onLogout = {
-                                scope.launch {
-                                    authRepository.clearTokens()
+                        var selectedPlugin by remember { mutableStateOf<ContentPlugin?>(null) }
+                        val activePlugin = selectedPlugin
+
+                        if (activePlugin == null) {
+                            ContentPickerScreen(
+                                pluginRegistry = pluginRegistry,
+                                currentTheme = hikariTheme,
+                                onThemeChanged = { newTheme ->
+                                    scope.launch { settingsRepository.saveTheme(newTheme.name) }
+                                },
+                                onPluginSelected = { plugin -> selectedPlugin = plugin },
+                                onLogout = {
+                                    scope.launch { authRepository.clearTokens() }
                                 }
-                            }
-                        )
+                            )
+                        } else {
+                            ContentHubScreen(
+                                plugin = activePlugin,
+                                syncService = ContentSyncService(
+                                    apiClient, appContext, currentDomain,
+                                    syncPreferencesRepository, activePlugin
+                                ),
+                                apiClient = apiClient,
+                                serverDomain = currentDomain,
+                                syncPreferencesRepository = syncPreferencesRepository,
+                                onBack = { selectedPlugin = null }
+                            )
+                        }
                     }
                 }
             }
@@ -167,27 +191,36 @@ fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedTextField(
-            value = serverDomain,
-            onValueChange = {
-                serverDomain = it
-                validationError = null
-            },
-            label = { Text("Server Domain") },
-            isError = validationError != null,
-            supportingText = validationError?.let { { Text(it) } },
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Button(onClick = {
-            val domain = serverDomain.trim()
-            when {
-                domain.isBlank() -> validationError = "Domain cannot be empty"
-                domain.contains(" ") -> validationError = "Domain cannot contain spaces"
-                !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
-                else -> onContinueClicked(domain)
+        PaperSurface(modifier = Modifier.padding(horizontal = 32.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Connect to Server", style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = serverDomain,
+                    onValueChange = {
+                        serverDomain = it
+                        validationError = null
+                    },
+                    label = { Text("Server Domain") },
+                    isError = validationError != null,
+                    supportingText = validationError?.let { { Text(it) } },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+                Button(onClick = {
+                    val domain = serverDomain.trim()
+                    when {
+                        domain.isBlank() -> validationError = "Domain cannot be empty"
+                        domain.contains(" ") -> validationError = "Domain cannot contain spaces"
+                        !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
+                        else -> onContinueClicked(domain)
+                    }
+                }) {
+                    Text("Continue")
+                }
             }
-        }) {
-            Text("Continue")
         }
     }
 }
