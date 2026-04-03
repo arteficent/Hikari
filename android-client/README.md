@@ -94,7 +94,11 @@ android-client/
 │       │   ├── ContentPlugin.kt     # Plugin interface contract
 │       │   ├── ContentPluginRegistry.kt  # Plugin registry
 │       │   └── plugins/
-│       │       └── MusicPlugin.kt   # Music plugin (MediaStore, audio MIME types)
+│       │       ├── AudioPlugin.kt   # Audio plugin (file-based, hikari/audio/)
+│       │       ├── BookPlugin.kt    # Book plugin (file-based, hikari/book/)
+│       │       ├── ImagePlugin.kt   # Image plugin (file-based, hikari/image/)
+│       │       ├── MangaPlugin.kt   # Manga plugin (file-based, hikari/manga/)
+│       │       └── VideoPlugin.kt   # Video plugin (file-based, hikari/video/)
 │       └── ui/                      # Compose UI
 │           ├── screens/
 │           │   ├── ContentHubScreen.kt   # Tab-based hub for all plugins
@@ -114,7 +118,7 @@ android-client/
 | `core/storage/` | DataStore-backed repositories for auth tokens, settings, sync state |
 | `core/sync/` | Generic sync engine that delegates to content plugins |
 | `content/` | Plugin interface and registry |
-| `content/plugins/` | Concrete plugin implementations (Music, and any future types) |
+| `content/plugins/` | Concrete plugin implementations (Audio, Book, Image, Manga, Video) |
 | `ui/screens/` | All Compose screens |
 | `ui/theme/` | Material 3 theme definition |
 
@@ -205,9 +209,21 @@ The app uses a `ContentPlugin` interface to support multiple content types. Each
 
 ### Currently registered plugins
 
-| Plugin | Content Type | Storage | Permissions |
-|--------|-------------|---------|-------------|
-| `MusicPlugin` | `music` | `Music/HikariSync/` via MediaStore | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+All plugins store files under `/storage/emulated/0/hikari/` with a hierarchical directory structure that mirrors the S3 object path on the server.
+
+| Plugin | Content Type | Local Storage Path Pattern | Permissions |
+|--------|-------------|---------------------------|-------------|
+| `AudioPlugin` | `audio` | `hikari/audio/{artist}/{album}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+| `BookPlugin` | `book` | `hikari/book/{author}/{series}/{volume}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+| `ImagePlugin` | `image` | `hikari/image/{creator}/{collection}/{title}.{ext}` | `READ_MEDIA_IMAGES` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+| `MangaPlugin` | `manga` | `hikari/manga/{author}/{series}/{volume}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+| `VideoPlugin` | `video` | `hikari/video/{type}/{series}/{season}/{episode}/{title}.{ext}` | `READ_MEDIA_VIDEO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
+
+> Missing metadata segments default to `"general"` or `"Unknown"` in the directory structure.
+
+### Upload behavior
+
+When uploading content from the Android client, the file is renamed according to the `{title}.{ext}` provided by the user in the metadata form. The original filename from the device is not used for storage — the server builds the S3 key from metadata, and the local copy after sync follows the same pattern.
 
 ---
 
@@ -216,15 +232,15 @@ The app uses a `ContentPlugin` interface to support multiple content types. Each
 1. **Create the plugin** in `content/plugins/`:
 
    ```kotlin
-   // content/plugins/BookPlugin.kt
+   // content/plugins/PodcastPlugin.kt
    package com.example.android_client.content.plugins
 
-   class BookPlugin : ContentPlugin {
-       override val contentType = "book"
-       override val displayName = "Books"
-       override val localDirectory = "Documents/HikariSync/Books/"
+   class PodcastPlugin : ContentPlugin {
+       override val contentType = "podcast"
+       override val displayName = "Podcast"
+       override val localDirectory = "hikari/podcast/"
        override val requiredPermissions = listOf(...)
-       override val supportedMimeTypes = setOf("application/pdf", "application/epub+zip")
+       override val supportedMimeTypes = setOf("audio/mpeg", "audio/ogg")
 
        override suspend fun saveLocally(context: Context, item: ContentItem, binary: ByteArray) { ... }
        override fun deleteLocally(context: Context, displayName: String): Boolean { ... }
@@ -243,7 +259,7 @@ The app uses a `ContentPlugin` interface to support multiple content types. Each
 2. **Register it** in `MainActivity.onCreate()`:
 
    ```kotlin
-   pluginRegistry.register(BookPlugin())
+   pluginRegistry.register(PodcastPlugin())
    ```
 
 3. **Ensure the server** has a matching plugin registered for the same `contentType`.

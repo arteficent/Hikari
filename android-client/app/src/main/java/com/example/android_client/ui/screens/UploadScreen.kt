@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -36,7 +37,9 @@ import com.example.android_client.core.network.ContentUploadCompleteRequest
 import com.example.android_client.core.network.ContentUploadInitRequest
 import com.example.android_client.ui.theme.PaperSurface
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
@@ -69,10 +72,29 @@ fun UploadScreen(
     // Plugin-specific fields
     val pluginFields = remember { mutableStateMapOf<String, String>() }
 
+    // Metadata options
+    var updateMetadataInFile by remember { mutableStateOf(false) }
+
+    // Cover image state (album art / thumbnail)
+    var coverImageUri by remember { mutableStateOf<Uri?>(null) }
+    var coverImageName by remember { mutableStateOf<String?>(null) }
+
     // Upload state
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
     var uploadSuccess by remember { mutableStateOf<String?>(null) }
+
+    val coverImagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        coverImageUri = uri
+        coverImageName = uri?.let {
+            val cursor = context.contentResolver.query(
+                it, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null
+            )
+            cursor?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -88,6 +110,27 @@ fun UploadScreen(
         }
         uploadError = null
         uploadSuccess = null
+
+        // Auto-fill metadata from the selected file
+        if (uri != null && selectedFileName != null) {
+            scope.launch {
+                try {
+                    val extracted = withContext(Dispatchers.IO) {
+                        plugin.extractFileMetadata(context, uri, selectedFileName!!)
+                    }
+                    // Populate title if extracted and current title is empty
+                    extracted["title"]?.let { if (title.isBlank()) title = it }
+                    // Populate plugin fields (only fill empty fields)
+                    for ((key, value) in extracted) {
+                        if (key != "title" && pluginFields[key].isNullOrBlank()) {
+                            pluginFields[key] = value
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Extraction is best-effort; ignore failures
+                }
+            }
+        }
     }
 
     Column(
@@ -151,6 +194,50 @@ fun UploadScreen(
                 // ── Plugin-specific fields ──
                 plugin.UploadFormFields(pluginFields)
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ── Update metadata in file checkbox ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = updateMetadataInFile,
+                        onCheckedChange = { updateMetadataInFile = it }
+                    )
+                    Text(
+                        text = "Update metadata in file",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+                Text(
+                    text = "When checked, the file's embedded metadata will be stripped and rewritten with the values above before uploading.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)
+                )
+
+                // ── Cover image picker (only for plugins that support it) ──
+                if (plugin.supportsCoverImage) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { coverImagePickerLauncher.launch("image/*") }) {
+                            Text("Pick ${plugin.coverImageLabel}")
+                        }
+                        Text(
+                            text = coverImageName ?: "No image selected",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
+                    if (!updateMetadataInFile && coverImageUri != null) {
+                        Text(
+                            text = "Note: Enable \"Update metadata in file\" to embed ${plugin.coverImageLabel.lowercase()} in the file.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // ── Error / Success ──
@@ -195,11 +282,22 @@ fun UploadScreen(
                                     scope.launch {
                                         isUploading = true
                                         try {
-                                            // Read binary from content URI
-                                            val bytes = context.contentResolver
-                                                .openInputStream(currentUri)
-                                                ?.use { it.readBytes() }
-                                                ?: error("Unable to read selected file")
+                                            // Read binary: strip/rewrite metadata only if checkbox is checked
+                                            val bytes = if (updateMetadataInFile) {
+                                                plugin.rewriteFileMetadata(
+                                                    context = context,
+                                                    uri = currentUri,
+                                                    fileName = selectedFileName ?: "file",
+                                                    title = trimmedTitle,
+                                                    fields = pluginFields,
+                                                    coverImageUri = coverImageUri
+                                                )
+                                            } else {
+                                                // Upload raw file without metadata changes
+                                                context.contentResolver.openInputStream(currentUri)
+                                                    ?.use { it.readBytes() }
+                                                    ?: throw IllegalStateException("Unable to read file")
+                                            }
 
                                             // Build metadata from plugin fields
                                             val metadata = plugin.buildUploadMetadata(
@@ -262,6 +360,9 @@ fun UploadScreen(
                                             description = ""
                                             tags = ""
                                             pluginFields.clear()
+                                            updateMetadataInFile = false
+                                            coverImageUri = null
+                                            coverImageName = null
                                         } catch (e: ResponseException) {
                                             uploadError = "Upload failed (${e.response.status.value}): ${e.message}"
                                         } catch (e: Exception) {

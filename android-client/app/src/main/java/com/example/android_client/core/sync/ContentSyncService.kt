@@ -81,6 +81,57 @@ class ContentSyncService(
         Log.d(TAG, "Sync completed. New last sync time: $nowIso")
     }
 
+    /**
+     * Sync a single content item by downloading it from the server.
+     */
+    suspend fun syncItem(item: ContentItem) {
+        Log.d(TAG, "syncItem() for ${item.title}")
+        val downloaded = downloadItemById(item.id) ?: return
+        val name = plugin.displayName(downloaded)
+        syncPreferencesRepository.setSyncEntry(item.id, name)
+        syncPreferencesRepository.setSyncEnabled(item.id, true)
+    }
+
+    /**
+     * Remove a single item from local storage (unsync) without deleting from server.
+     */
+    suspend fun unsyncItem(item: ContentItem) {
+        Log.d(TAG, "unsyncItem() for ${item.title}")
+        val syncIndex = syncPreferencesRepository.syncIndex.first()
+        val displayName = syncIndex[item.id]
+        Log.d(TAG, "unsyncItem: syncIndex has ${syncIndex.size} entries, displayName=$displayName")
+        if (displayName != null) {
+            val deleted = plugin.deleteLocally(context, displayName)
+            Log.d(TAG, "unsyncItem: deleteLocally returned $deleted")
+        } else {
+            Log.w(TAG, "unsyncItem: no syncIndex entry for ${item.id}, cannot delete locally")
+        }
+        syncPreferencesRepository.removeSyncEntry(item.id)
+        syncPreferencesRepository.setSyncEnabled(item.id, false)
+    }
+
+    /**
+     * Delete items from the server (S3 + DB) and remove from local storage.
+     */
+    suspend fun deleteItems(items: List<ContentItem>): Pair<List<String>, List<String>> {
+        Log.d(TAG, "deleteItems() for ${items.size} items")
+        val response = apiClient.deleteItems(serverDomain, plugin.contentType, items)
+
+        // Remove from local storage and sync index for successfully deleted items
+        val syncIndex = syncPreferencesRepository.syncIndex.first()
+        for (item in items) {
+            val displayName = syncIndex[item.id]
+            if (displayName != null) {
+                plugin.deleteLocally(context, displayName)
+            }
+            syncPreferencesRepository.removeSyncEntry(item.id)
+            syncPreferencesRepository.setSyncEnabled(item.id, false)
+        }
+
+        Log.d(TAG, "Deleted: ${response.deleted.size}, Failed: ${response.failed.size}")
+        return Pair(response.deleted, response.failed)
+    }
+
     private suspend fun downloadItemById(id: String): ContentItem? {
         val response = apiClient.downloadContentItem(serverDomain, plugin.contentType, id)
         if (response == null) {

@@ -1,21 +1,36 @@
 package com.example.android_client.ui.screens
 
+import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,21 +80,67 @@ fun ContentListScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val syncIds by syncPreferencesRepository.syncIds.collectAsState(initial = emptySet())
+    val syncIndex by syncPreferencesRepository.syncIndex.collectAsState(initial = emptyMap())
 
-    // Pick the first permission (if any) for the launcher
-    val permission = plugin.requiredPermissions.firstOrNull()
+    // Track which items are currently synced locally (have an entry in syncIndex)
+    val localSyncedIds = syncIndex.keys
 
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            scope.launch {
-                val selected = items.filter { syncIds.contains(it.id) }
-                contentSyncService.sync(selected)
-                Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
-            }
+    // Delete confirmation state
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<List<ContentItem>>(emptyList()) }
+    var isBusy by remember { mutableStateOf(false) }
+
+    // ── Storage permission handling ──────────────────────────────────
+    var pendingStorageAction by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
+
+    fun hasStorageAccess(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
         } else {
-            Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                    PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    val manageStorageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        @Suppress("NewApi")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            pendingStorageAction?.let { action -> scope.launch { action() } }
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            pendingStorageAction?.let { action -> scope.launch { action() } }
+        } else {
+            Toast.makeText(context, "Storage permission not granted", Toast.LENGTH_SHORT).show()
+        }
+        pendingStorageAction = null
+    }
+
+    val legacyPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            pendingStorageAction?.let { action -> scope.launch { action() } }
+        } else {
+            Toast.makeText(context, "Storage permission denied", Toast.LENGTH_SHORT).show()
+        }
+        pendingStorageAction = null
+    }
+
+    fun ensureStorageAndRun(action: suspend () -> Unit) {
+        if (hasStorageAccess()) {
+            scope.launch { action() }
+        } else {
+            pendingStorageAction = action
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+                manageStorageLauncher.launch(intent)
+            } else {
+                legacyPermLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
         }
     }
 
@@ -133,22 +194,38 @@ fun ContentListScreen(
         }
 
         // ── Action buttons ──
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = { fetchItems() }) { Text("Filter") }
 
+            Spacer(modifier = Modifier.width(8.dp))
+
             Button(onClick = {
-                if (permission == null ||
-                    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    scope.launch {
-                        val selected = items.filter { syncIds.contains(it.id) }
-                        contentSyncService.sync(selected)
-                        Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    launcher.launch(permission)
+                ensureStorageAndRun {
+                    val selected = items.filter { syncIds.contains(it.id) }
+                    contentSyncService.sync(selected)
+                    Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
                 }
             }) { Text("Sync ${plugin.displayName}") }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Batch delete button — only enabled when items are selected
+            val selectedItems = items.filter { syncIds.contains(it.id) }
+            Button(
+                onClick = {
+                    deleteTarget = selectedItems
+                    showDeleteConfirm = true
+                },
+                enabled = selectedItems.isNotEmpty() && !isBusy,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Delete (${selectedItems.size})")
+            }
         }
 
         // ── Pagination ──
@@ -180,6 +257,7 @@ fun ContentListScreen(
             LazyColumn {
                 items(items) { item ->
                     val isSync = syncIds.contains(item.id)
+                    val isSyncedLocally = localSyncedIds.contains(item.id)
                     plugin.ItemCard(
                         item = item,
                         isSelected = isSync,
@@ -191,9 +269,78 @@ fun ContentListScreen(
                                     syncPreferencesRepository.setSyncEntry(item.id, plugin.displayName(item))
                                 }
                             }
+                        },
+                        isSynced = isSyncedLocally,
+                        onSyncToggle = {
+                            ensureStorageAndRun {
+                                isBusy = true
+                                try {
+                                    if (isSyncedLocally) {
+                                        contentSyncService.unsyncItem(item)
+                                        Toast.makeText(context, "Removed '${item.title}' from local", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        contentSyncService.syncItem(item)
+                                        Toast.makeText(context, "Synced '${item.title}'", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isBusy = false
+                                }
+                            }
+                        },
+                        onDelete = {
+                            deleteTarget = listOf(item)
+                            showDeleteConfirm = true
                         }
                     )
                 }
+            }
+
+            // ── Delete confirmation dialog ──
+            if (showDeleteConfirm && deleteTarget.isNotEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    title = { Text("Confirm Delete") },
+                    text = {
+                        if (deleteTarget.size == 1) {
+                            Text("Delete '${deleteTarget.first().title}' from server and local storage? This cannot be undone.")
+                        } else {
+                            Text("Delete ${deleteTarget.size} items from server and local storage? This cannot be undone.")
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteConfirm = false
+                                scope.launch {
+                                    isBusy = true
+                                    try {
+                                        val (deleted, failed) = contentSyncService.deleteItems(deleteTarget)
+                                        val msg = buildString {
+                                            if (deleted.isNotEmpty()) append("Deleted ${deleted.size}.")
+                                            if (failed.isNotEmpty()) append(" Failed: ${failed.joinToString()}")
+                                        }
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        fetchItems()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Delete failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isBusy = false
+                                        deleteTarget = emptyList()
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false; deleteTarget = emptyList() }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

@@ -128,7 +128,11 @@ sync-server/
 │   │   ├── Repositories/            # Data access
 │   │   │   └── ContentRepository.cs
 │   │   └── Plugins/
-│   │       └── MusicPlugin.cs       # Music content plugin (table: Music, S3: music/)
+│   │       ├── AudioPlugin.cs        # Audio content plugin  (table: Audio,  S3: audio/)
+│   │       ├── BookPlugin.cs         # Book content plugin   (table: Book,   S3: book/)
+│   │       ├── ImagePlugin.cs        # Image content plugin  (table: Image,  S3: image/)
+│   │       ├── MangaPlugin.cs        # Manga content plugin  (table: Manga,  S3: manga/)
+│   │       └── VideoPlugin.cs        # Video content plugin  (table: Video,  S3: video/)
 │   └── Properties/
 │       └── launchSettings.json
 └── tests/                           # Test project (placeholder)
@@ -143,7 +147,7 @@ The codebase is organized by **domain** rather than technical layer:
 | `Configuration/` | AWS and JWT option classes bound from env vars / appsettings |
 | `Identity/` | Contextual identity modules: controllers, DTOs, middleware, services, repositories, models |
 | `Content/` | Contextual content modules: controllers, DTOs, models, contracts, registries, repositories |
-| `Content/Plugins/` | Concrete content-type plugins (Music, and any future types) |
+| `Content/Plugins/` | Concrete content-type plugins (Audio, Book, Image, Manga, Video) |
 
 ---
 
@@ -171,7 +175,19 @@ All secrets must be provided via **environment variables** — never commit real
 }
 ```
 
-> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `MusicPlugin` uses `"Music"`). There is no global env var for content tables.
+> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `AudioPlugin` uses `"Audio"`, `BookPlugin` uses `"Book"`). There is no global env var for content tables.
+>
+> **Storage path patterns** — each plugin builds a hierarchical S3 object key from metadata:
+>
+> | Plugin | S3 Object Path |
+> |--------|----------------|
+> | Audio  | `audio/{artist}/{album}/{title}.{ext}` |
+> | Book   | `book/{author}/{series}/{volume}/{title}.{ext}` |
+> | Image  | `image/{creator}/{collection}/{title}.{ext}` |
+> | Manga  | `manga/{author}/{series}/{volume}/{title}.{ext}` |
+> | Video  | `video/{type}/{series}/{season}/{episode}/{title}.{ext}` |
+>
+> Missing metadata segments default to `"general"` or `"Unknown"`.
 
 Environment variables override the JSON values at runtime (see [Environment Variables](#environment-variables)).
 
@@ -221,6 +237,11 @@ export JWT_DURATION_HOURS="12"
 - **DynamoDB Tables:**
   - `User` — Partition key: `Id` (String), GSI: `email-index` on `Email` (String)
   - `Music` — Partition key: `Id` (String) *(created by MusicPlugin; additional plugin tables follow the same pattern)*
+  - `Audio` — Partition key: `Id` (String)
+  - `Book` — Partition key: `Id` (String)
+  - `Image` — Partition key: `Id` (String)
+  - `Manga` — Partition key: `Id` (String)
+  - `Video` — Partition key: `Id` (String)
 
 ---
 
@@ -599,29 +620,79 @@ Direct upload flow:
 | `JWT_DURATION_HOURS` | No | `12` | JWT token lifetime in hours |
 | `ASPNETCORE_ENVIRONMENT` | No | `Production` | Set to `Development` for dev mode |
 
-> **Note:** Content-type DynamoDB table names are defined per-plugin (e.g., `MusicPlugin` hardcodes `"Music"`). There is no global env var for content tables.
+> **Note:** Content-type DynamoDB table names are defined per-plugin (e.g., `AudioPlugin` hardcodes `"Audio"`). There is no global env var for content tables.
+
+---
+
+## Content Plugins
+
+Each plugin defines metadata validation, storage path patterns, MIME handling, and query filters.
+
+### Audio
+
+- **Table:** `Audio` | **S3 prefix:** `audio/`
+- **Path pattern:** `audio/{artist}/{album}/{title}.{ext}`
+- **Required metadata:** `artist`, `album`, `genre`
+- **Optional metadata:** `audioFormat`, `releaseDate`, `composer`, `lyricist`, `trackNumber`, `albumArtist`, `bitrate`, `sampleRate`, `duration`, `isrc`, `publisher`, `copyright`, `producer`, `label`, `language`, `explicitContent`
+- **Supported formats:** MP3, WAV, FLAC, AIFF, AAC, OGG, M4A
+
+### Book
+
+- **Table:** `Book` | **S3 prefix:** `book/`
+- **Path pattern:** `book/{author}/{series}/{volume}/{title}.{ext}`
+- **Required metadata:** `author`, `bookFormat`
+- **Optional metadata:** `isbn`, `publisher`, `pages`, `language`, `genre`, `series`, `volume`, `publicationDate`, `synopsis`, `coverImageUrl`
+- **Supported formats:** EPUB, PDF, MOBI, AZW3, TXT, RTF, DOCX, HTML
+
+### Image
+
+- **Table:** `Image` | **S3 prefix:** `image/`
+- **Path pattern:** `image/{creator}/{collection}/{title}.{ext}`
+- **Required metadata:** `imageFormat`
+- **Optional metadata:** `creator`, `collection`, `copyright`, `keywords`, `cameraMake`, `cameraModel`, `lens`, `aperture`, `shutterSpeed`, `iso`, `focalLength`, `gpsLocation`, `width`, `height`, `colorSpace`
+- **Supported formats:** JPEG, PNG, WebP, GIF, SVG, TIFF, AVIF, HEIF, BMP, RAW
+
+### Manga
+
+- **Table:** `Manga` | **S3 prefix:** `manga/`
+- **Path pattern:** `manga/{author}/{series}/{volume}/{title}.{ext}`
+- **Required metadata:** `author`, `mangaFormat`
+- **Optional metadata:** `artist`, `genre`, `series`, `volume`, `chapters`, `volumes`, `status`, `demographic`, `publisher`, `language`, `releaseDate`, `synopsis`, `originalTitle`, `translationGroup`
+- **Supported formats:** CBZ, CBR, PDF, EPUB, ZIP
+
+### Video
+
+- **Table:** `Video` | **S3 prefix:** `video/`
+- **Path pattern:** `video/{type}/{series}/{season}/{episode}/{title}.{ext}`
+- **Required metadata:** `videoFormat`
+- **Optional metadata:** `type` (`animation` or `live`), `series`, `season`, `episode`, `codec`, `resolution`, `fps`, `bitrate`, `duration`, `director`, `producer`, `genre`, `releaseDate`, `language`, `subtitleLanguages`, `studio`, `rating`, `country`
+- **Supported formats:** MP4, MOV, AVI, MKV, WMV, WebM, FLV
+
+> Path segments default to `"general"` or `"Unknown"` when the corresponding metadata field is not provided.
 
 ---
 
 ## Adding a New Content Plugin
 
-To add support for a new content type (e.g., books, manga):
+To add support for a new content type:
 
 1. **Create a plugin class** in `Content/Plugins/`:
 
    ```csharp
-   // Content/Plugins/BookPlugin.cs
+   // Content/Plugins/PodcastPlugin.cs
    namespace SyncServer.Content.Plugins;
 
-   public class BookPlugin : IContentPlugin
+   public class PodcastPlugin : IContentPlugin
    {
-       public string ContentType => "book";
-       public string TableName => "Book";
-       public string StoragePrefix => "book/";
+       public string ContentType => "podcast";
+       public string DisplayName => "Podcast";
+       public string TableName => "Podcast";
+       public string StoragePrefix => "podcast/";
 
        public string? ValidateMetadata(Dictionary<string, string>? metadata) { ... }
-       public string BuildStoragePath(ContentItem item) { ... }
-       public IEnumerable<ScanCondition> BuildQueryFilters(IQueryCollection query) { ... }
+       public string BuildStoragePath(Dictionary<string, string>? metadata) { ... }
+       // e.g. "podcast/{show}/{season}/{title}.{ext}"
+       public Func<ContentItem, bool> BuildFilter(IDictionary<string, string?> queryParams) { ... }
    }
    ```
 

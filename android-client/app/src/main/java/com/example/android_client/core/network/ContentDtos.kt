@@ -69,3 +69,14 @@ data class ContentUploadCompleteResponse(
     @SerialName("Message") val legacyMessage: String? = null,
     @SerialName("Item") val legacyItem: ContentItem? = null
 )
+
+@Serializable
+data class ContentDeleteRequest(
+    val items: List<ContentItem>
+)
+
+@Serializable
+data class ContentDeleteResponse(
+    @SerialName("Deleted") val deleted: List<String> = emptyList(),
+    @SerialName("Failed") val failed: List<String> = emptyList()
+)

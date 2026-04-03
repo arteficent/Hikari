@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.headers
@@ -228,6 +229,23 @@ class ApiClient(private val authRepository: AuthRepository) {
             header("Authorization", "Bearer $token")
             contentType(ContentType.Application.Json)
             setBody(request)
+        }.body()
+    }
+
+    /**
+     * Delete content items from the server (S3 object + DynamoDB metadata).
+     * Server endpoint: DELETE /content/{contentType}/delete
+     */
+    suspend fun deleteItems(
+        serverDomain: String,
+        contentType: String,
+        items: List<ContentItem>
+    ): ContentDeleteResponse {
+        val token = authRepository.token.first()
+        return client.delete(getUrl(serverDomain, "/content/$contentType/delete")) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(ContentDeleteRequest(items = items))
         }.body()
     }
 }

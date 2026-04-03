@@ -36,7 +36,11 @@ import com.example.android_client.core.network.ApiClient
 import com.example.android_client.core.network.LoginRequest
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.content.ContentPluginRegistry
-import com.example.android_client.content.plugins.MusicPlugin
+import com.example.android_client.content.plugins.AudioPlugin
+import com.example.android_client.content.plugins.VideoPlugin
+import com.example.android_client.content.plugins.BookPlugin
+import com.example.android_client.content.plugins.MangaPlugin
+import com.example.android_client.content.plugins.ImagePlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.screens.ContentHubScreen
 import com.example.android_client.ui.screens.ContentPickerScreen
@@ -64,7 +68,11 @@ class MainActivity : ComponentActivity() {
         apiClient = ApiClient(authRepository)
 
         // Register content plugins (add new plugins here)
-        pluginRegistry.register(MusicPlugin())
+        pluginRegistry.register(AudioPlugin())
+        pluginRegistry.register(VideoPlugin())
+        pluginRegistry.register(BookPlugin())
+        pluginRegistry.register(MangaPlugin())
+        pluginRegistry.register(ImagePlugin())
 
         enableEdgeToEdge()
         setContent {

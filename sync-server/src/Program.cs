@@ -91,7 +91,11 @@ builder.Services
 
 // ── Content Plugin Infrastructure ──
 // Register individual plugins (add new plugins here)
-builder.Services.AddSingleton<IContentPlugin, MusicPlugin>();
+builder.Services.AddSingleton<IContentPlugin, AudioPlugin>();
+builder.Services.AddSingleton<IContentPlugin, VideoPlugin>();
+builder.Services.AddSingleton<IContentPlugin, BookPlugin>();
+builder.Services.AddSingleton<IContentPlugin, MangaPlugin>();
+builder.Services.AddSingleton<IContentPlugin, ImagePlugin>();
 
 // Build the plugin registry from all registered IContentPlugin instances
 builder.Services.BuildContentPluginRegistry();
