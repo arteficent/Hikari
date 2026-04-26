@@ -240,6 +240,15 @@ class MangaPlugin : ContentPlugin {
 
     // ── Upload support ───────────────────────────────────────
 
+    override val filterableFields = mapOf(
+        "author" to "Author",
+        "artist" to "Artist",
+        "genre" to "Genre",
+        "status" to "Status (ongoing/completed)",
+        "demographic" to "Demographic",
+        "language" to "Language"
+    )
+
     override val uploadMimeFilter = "*/*"
 
     @OptIn(ExperimentalMaterial3Api::class)

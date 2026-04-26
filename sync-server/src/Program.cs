@@ -2,6 +2,7 @@ using System.Text.Json;
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.S3;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +18,7 @@ using SyncServer.Identity.Filters;
 using SyncServer.Identity.Middlewares;
 using SyncServer.Identity.Repositories;
 using SyncServer.Identity.Services;
+using SyncServer.Infrastructure;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,25 +29,29 @@ builder.Logging
         .AddJsonConsole();
 
 // Add services to the container.
-builder.Services.Configure<AmazonWebServicesConstants>(opts =>
-{
-    // Bind from configuration section first
-    builder.Configuration.GetSection("AmazonWebServiceConstants").Bind(opts);
 
-    var envBucket = Environment.GetEnvironmentVariable("AWS_BUCKET");
+// ── Cloud Storage Settings (S3 / R2 / MinIO / etc.) ──
+builder.Services.Configure<CloudStorageSettings>(opts =>
+{
+    builder.Configuration.GetSection("CloudStorage").Bind(opts);
+
+    var envBucket = Environment.GetEnvironmentVariable("BUCKET");
     if (!string.IsNullOrEmpty(envBucket)) opts.BucketName = envBucket;
 
-    var envUserTable = Environment.GetEnvironmentVariable("AWS_USER_TABLE_NAME");
-    if (!string.IsNullOrEmpty(envUserTable)) opts.UserTableName = envUserTable;
+    var envRegion = Environment.GetEnvironmentVariable("REGION");
+    if (!string.IsNullOrEmpty(envRegion)) opts.Region = envRegion;
 
-    var envRegion = Environment.GetEnvironmentVariable("AWS_REGION");
-    if (!string.IsNullOrEmpty(envRegion)) opts.AwsRegion = envRegion;
-
-    var envAccess = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+    var envAccess = Environment.GetEnvironmentVariable("ACCESS_KEY");
     if (!string.IsNullOrEmpty(envAccess)) opts.AccessKey = envAccess;
 
-    var envSecret = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+    var envSecret = Environment.GetEnvironmentVariable("SECRET_KEY");
     if (!string.IsNullOrEmpty(envSecret)) opts.SecretKey = envSecret;
+
+    var envServiceUrl = Environment.GetEnvironmentVariable("SERVICE_URL");
+    if (!string.IsNullOrEmpty(envServiceUrl)) opts.ServiceUrl = envServiceUrl;
+
+    var envForcePathStyle = Environment.GetEnvironmentVariable("FORCE_PATH_STYLE");
+    if (bool.TryParse(envForcePathStyle, out var fps)) opts.ForcePathStyle = fps;
 });
 
 
@@ -74,13 +80,36 @@ builder.Services
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         });
 
-var awsConstants = builder.Configuration.GetSection("AmazonWebServiceConstants").Get<AmazonWebServicesConstants>() ?? new AmazonWebServicesConstants();
-var envRegion = Environment.GetEnvironmentVariable("AWS_REGION");
-if (!string.IsNullOrEmpty(envRegion)) awsConstants.AwsRegion = envRegion;
+var storageSettings = builder.Configuration.GetSection("CloudStorage").Get<CloudStorageSettings>() ?? new CloudStorageSettings();
 
-// ── Core Infrastructure ──
+// Apply the same env overrides used in Configure<CloudStorageSettings> for early use
+var envBucketEarly = Environment.GetEnvironmentVariable("BUCKET");
+if (!string.IsNullOrEmpty(envBucketEarly)) storageSettings.BucketName = envBucketEarly;
+var envRegionEarly = Environment.GetEnvironmentVariable("REGION");
+if (!string.IsNullOrEmpty(envRegionEarly)) storageSettings.Region = envRegionEarly;
+var envAccessEarly = Environment.GetEnvironmentVariable("ACCESS_KEY");
+if (!string.IsNullOrEmpty(envAccessEarly)) storageSettings.AccessKey = envAccessEarly;
+var envSecretEarly = Environment.GetEnvironmentVariable("SECRET_KEY");
+if (!string.IsNullOrEmpty(envSecretEarly)) storageSettings.SecretKey = envSecretEarly;
+var envServiceUrlEarly = Environment.GetEnvironmentVariable("SERVICE_URL");
+if (!string.IsNullOrEmpty(envServiceUrlEarly)) storageSettings.ServiceUrl = envServiceUrlEarly;
+var envForcePathStyleEarly = Environment.GetEnvironmentVariable("FORCE_PATH_STYLE");
+if (bool.TryParse(envForcePathStyleEarly, out var fpsEarly)) storageSettings.ForcePathStyle = fpsEarly;
+
+// Build shared credentials from config
+var awsCredentials = (!string.IsNullOrEmpty(storageSettings.AccessKey) && !string.IsNullOrEmpty(storageSettings.SecretKey))
+    ? new Amazon.Runtime.BasicAWSCredentials(storageSettings.AccessKey, storageSettings.SecretKey)
+    : null;
+
+// ── Core Infrastructure: DynamoDB ──
+var dynamoConfig = new AmazonDynamoDBConfig
+{
+    RegionEndpoint = RegionEndpoint.GetBySystemName(storageSettings.Region)
+};
 builder.Services
-        .AddSingleton<IAmazonDynamoDB>(new AmazonDynamoDBClient(RegionEndpoint.GetBySystemName(awsConstants.AwsRegion)))
+        .AddSingleton<IAmazonDynamoDB>(awsCredentials != null
+            ? new AmazonDynamoDBClient(awsCredentials, dynamoConfig)
+            : new AmazonDynamoDBClient(dynamoConfig))
         .AddScoped<IDynamoDBContext, DynamoDBContext>();
 
 // ── Identity ──
@@ -103,9 +132,24 @@ builder.Services.BuildContentPluginRegistry();
 // Generic content repository used by all plugins
 builder.Services.AddScoped<IContentRepository, ContentRepository>();
 
-// ── AWS SDK ──
-builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
+// ── Blob Storage (S3-compatible) ──
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var s3Config = new AmazonS3Config();
+    if (!string.IsNullOrEmpty(storageSettings.ServiceUrl))
+    {
+        s3Config.ServiceURL = storageSettings.ServiceUrl;
+        s3Config.ForcePathStyle = storageSettings.ForcePathStyle;
+    }
+    else if (!string.IsNullOrEmpty(storageSettings.Region))
+    {
+        s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(storageSettings.Region);
+    }
+    return awsCredentials != null
+        ? new AmazonS3Client(awsCredentials, s3Config)
+        : new AmazonS3Client(s3Config);
+});
+builder.Services.AddSingleton<IBlobStorageProvider, S3BlobStorageProvider>();
 
 // JWT Authentication
 var jwtConstants = builder.Configuration.GetSection("JwtConstants").Get<JwtSettings>() ?? new JwtSettings();

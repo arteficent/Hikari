@@ -228,6 +228,13 @@ class ImagePlugin : ContentPlugin {
 
     // ── Upload support ───────────────────────────────────────
 
+    override val filterableFields = mapOf(
+        "creator" to "Creator / Photographer",
+        "collection" to "Collection",
+        "keywords" to "Keywords",
+        "cameraMake" to "Camera Make"
+    )
+
     override val uploadMimeFilter = "image/*"
 
     @Composable

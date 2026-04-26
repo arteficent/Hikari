@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.android_client.core.storage.AuthRepository
@@ -45,7 +46,13 @@ import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.screens.ContentHubScreen
 import com.example.android_client.ui.screens.ContentPickerScreen
 import com.example.android_client.ui.screens.LoginScreen
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import com.example.android_client.ui.theme.AndroidclientTheme
+import com.example.android_client.ui.theme.CelestialSurface
 import com.example.android_client.ui.theme.HikariTheme
 import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.launch
@@ -108,89 +115,133 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                CelestialSurface(modifier = Modifier.fillMaxSize()) {
+                Scaffold(modifier = Modifier.fillMaxSize(),
+                    containerColor = Color.Transparent
+                ) { innerPadding ->
                     val currentDomain = serverDomain
                     val currentToken = token
+                    val appContext = applicationContext
+                    var selectedPlugin by remember { mutableStateOf<ContentPlugin?>(null) }
 
-                    if (isRefreshing) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
-                            Text("Restoring session...", modifier = Modifier.padding(top = 16.dp))
-                        }
-                    } else if (currentDomain == null) {
-                        ServerDomainScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            onContinueClicked = { domain ->
-                                scope.launch {
-                                    settingsRepository.saveServerDomain(domain)
-                                }
-                            }
-                        )
-                    } else if (currentToken == null) {
-                        var error by remember { mutableStateOf<String?>(null) }
-                        LoginScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            onLoginClicked = { email, password ->
-                                scope.launch {
-                                    try {
-                                        val loginResponse = apiClient.login(currentDomain, LoginRequest(email, password))
-                                        authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
-                                    } catch (e: Exception) {
-                                        error = e.message
+                    // Compute a screen ordinal so we know forward vs backward
+                    data class ScreenState(
+                        val key: String,
+                        val ordinal: Int,
+                        val domain: String?,
+                        val plugin: ContentPlugin?
+                    )
+
+                    val screen: ScreenState = when {
+                        isRefreshing -> ScreenState("loading", 0, null, null)
+                        currentDomain == null -> ScreenState("domain", 1, null, null)
+                        currentToken == null -> ScreenState("login", 2, currentDomain, null)
+                        selectedPlugin != null -> ScreenState("hub_${selectedPlugin!!.contentType}", 4, currentDomain, selectedPlugin)
+                        else -> ScreenState("picker", 3, currentDomain, null)
+                    }
+
+                    @OptIn(ExperimentalSharedTransitionApi::class)
+                    SharedTransitionLayout {
+                        AnimatedContent(
+                            targetState = screen,
+                            label = "app_transition",
+                            contentKey = { it.key }
+                        ) { target ->
+                            when {
+                                target.key == "loading" -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        CircularProgressIndicator()
+                                        Text("Restoring session...", modifier = Modifier.padding(top = 16.dp))
                                     }
                                 }
-                            },
-                            onBackClicked = {
-                                scope.launch {
-                                    settingsRepository.clearServerDomain()
+                                target.key == "domain" -> {
+                                    ServerDomainScreen(
+                                        modifier = Modifier.padding(innerPadding),
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        onContinueClicked = { domain ->
+                                            scope.launch {
+                                                settingsRepository.saveServerDomain(domain)
+                                            }
+                                        }
+                                    )
                                 }
-                            },
-                            error = error
-                        )
-                    } else {
-                        // Post-login: content type selection then hub
-                        val appContext = applicationContext
-                        var selectedPlugin by remember { mutableStateOf<ContentPlugin?>(null) }
-                        val activePlugin = selectedPlugin
-
-                        if (activePlugin == null) {
-                            ContentPickerScreen(
-                                pluginRegistry = pluginRegistry,
-                                currentTheme = hikariTheme,
-                                onThemeChanged = { newTheme ->
-                                    scope.launch { settingsRepository.saveTheme(newTheme.name) }
-                                },
-                                onPluginSelected = { plugin -> selectedPlugin = plugin },
-                                onLogout = {
-                                    scope.launch { authRepository.clearTokens() }
+                                target.key == "login" -> {
+                                    var error by remember { mutableStateOf<String?>(null) }
+                                    LoginScreen(
+                                        modifier = Modifier.padding(innerPadding),
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        onLoginClicked = { email, password ->
+                                            scope.launch {
+                                                try {
+                                                    val loginResponse = apiClient.login(target.domain!!, LoginRequest(email, password))
+                                                    authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
+                                                } catch (e: Exception) {
+                                                    error = e.message
+                                                }
+                                            }
+                                        },
+                                        onBackClicked = {
+                                            scope.launch {
+                                                settingsRepository.clearServerDomain()
+                                            }
+                                        },
+                                        error = error
+                                    )
                                 }
-                            )
-                        } else {
-                            ContentHubScreen(
-                                plugin = activePlugin,
-                                syncService = ContentSyncService(
-                                    apiClient, appContext, currentDomain,
-                                    syncPreferencesRepository, activePlugin
-                                ),
-                                apiClient = apiClient,
-                                serverDomain = currentDomain,
-                                syncPreferencesRepository = syncPreferencesRepository,
-                                onBack = { selectedPlugin = null }
-                            )
+                                target.key == "picker" -> {
+                                    ContentPickerScreen(
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        pluginRegistry = pluginRegistry,
+                                        currentTheme = hikariTheme,
+                                        onThemeChanged = { newTheme ->
+                                            scope.launch { settingsRepository.saveTheme(newTheme.name) }
+                                        },
+                                        onPluginSelected = { plugin -> selectedPlugin = plugin },
+                                        onLogout = {
+                                            scope.launch { authRepository.clearTokens() }
+                                        }
+                                    )
+                                }
+                                target.plugin != null -> {
+                                    ContentHubScreen(
+                                        plugin = target.plugin,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        syncService = ContentSyncService(
+                                            apiClient, appContext, target.domain!!,
+                                            syncPreferencesRepository, target.plugin
+                                        ),
+                                        apiClient = apiClient,
+                                        serverDomain = target.domain,
+                                        syncPreferencesRepository = syncPreferencesRepository,
+                                        onBack = { selectedPlugin = null }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
+                } // CelestialSurface
             }
         }
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String) -> Unit) {
+fun ServerDomainScreen(
+    modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onContinueClicked: (String) -> Unit
+) {
     var serverDomain by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
 
@@ -199,7 +250,15 @@ fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        PaperSurface(modifier = Modifier.padding(horizontal = 32.dp)) {
+        with(sharedTransitionScope) {
+        PaperSurface(
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "auth_card"),
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+        ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -230,6 +289,7 @@ fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String
                 }
             }
         }
+        } // with sharedTransitionScope
     }
 }
 
@@ -237,6 +297,17 @@ fun ServerDomainScreen(modifier: Modifier = Modifier, onContinueClicked: (String
 @Composable
 fun ServerDomainScreenPreview() {
     AndroidclientTheme {
-        ServerDomainScreen(onContinueClicked = { })
+        @OptIn(ExperimentalSharedTransitionApi::class)
+        SharedTransitionLayout {
+            AnimatedContent(targetState = true, label = "preview") {
+                if (it) {
+                    ServerDomainScreen(
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        onContinueClicked = { }
+                    )
+                }
+            }
+        }
     }
 }

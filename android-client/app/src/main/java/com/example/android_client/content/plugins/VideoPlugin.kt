@@ -242,6 +242,15 @@ class VideoPlugin : ContentPlugin {
 
     // ── Upload support ───────────────────────────────────────
 
+    override val filterableFields = mapOf(
+        "genre" to "Genre",
+        "director" to "Director",
+        "type" to "Type (animation/live)",
+        "series" to "Series",
+        "season" to "Season",
+        "episode" to "Episode"
+    )
+
     override val uploadMimeFilter = "video/*"
 
     @OptIn(ExperimentalMaterial3Api::class)

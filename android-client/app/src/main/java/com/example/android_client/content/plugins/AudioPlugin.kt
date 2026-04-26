@@ -235,6 +235,13 @@ class AudioPlugin : ContentPlugin {
 
     // ── Upload support ───────────────────────────────────────
 
+    override val filterableFields = mapOf(
+        "artist" to "Artist",
+        "album" to "Album",
+        "genre" to "Genre",
+        "composer" to "Composer"
+    )
+
     override val uploadMimeFilter = "audio/*"
 
     override val supportsCoverImage: Boolean get() = true

@@ -245,6 +245,15 @@ class BookPlugin : ContentPlugin {
 
     // ── Upload support ───────────────────────────────────────
 
+    override val filterableFields = mapOf(
+        "author" to "Author",
+        "genre" to "Genre",
+        "publisher" to "Publisher",
+        "language" to "Language",
+        "series" to "Series",
+        "isbn" to "ISBN"
+    )
+
     override val uploadMimeFilter = "*/*"
 
     @OptIn(ExperimentalMaterial3Api::class)

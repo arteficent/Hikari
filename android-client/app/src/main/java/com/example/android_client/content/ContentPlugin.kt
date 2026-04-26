@@ -27,6 +27,13 @@ interface ContentPlugin {
     @Composable
     fun FilterPanel(filters: MutableMap<String, String>)
 
+    /**
+     * Metadata keys that are searchable via regex filter.
+     * Each entry is key (metadata key) to value (human-readable label).
+     * Used to generate the regex help tooltip.
+     */
+    val filterableFields: Map<String, String> get() = emptyMap()
+
     @Composable
     fun ItemCard(
         item: ContentItem,

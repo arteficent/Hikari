@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -33,8 +36,11 @@ import com.example.android_client.ui.theme.PaperSurface
  * Tapping a card navigates into the content hub for that specific plugin.
  * Extensible: adding a new plugin to the registry automatically adds a card here.
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ContentPickerScreen(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     pluginRegistry: ContentPluginRegistry,
     currentTheme: HikariTheme,
     onThemeChanged: (HikariTheme) -> Unit,
@@ -43,8 +49,15 @@ fun ContentPickerScreen(
 ) {
     val plugins = pluginRegistry.getAll().toList()
 
+    with(sharedTransitionScope) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .sharedBounds(
+                sharedContentState = rememberSharedContentState(key = "auth_card"),
+                animatedVisibilityScope = animatedVisibilityScope
+            )
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // ── Header ──
@@ -69,11 +82,16 @@ fun ContentPickerScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(plugins) { plugin ->
-                PaperSurface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onPluginSelected(plugin) }
-                ) {
+                with(sharedTransitionScope) {
+                    PaperSurface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "card_${plugin.contentType}"),
+                                animatedVisibilityScope = animatedVisibilityScope
+                            )
+                            .clickable { onPluginSelected(plugin) }
+                    ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -91,6 +109,7 @@ fun ContentPickerScreen(
                             textAlign = TextAlign.Center
                         )
                     }
+                }
                 }
             }
         }
@@ -133,4 +152,5 @@ fun ContentPickerScreen(
             Text("Logout")
         }
     }
+    } // with sharedTransitionScope
 }

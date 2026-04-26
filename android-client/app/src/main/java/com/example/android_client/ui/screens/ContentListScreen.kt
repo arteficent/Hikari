@@ -15,18 +15,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -36,7 +44,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,6 +58,7 @@ import com.example.android_client.core.network.ApiClient
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.sync.ContentSyncService
+import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.launch
 
 /**
@@ -64,15 +72,16 @@ fun ContentListScreen(
     contentSyncService: ContentSyncService,
     apiClient: ApiClient,
     serverDomain: String,
-    syncPreferencesRepository: SyncPreferencesRepository
+    syncPreferencesRepository: SyncPreferencesRepository,
+    onBack: () -> Unit,
+    onUpload: () -> Unit
 ) {
-    var items by remember { mutableStateOf<List<ContentItem>>(emptyList()) }
+    var allItems by remember { mutableStateOf<List<ContentItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val filters = remember { mutableStateMapOf<String, String>() }
-    var titlePrefixFilter by remember { mutableStateOf("") }
-    var shouldSyncFilter by remember { mutableStateOf(false) }
+    var regexFilter by remember { mutableStateOf("") }
+    var showFilterHelp by remember { mutableStateOf(false) }
     var page by remember { mutableIntStateOf(1) }
     var pageSize by remember { mutableIntStateOf(25) }
     var canNextPage by remember { mutableStateOf(true) }
@@ -148,18 +157,13 @@ fun ContentListScreen(
         scope.launch {
             isLoading = true
             try {
-                // Build extra params from plugin filters (skip blanks)
-                val extra = filters.filter { it.value.isNotBlank() }
                 val serverItems = apiClient.getContentItems(
                     serverDomain = serverDomain,
                     contentType = plugin.contentType,
                     page = page,
-                    pageSize = pageSize,
-                    titlePrefix = titlePrefixFilter.takeIf { it.isNotBlank() },
-                    extraParams = extra
+                    pageSize = pageSize
                 )
-                val filtered = if (shouldSyncFilter) serverItems.filter { syncIds.contains(it.id) } else serverItems
-                items = filtered
+                allItems = serverItems
                 canNextPage = serverItems.size >= pageSize
             } catch (e: Exception) {
                 error = e.message
@@ -169,33 +173,115 @@ fun ContentListScreen(
         }
     }
 
+    // Apply regex filter client-side
+    val items = remember(allItems, regexFilter) {
+        if (regexFilter.isBlank()) {
+            allItems
+        } else {
+            val regex = try {
+                Regex(regexFilter, RegexOption.IGNORE_CASE)
+            } catch (_: Exception) {
+                null
+            }
+            if (regex == null) allItems
+            else allItems.filter { item ->
+                val searchable = buildString {
+                    append(item.title)
+                    item.description?.let { append(" ").append(it) }
+                    item.format?.let { append(" ").append(it) }
+                    item.tags?.let { append(" ").append(it.joinToString(" ")) }
+                    item.metadata?.values?.forEach { append(" ").append(it) }
+                }
+                regex.containsMatchIn(searchable)
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         fetchItems()
     }
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        // ── Plugin-specific filters ──
-        plugin.FilterPanel(filters)
-
-        // ── Generic title prefix filter ──
-        Row {
-            OutlinedTextField(
-                value = titlePrefixFilter,
-                onValueChange = { titlePrefixFilter = it },
-                label = { Text("Title prefix") },
-                modifier = Modifier.weight(1f)
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // ── Back button ──
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = plugin.displayName,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
             )
         }
 
-        // ── Should-sync toggle ──
+        // ── Regex filter ──
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = shouldSyncFilter, onCheckedChange = { shouldSyncFilter = it })
-            Text("Should Sync")
+            OutlinedTextField(
+                value = regexFilter,
+                onValueChange = { regexFilter = it },
+                label = { Text("Filter") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { showFilterHelp = true }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDescription = "Filter help",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // ── Filter help tooltip card ──
+        if (showFilterHelp) {
+            PaperSurface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Regex Filter Guide", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Type a regex pattern to filter items. " +
+                                "Matches against title, description, tags, and metadata fields.\n",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text("Examples:", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = "  rock|jazz — matches items containing \"rock\" or \"jazz\"\n" +
+                                "  ^The — matches titles starting with \"The\"\n" +
+                                "  (?i)live — case-insensitive match for \"live\"",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    val fields = plugin.filterableFields
+                    if (fields.isNotEmpty()) {
+                        Text(
+                            "\nSearchable ${plugin.displayName} fields:",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(
+                            text = fields.values.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(
+                        onClick = { showFilterHelp = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Got it")
+                    }
+                }
+            }
         }
 
         // ── Action buttons ──
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { fetchItems() }) { Text("Filter") }
+            Button(onClick = { fetchItems() }) { Text("Refresh") }
 
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -344,4 +430,22 @@ fun ContentListScreen(
             }
         }
     }
+
+    // ── Floating upload button ──
+    FloatingActionButton(
+        onClick = onUpload,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 24.dp),
+        shape = CircleShape,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    ) {
+        Icon(
+            Icons.Filled.CloudUpload,
+            contentDescription = "Upload",
+            modifier = Modifier.size(28.dp)
+        )
+    }
+    } // Box
 }

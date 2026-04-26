@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -26,9 +31,12 @@ import androidx.compose.ui.unit.dp
 import com.example.android_client.ui.theme.AndroidclientTheme
 import com.example.android_client.ui.theme.PaperSurface
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onLoginClicked: (String, String) -> Unit,
     onBackClicked: () -> Unit,
     error: String?
@@ -41,7 +49,15 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        PaperSurface(modifier = Modifier.padding(horizontal = 32.dp)) {
+        with(sharedTransitionScope) {
+        PaperSurface(
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "auth_card"),
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+        ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -78,13 +94,27 @@ fun LoginScreen(
                 }
             }
         }
+        } // with sharedTransitionScope
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
     AndroidclientTheme {
-        LoginScreen(onLoginClicked = { _, _ -> }, onBackClicked = {}, error = "Invalid credentials")
+        SharedTransitionLayout {
+            AnimatedContent(targetState = true, label = "preview") {
+                if (it) {
+                    LoginScreen(
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        onLoginClicked = { _, _ -> },
+                        onBackClicked = {},
+                        error = "Invalid credentials"
+                    )
+                }
+            }
+        }
     }
 }

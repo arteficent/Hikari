@@ -41,3 +41,18 @@ val NightSurface     = Color(0xFF282320)   // card surface
 val NightBorder      = Color(0xFF3D362F)   // border / outline
 val NightText        = Color(0xFFEDE6DB)   // light warm text
 val NightTextSoft    = Color(0xFFA89C8F)   // secondary text
+
+// ── Celestial (space) palette ─────────────────────
+val SpaceBlack       = Color(0xFF050508)   // deep space background (dark)
+val SpaceLight       = Color(0xFFE8E4F0)   // light space background
+val SpaceSurface     = Color(0xFF0C0C12)   // card surface in space
+val SpaceBorder      = Color(0xFF1A1A28)   // faint nebula border
+val SpaceText        = Color(0xFFE8E4F0)   // cool starlight text
+val SpaceTextSoft    = Color(0xFF9090A8)   // secondary text
+val StarWhite        = Color(0xFFF0EDE5)   // warm-white star
+val StarBlue         = Color(0xFFAAC8E8)   // blue-white hot star
+val CometTail        = Color(0xFFE8D48C)   // golden comet trail
+val SunCorona        = Color(0xFFFFD96B)   // bright sun corona
+val SunCore          = Color(0xFFFFECB3)   // sun centre glow
+val CelestialGold    = Color(0xFFD4A843)   // primary gold accent
+val CelestialGoldDim = Color(0xFFA88430)   // deeper gold

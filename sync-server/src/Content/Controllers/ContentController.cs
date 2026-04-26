@@ -1,14 +1,11 @@
-using Amazon.S3;
-using Amazon.S3.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using SyncServer.Content.Contracts;
 using SyncServer.Content.Dtos;
 using SyncServer.Content.Models;
 using SyncServer.Content.Registries;
 using SyncServer.Content.Repositories;
-using SyncServer.Configuration;
+using SyncServer.Infrastructure;
 using System.Globalization;
 
 namespace SyncServer.Content.Controllers;
@@ -28,21 +25,18 @@ public class ContentController : ControllerBase
     private readonly ILogger<ContentController> _logger;
     private readonly IContentPluginRegistry _pluginRegistry;
     private readonly IContentRepository _contentRepository;
-    private readonly IAmazonS3 _s3Client;
-    private readonly AmazonWebServicesConstants _awsConstants;
+    private readonly IBlobStorageProvider _blobStorage;
 
     public ContentController(
         ILogger<ContentController> logger,
         IContentPluginRegistry pluginRegistry,
         IContentRepository contentRepository,
-        IAmazonS3 s3Client,
-        IOptions<AmazonWebServicesConstants> awsConstants)
+        IBlobStorageProvider blobStorage)
     {
         _logger = logger;
         _pluginRegistry = pluginRegistry;
         _contentRepository = contentRepository;
-        _s3Client = s3Client;
-        _awsConstants = awsConstants?.Value ?? new AmazonWebServicesConstants();
+        _blobStorage = blobStorage;
     }
 
     // ────────────────────────── UPLOAD ──────────────────────────
@@ -72,14 +66,11 @@ public class ContentController : ControllerBase
 
         var urlExpiryMinutes = NormalizeExpiryMinutes(request.UrlExpiresInMinutes);
         var expiresAt = DateTime.UtcNow.AddMinutes(urlExpiryMinutes);
-        var uploadUrl = _s3Client.GetPreSignedURL(new GetPreSignedUrlRequest
-        {
-            BucketName = _awsConstants.BucketName,
-            Key = storagePath,
-            Verb = HttpVerb.PUT,
-            Expires = expiresAt,
-            ContentType = request.Item.Format
-        });
+        var uploadUrl = _blobStorage.GenerateUploadUrl(
+            storagePath,
+            request.Item.Format,
+            TimeSpan.FromMinutes(urlExpiryMinutes)
+        );
 
         _logger.LogInformation("[{ContentType}] Presigned upload URL generated for '{Title}' at '{Path}'",
             contentType, request.Item.Title, storagePath);
@@ -124,16 +115,14 @@ public class ContentController : ControllerBase
 
         try
         {
-            var head = await _s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
-            {
-                BucketName = _awsConstants.BucketName,
-                Key = request.Item.StoragePath
-            });
+            var head = await _blobStorage.GetObjectMetadataAsync(request.Item.StoragePath);
+            if (head == null)
+                return BadRequest("Upload not found in storage. Complete the direct upload before finalizing metadata.");
 
             request.Item.SizeInBytes = head.ContentLength;
-            request.Item.Format = string.IsNullOrWhiteSpace(head.Headers.ContentType)
+            request.Item.Format = string.IsNullOrWhiteSpace(head.ContentType)
                 ? plugin.ResolveMimeType(request.Item.Metadata)
-                : head.Headers.ContentType;
+                : head.ContentType;
             request.Item.LastModified = DateTime.UtcNow;
 
             var existing = await _contentRepository.GetItemsAsync(plugin.TableName, 1, i => i.StoragePath == request.Item.StoragePath);
@@ -156,7 +145,8 @@ public class ContentController : ControllerBase
 
             return Ok(new { Message = "Upload finalized", Item = request.Item });
         }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (Exception ex) when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase) ||
+                                      ex.Message.Contains("404", StringComparison.Ordinal))
         {
             _logger.LogWarning(ex, "Upload complete failed. Object not found at '{Path}'.", request.Item.StoragePath);
             return BadRequest("Upload not found in storage. Complete the direct upload before finalizing metadata.");
@@ -346,11 +336,7 @@ public class ContentController : ControllerBase
             {
                 try
                 {
-                    await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
-                    {
-                        BucketName = _awsConstants.BucketName,
-                        Key = item.StoragePath
-                    });
+                    await _blobStorage.DeleteObjectAsync(item.StoragePath);
                     binaryDeleted = true;
                 }
                 catch (Exception ex)
@@ -433,12 +419,6 @@ public class ContentController : ControllerBase
 
     private string BuildDownloadUrl(string storagePath, DateTime expiresAt)
     {
-        return _s3Client.GetPreSignedURL(new GetPreSignedUrlRequest
-        {
-            BucketName = _awsConstants.BucketName,
-            Key = storagePath,
-            Verb = HttpVerb.GET,
-            Expires = expiresAt
-        });
+        return _blobStorage.GenerateDownloadUrl(storagePath, expiresAt - DateTime.UtcNow);
     }
 }
