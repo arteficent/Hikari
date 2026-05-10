@@ -4,19 +4,30 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,11 +61,14 @@ import java.util.UUID
  *   2. PUT  binary to presigned URL             →  direct S3 upload
  *   3. POST /content/{contentType}/upload-complete  →  finalize metadata
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun UploadScreen(
     plugin: ContentPlugin,
     apiClient: ApiClient,
     serverDomain: String,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -133,22 +147,27 @@ fun UploadScreen(
         }
     }
 
+    with(sharedTransitionScope) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .sharedBounds(
+                sharedContentState = rememberSharedContentState(key = "upload_fab_${plugin.contentType}"),
+                animatedVisibilityScope = animatedVisibilityScope
+            )
+    ) {
     Column(
         modifier = Modifier
+            .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         // ── Header ──
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("← Back") }
-            Text(
-                text = "Upload ${plugin.displayName}",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 12.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Upload ${plugin.displayName}",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
 
         PaperSurface(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -390,5 +409,24 @@ fun UploadScreen(
                 }
             }
         }
+    } // Column
+
+    // ── Floating dismiss arrow ──
+    FloatingActionButton(
+        onClick = onBack,
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = 12.dp),
+        shape = CircleShape,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    ) {
+        Icon(
+            Icons.Filled.KeyboardArrowDown,
+            contentDescription = "Dismiss",
+            modifier = Modifier.size(28.dp)
+        )
     }
+    } // Box
+    } // with
 }

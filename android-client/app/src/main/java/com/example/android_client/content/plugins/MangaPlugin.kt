@@ -313,6 +313,41 @@ class MangaPlugin : ContentPlugin {
         }
     }
 
+    override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
+        val file = getLocalFile(context, item) ?: return null
+        return try {
+            when (file.extension.lowercase()) {
+                "cbz" -> extractCbzCover(file)
+                "epub" -> extractEpubCoverFromManga(file)
+                else -> null
+            }
+        } catch (_: Exception) { null }
+    }
+
+    private fun extractCbzCover(file: java.io.File): ByteArray? {
+        val zipFile = net.lingala.zip4j.ZipFile(file)
+        val imageExts = setOf("jpg", "jpeg", "png", "webp", "gif")
+        val firstImage = zipFile.fileHeaders
+            .filter { h -> imageExts.any { h.fileName.lowercase().endsWith(".$it") } }
+            .minByOrNull { it.fileName }
+        return firstImage?.let { zipFile.getInputStream(it).use { s -> s.readBytes() } }
+    }
+
+    private fun extractEpubCoverFromManga(file: java.io.File): ByteArray? {
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var entry = zis.nextEntry
+            val imageExts = setOf(".jpg", ".jpeg", ".png", ".webp")
+            while (entry != null) {
+                val name = entry.name.lowercase()
+                if (name.contains("cover") && imageExts.any { name.endsWith(it) }) {
+                    return zis.readBytes()
+                }
+                entry = zis.nextEntry
+            }
+        }
+        return null
+    }
+
     override fun extractFileMetadata(context: Context, uri: Uri, fileName: String): Map<String, String> {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         val result = linkedMapOf<String, String>()

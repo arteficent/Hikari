@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +50,11 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import com.example.android_client.ui.theme.AndroidclientTheme
 import com.example.android_client.ui.theme.CelestialSurface
 import com.example.android_client.ui.theme.HikariTheme
@@ -271,22 +275,31 @@ fun ServerDomainScreen(
                         serverDomain = it
                         validationError = null
                     },
-                    label = { Text("Server Domain") },
+                    label = { Text("Server Address") },
                     isError = validationError != null,
                     supportingText = validationError?.let { { Text(it) } },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
-                Button(onClick = {
-                    val domain = serverDomain.trim()
-                    when {
-                        domain.isBlank() -> validationError = "Domain cannot be empty"
-                        domain.contains(" ") -> validationError = "Domain cannot contain spaces"
-                        !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
-                        else -> onContinueClicked(domain)
-                    }
-                }) {
-                    Text("Continue")
-                }
+                val interactionSource = remember { MutableInteractionSource() }
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_planet),
+                    contentDescription = "Connect",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val domain = serverDomain.trim()
+                            when {
+                                domain.isBlank() -> validationError = "Domain cannot be empty"
+                                domain.contains(" ") -> validationError = "Domain cannot contain spaces"
+                                !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
+                                else -> onContinueClicked(domain)
+                            }
+                        },
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
         } // with sharedTransitionScope

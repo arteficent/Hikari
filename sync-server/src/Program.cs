@@ -30,28 +30,43 @@ builder.Logging
 
 // Add services to the container.
 
-// ── Cloud Storage Settings (S3 / R2 / MinIO / etc.) ──
-builder.Services.Configure<CloudStorageSettings>(opts =>
+// ── Object Storage Settings (S3 / Cloudflare R2 / MinIO / etc.) ──
+builder.Services.Configure<ObjectStorageSettings>(opts =>
 {
-    builder.Configuration.GetSection("CloudStorage").Bind(opts);
+    builder.Configuration.GetSection("ObjectStorage").Bind(opts);
 
-    var envBucket = Environment.GetEnvironmentVariable("BUCKET");
+    var envBucket = Environment.GetEnvironmentVariable("OBJECT_STORAGE_BUCKET");
     if (!string.IsNullOrEmpty(envBucket)) opts.BucketName = envBucket;
 
-    var envRegion = Environment.GetEnvironmentVariable("REGION");
+    var envRegion = Environment.GetEnvironmentVariable("OBJECT_STORAGE_REGION");
     if (!string.IsNullOrEmpty(envRegion)) opts.Region = envRegion;
 
-    var envAccess = Environment.GetEnvironmentVariable("ACCESS_KEY");
+    var envAccess = Environment.GetEnvironmentVariable("OBJECT_STORAGE_ACCESS_KEY");
     if (!string.IsNullOrEmpty(envAccess)) opts.AccessKey = envAccess;
 
-    var envSecret = Environment.GetEnvironmentVariable("SECRET_KEY");
+    var envSecret = Environment.GetEnvironmentVariable("OBJECT_STORAGE_SECRET_KEY");
     if (!string.IsNullOrEmpty(envSecret)) opts.SecretKey = envSecret;
 
-    var envServiceUrl = Environment.GetEnvironmentVariable("SERVICE_URL");
+    var envServiceUrl = Environment.GetEnvironmentVariable("OBJECT_STORAGE_SERVICE_URL");
     if (!string.IsNullOrEmpty(envServiceUrl)) opts.ServiceUrl = envServiceUrl;
 
-    var envForcePathStyle = Environment.GetEnvironmentVariable("FORCE_PATH_STYLE");
+    var envForcePathStyle = Environment.GetEnvironmentVariable("OBJECT_STORAGE_FORCE_PATH_STYLE");
     if (bool.TryParse(envForcePathStyle, out var fps)) opts.ForcePathStyle = fps;
+});
+
+// ── DynamoDB Settings (AWS) ──
+builder.Services.Configure<DynamoDbSettings>(opts =>
+{
+    builder.Configuration.GetSection("DynamoDb").Bind(opts);
+
+    var envRegion = Environment.GetEnvironmentVariable("DYNAMODB_REGION");
+    if (!string.IsNullOrEmpty(envRegion)) opts.Region = envRegion;
+
+    var envAccess = Environment.GetEnvironmentVariable("DYNAMODB_ACCESS_KEY");
+    if (!string.IsNullOrEmpty(envAccess)) opts.AccessKey = envAccess;
+
+    var envSecret = Environment.GetEnvironmentVariable("DYNAMODB_SECRET_KEY");
+    if (!string.IsNullOrEmpty(envSecret)) opts.SecretKey = envSecret;
 });
 
 
@@ -80,35 +95,38 @@ builder.Services
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         });
 
-var storageSettings = builder.Configuration.GetSection("CloudStorage").Get<CloudStorageSettings>() ?? new CloudStorageSettings();
+// ── Helper: load both settings with env overrides applied for early use ──
+var objectStorage = builder.Configuration.GetSection("ObjectStorage").Get<ObjectStorageSettings>() ?? new ObjectStorageSettings();
+ApplyEnv("OBJECT_STORAGE_BUCKET", v => objectStorage.BucketName = v);
+ApplyEnv("OBJECT_STORAGE_REGION", v => objectStorage.Region = v);
+ApplyEnv("OBJECT_STORAGE_ACCESS_KEY", v => objectStorage.AccessKey = v);
+ApplyEnv("OBJECT_STORAGE_SECRET_KEY", v => objectStorage.SecretKey = v);
+ApplyEnv("OBJECT_STORAGE_SERVICE_URL", v => objectStorage.ServiceUrl = v);
+if (bool.TryParse(Environment.GetEnvironmentVariable("OBJECT_STORAGE_FORCE_PATH_STYLE"), out var earlyFps))
+    objectStorage.ForcePathStyle = earlyFps;
 
-// Apply the same env overrides used in Configure<CloudStorageSettings> for early use
-var envBucketEarly = Environment.GetEnvironmentVariable("BUCKET");
-if (!string.IsNullOrEmpty(envBucketEarly)) storageSettings.BucketName = envBucketEarly;
-var envRegionEarly = Environment.GetEnvironmentVariable("REGION");
-if (!string.IsNullOrEmpty(envRegionEarly)) storageSettings.Region = envRegionEarly;
-var envAccessEarly = Environment.GetEnvironmentVariable("ACCESS_KEY");
-if (!string.IsNullOrEmpty(envAccessEarly)) storageSettings.AccessKey = envAccessEarly;
-var envSecretEarly = Environment.GetEnvironmentVariable("SECRET_KEY");
-if (!string.IsNullOrEmpty(envSecretEarly)) storageSettings.SecretKey = envSecretEarly;
-var envServiceUrlEarly = Environment.GetEnvironmentVariable("SERVICE_URL");
-if (!string.IsNullOrEmpty(envServiceUrlEarly)) storageSettings.ServiceUrl = envServiceUrlEarly;
-var envForcePathStyleEarly = Environment.GetEnvironmentVariable("FORCE_PATH_STYLE");
-if (bool.TryParse(envForcePathStyleEarly, out var fpsEarly)) storageSettings.ForcePathStyle = fpsEarly;
+var dynamoDb = builder.Configuration.GetSection("DynamoDb").Get<DynamoDbSettings>() ?? new DynamoDbSettings();
+ApplyEnv("DYNAMODB_REGION", v => dynamoDb.Region = v);
+ApplyEnv("DYNAMODB_ACCESS_KEY", v => dynamoDb.AccessKey = v);
+ApplyEnv("DYNAMODB_SECRET_KEY", v => dynamoDb.SecretKey = v);
 
-// Build shared credentials from config
-var awsCredentials = (!string.IsNullOrEmpty(storageSettings.AccessKey) && !string.IsNullOrEmpty(storageSettings.SecretKey))
-    ? new Amazon.Runtime.BasicAWSCredentials(storageSettings.AccessKey, storageSettings.SecretKey)
+static void ApplyEnv(string name, Action<string> setter)
+{
+    var value = Environment.GetEnvironmentVariable(name);
+    if (!string.IsNullOrEmpty(value)) setter(value);
+}
+
+// ── Core Infrastructure: DynamoDB (AWS) ──
+var dynamoCredentials = (!string.IsNullOrEmpty(dynamoDb.AccessKey) && !string.IsNullOrEmpty(dynamoDb.SecretKey))
+    ? new Amazon.Runtime.BasicAWSCredentials(dynamoDb.AccessKey, dynamoDb.SecretKey)
     : null;
-
-// ── Core Infrastructure: DynamoDB ──
 var dynamoConfig = new AmazonDynamoDBConfig
 {
-    RegionEndpoint = RegionEndpoint.GetBySystemName(storageSettings.Region)
+    RegionEndpoint = RegionEndpoint.GetBySystemName(dynamoDb.Region)
 };
 builder.Services
-        .AddSingleton<IAmazonDynamoDB>(awsCredentials != null
-            ? new AmazonDynamoDBClient(awsCredentials, dynamoConfig)
+        .AddSingleton<IAmazonDynamoDB>(dynamoCredentials != null
+            ? new AmazonDynamoDBClient(dynamoCredentials, dynamoConfig)
             : new AmazonDynamoDBClient(dynamoConfig))
         .AddScoped<IDynamoDBContext, DynamoDBContext>();
 
@@ -132,21 +150,24 @@ builder.Services.BuildContentPluginRegistry();
 // Generic content repository used by all plugins
 builder.Services.AddScoped<IContentRepository, ContentRepository>();
 
-// ── Blob Storage (S3-compatible) ──
+// ── Object Storage (S3-compatible: AWS S3 / Cloudflare R2 / MinIO / etc.) ──
+var objectStorageCredentials = (!string.IsNullOrEmpty(objectStorage.AccessKey) && !string.IsNullOrEmpty(objectStorage.SecretKey))
+    ? new Amazon.Runtime.BasicAWSCredentials(objectStorage.AccessKey, objectStorage.SecretKey)
+    : null;
 builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
     var s3Config = new AmazonS3Config();
-    if (!string.IsNullOrEmpty(storageSettings.ServiceUrl))
+    if (!string.IsNullOrEmpty(objectStorage.ServiceUrl))
     {
-        s3Config.ServiceURL = storageSettings.ServiceUrl;
-        s3Config.ForcePathStyle = storageSettings.ForcePathStyle;
+        s3Config.ServiceURL = objectStorage.ServiceUrl;
+        s3Config.ForcePathStyle = objectStorage.ForcePathStyle;
     }
-    else if (!string.IsNullOrEmpty(storageSettings.Region))
+    else if (!string.IsNullOrEmpty(objectStorage.Region))
     {
-        s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(storageSettings.Region);
+        s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(objectStorage.Region);
     }
-    return awsCredentials != null
-        ? new AmazonS3Client(awsCredentials, s3Config)
+    return objectStorageCredentials != null
+        ? new AmazonS3Client(objectStorageCredentials, s3Config)
         : new AmazonS3Client(s3Config);
 });
 builder.Services.AddSingleton<IBlobStorageProvider, S3BlobStorageProvider>();

@@ -1,713 +1,240 @@
 # Hikari Sync Server
 
-A self-hosted, plugin-based backend for the Hikari content sync infrastructure. Mobile clients sync their local content library with cloud storage (AWS S3 + DynamoDB). Content consumption happens offline via local apps — this server only handles metadata management, binary storage, user authentication, and sync operations.
+A self-hosted, plugin-driven content sync API. Stores metadata in **DynamoDB**, binaries in **any S3-compatible object store** (AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces…), and serves them to authenticated clients via short-lived presigned URLs.
 
-The architecture is **content-type agnostic**: music, books, manga, or any future content type is handled through a plugin system. Each plugin defines its own metadata schema, validation rules, storage paths, and query filters.
-
-## Architecture Overview
-
-```
-Mobile App (offline player / reader)
-    │
-    ▼  HTTPS / REST
-┌──────────────────────────────────────┐
-│          Sync Server (ASP.NET)       │
-│                                      │
-│  ┌────────────┐  ┌────────────────┐  │
-│  │  Identity   │  │    Content     │  │
-│  │ Auth + JWT  │  │  Controller    │  │
-│  │ Users/Admin │  │ (generic CRUD) │  │
-│  └────────────┘  └───────┬────────┘  │
-│                          │           │
-│  ┌────────────┐  ┌───────▼────────┐  │
-│  │Configuration│  │Plugin Registry │  │
-│  │ AWS + JWT   │  │ ┌───────────┐ │  │
-│  │  settings   │  │ │MusicPlugin│ │  │
-│  └────────────┘  │ │ BookPlugin│…│  │
-│                  │ └───────────┘ │  │
-│                  └───────┬───────┘  │
-│                          │          │
-│  ┌───────────────────────▼───────┐  │
-│  │  Content Repository (DynamoDB) │  │
-│  └───────────────────────────────┘  │
-└──────────────────┬───────────────────┘
-                   │
-       ┌───────────┼───────────┐
-       ▼                       ▼
-  AWS DynamoDB              AWS S3
- (Content + User          (Binary
-  metadata)                files)
-```
-
-**Stack:** .NET 10 Preview, ASP.NET Core, AWS SDK (S3, DynamoDB), JWT Bearer Auth, Swagger/OpenAPI
+> One server, many content types. Drop in a new `IContentPlugin` and you have a new namespaced API endpoint with its own metadata schema, validation, storage layout, and filters — no other code touched.
 
 ---
 
-## Table of Contents
+## Highlights
 
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Development Setup](#development-setup)
-- [Building](#building)
-- [Running Locally](#running-locally)
-- [Debugging](#debugging)
-- [Docker](#docker)
-- [Production Deployment](#production-deployment)
-- [API Reference](#api-reference)
-- [Environment Variables](#environment-variables)
+- **ASP.NET Core on .NET 10** with controller-based routing and Swagger in Development.
+- **Plugin architecture** — each content type (audio / video / book / manga / image) is an `IContentPlugin` that owns its DynamoDB table, S3 prefix, MIME whitelist, metadata validation, storage-path layout, and query filters.
+- **Cloud-portable storage** — `IBlobStorageProvider` abstracts the blob store. The shipped `S3BlobStorageProvider` works against AWS S3 *and* any S3-compatible API (R2, MinIO, etc.) by setting a `ServiceUrl` + `ForcePathStyle`.
+- **Independent storage tiers** — DynamoDB (metadata) and the object store (binaries) are configured separately, so you can run e.g. **DynamoDB on AWS + binaries on Cloudflare R2**.
+- **JWT bearer auth** with refresh tokens, role-based authorization (`User` / `Admin`), and a fail-fast guard that rejects keys shorter than 32 bytes.
+- **Direct-to-storage uploads/downloads** — clients PUT/GET binaries straight to/from object storage via presigned URLs; the server only ever moves metadata.
 
 ---
 
-## Prerequisites
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (preview) or later
-- An AWS account with:
-  - An S3 bucket (default: `Hikari-song`)
-  - A DynamoDB table: `User` (hash key: `Id` of type `String`, GSI `email-index` on `Email`)
-  - Content tables are created per-plugin (e.g., `Music` with hash key `Id` of type `String`)
-  - IAM credentials with S3 and DynamoDB access
-- (Optional) [Docker](https://www.docker.com/) for containerized deployment
-- (Optional) [OpenSSL](https://www.openssl.org/) or PowerShell for generating HTTPS certificates
-
----
-
-## Project Structure
+## Project Layout
 
 ```
 sync-server/
-├── sync-server.sln                  # Solution file
-├── Dockerfile                       # Multi-stage Docker build
-├── README.md                        # This file
-├── sample-requests/                 # Example JSON payloads for API testing
-│   ├── upload.json
-│   ├── upload-complete.json
-│   ├── upload-batch.json
-│   ├── download.json
-│   ├── get.json
-│   ├── edit.json
-│   └── delete.json
-├── src/
-│   ├── sync-server.csproj           # Project file
-│   ├── Program.cs                   # Application entry point & DI configuration
-│   ├── appsettings.json             # Base configuration (DO NOT put secrets here)
-│   ├── appsettings.Development.json
-│   ├── Configuration/               # Application-wide settings
-│   │   └── AppSettings.cs           # AmazonWebServicesConstants, JwtSettings
-│   ├── Identity/                    # Authentication, users, and authorization
-│   │   ├── Controllers/             # API controllers
-│   │   │   ├── AuthController.cs
-│   │   │   ├── UserController.cs
-│   │   │   └── AdminController.cs
-│   │   ├── Dtos/                    # Request/response DTOs
-│   │   │   └── AuthDtos.cs
-│   │   ├── Filters/                 # Swagger/OpenAPI filters
-│   │   │   └── CreateUserRequestSchemaFilter.cs
-│   │   ├── Middlewares/             # Request pipeline middleware
-│   │   │   └── CurrentUserMiddleware.cs
-│   │   ├── Services/                # Identity services
-│   │   │   ├── ICurrentUserService.cs
-│   │   │   └── CurrentUserService.cs
-│   │   ├── Repositories/            # Data access
-│   │   │   ├── IUserRepository.cs
-│   │   │   └── UserRepository.cs
-│   │   └── Models/                  # Domain models
-│   │       ├── User.cs
-│   │       └── Role.cs
-│   ├── Content/                     # Plugin-based content management
-│   │   ├── Controllers/             # Content API controllers
-│   │   │   └── ContentController.cs
-│   │   ├── Dtos/                    # Content request/response DTOs
-│   │   │   └── ContentDtos.cs
-│   │   ├── Models/                  # Content entities
-│   │   │   └── ContentItem.cs
-│   │   ├── Contracts/               # Plugin contracts/interfaces
-│   │   │   └── IContentPlugin.cs
-│   │   ├── Registries/              # Plugin registries
-│   │   │   └── ContentPluginRegistry.cs
-│   │   ├── Repositories/            # Data access
-│   │   │   └── ContentRepository.cs
-│   │   └── Plugins/
-│   │       ├── AudioPlugin.cs        # Audio content plugin  (table: Audio,  S3: audio/)
-│   │       ├── BookPlugin.cs         # Book content plugin   (table: Book,   S3: book/)
-│   │       ├── ImagePlugin.cs        # Image content plugin  (table: Image,  S3: image/)
-│   │       ├── MangaPlugin.cs        # Manga content plugin  (table: Manga,  S3: manga/)
-│   │       └── VideoPlugin.cs        # Video content plugin  (table: Video,  S3: video/)
-│   └── Properties/
-│       └── launchSettings.json
-└── tests/                           # Test project (placeholder)
+├── Dockerfile
+├── sync-server.sln
+└── src/
+    ├── Program.cs                      # DI, middleware, JWT, plugin registration
+    ├── appsettings.json                # ObjectStorage / DynamoDb / JwtConstants
+    ├── aws-lambda-tools-defaults.json  # (scaffolding only)
+    ├── Configuration/
+    │   └── AppSettings.cs              # ObjectStorageSettings, DynamoDbSettings, JwtSettings
+    ├── Content/
+    │   ├── Contracts/  IContentPlugin
+    │   ├── Controllers/ ContentController
+    │   ├── Dtos/        Upload init/complete, edit, delete, item DTOs
+    │   ├── Filters/     Swagger schema filters
+    │   ├── Models/      ContentItem
+    │   ├── Plugins/     AudioPlugin · VideoPlugin · BookPlugin · MangaPlugin · ImagePlugin
+    │   ├── Registries/  ContentPluginRegistry + DI extension
+    │   └── Repositories/ ContentRepository (DynamoDB-backed, generic over plugin TableName)
+    ├── Identity/
+    │   ├── Controllers/  AuthController · UserController · AdminController
+    │   ├── Dtos/         LoginRequest, RefreshRequest, CreateUserRequest, …
+    │   ├── Middlewares/  CurrentUserMiddleware
+    │   ├── Models/       User, Role
+    │   ├── Repositories/ UserRepository (DynamoDB)
+    │   └── Services/     CurrentUserService
+    └── Infrastructure/
+        ├── IBlobStorageProvider.cs
+        └── S3BlobStorageProvider.cs    # Works for AWS S3 + R2 + MinIO + DO Spaces
 ```
 
-### Domain-based organization
+---
 
-The codebase is organized by **domain** rather than technical layer:
+## Built-in Content Plugins
 
-| Folder | Purpose |
-|--------|---------|
-| `Configuration/` | AWS and JWT option classes bound from env vars / appsettings |
-| `Identity/` | Contextual identity modules: controllers, DTOs, middleware, services, repositories, models |
-| `Content/` | Contextual content modules: controllers, DTOs, models, contracts, registries, repositories |
-| `Content/Plugins/` | Concrete content-type plugins (Audio, Book, Image, Manga, Video) |
+| Plugin | `contentType` | DynamoDB Table | S3 Key Pattern | Required Metadata |
+|---|---|---|---|---|
+| **Audio** | `audio` | `Audio` | `audio/{artist}/{album}/{title}.{ext}` | `artist`, `album`, `genre`, `audioFormat` |
+| **Video** | `video` | `Video` | `video/{type}/{series}/{season}/{episode}/{title}.{ext}` | `videoFormat` (+ optional `type ∈ {animation, live}`) |
+| **Book** | `book` | `Book` | `book/{author}/{series}/{volume}/{title}.{ext}` | `author`, `bookFormat` |
+| **Manga** | `manga` | `Manga` | `manga/{author}/{series}/{volume}/{title}.{ext}` | `author`, `mangaFormat` |
+| **Image** | `image` | `Image` | `image/{creator}/{collection}/{title}.{ext}` | `imageFormat` |
+
+Each plugin also exposes `BuildFilter(queryParams)` for first-class server-side filters (e.g. audio: `genre/album/artist/composer/playlist/releaseFrom/releaseTo`; video: `genre/director/series/resolution/codec/type/season/episode`; image: `cameraMake/cameraModel/dateFrom/dateTo`; etc.).
+
+### Allowed MIME types (excerpt)
+
+- **Audio:** MP3, WAV, FLAC, AIFF, AAC, M4A, OGG
+- **Video:** MP4, MOV, AVI, MKV, WMV, WebM, FLV
+- **Book:** EPUB, PDF, MOBI, AZW3, TXT, RTF, DOCX, HTML
+- **Manga:** CBZ, CBR, PDF, EPUB, ZIP
+- **Image:** JPEG, PNG, WebP, GIF, SVG, TIFF, AVIF, HEIF/HEIC, BMP, RAW
+
+`application/octet-stream` is also accepted across plugins as a generic fallback.
 
 ---
 
 ## Configuration
 
-All secrets must be provided via **environment variables** — never commit real credentials to `appsettings.json`.
+All settings live in [src/appsettings.json](src/appsettings.json). Every value can be overridden by an environment variable at startup, which is the recommended approach for production / containers.
 
-### `appsettings.json` (safe defaults only)
+### Sections
 
-```json
-{
-  "AmazonWebServiceConstants": {
-    "BucketName": "Hikari-song",
-    "UserTableName": "User",
-    "AwsRegion": "",
-    "AccessKey": "",
-    "SecretKey": ""
-  },
-  "JwtConstants": {
-    "Key": "",
-    "Issuer": "",
-    "Audience": "",
-    "DurationInHours": 12
-  }
-}
+| Section | Purpose |
+|---|---|
+| `ObjectStorage` | S3-compatible blob backend (works for AWS S3, Cloudflare R2, MinIO, DO Spaces, etc.) |
+| `DynamoDb` | AWS DynamoDB credentials & region for metadata |
+| `JwtConstants` | JWT signing key, issuer, audience, lifetime |
+
+### Environment variables
+
+| Variable | Maps to | Notes |
+|---|---|---|
+| `OBJECT_STORAGE_BUCKET` | `ObjectStorage.BucketName` | e.g. `hikari-storage` |
+| `OBJECT_STORAGE_REGION` | `ObjectStorage.Region` | Use `auto` for Cloudflare R2 |
+| `OBJECT_STORAGE_ACCESS_KEY` | `ObjectStorage.AccessKey` | Optional — falls back to default credential chain |
+| `OBJECT_STORAGE_SECRET_KEY` | `ObjectStorage.SecretKey` | |
+| `OBJECT_STORAGE_SERVICE_URL` | `ObjectStorage.ServiceUrl` | Set to `https://<account-id>.r2.cloudflarestorage.com` for R2 |
+| `OBJECT_STORAGE_FORCE_PATH_STYLE` | `ObjectStorage.ForcePathStyle` | Set `true` for R2 / MinIO |
+| `DYNAMODB_REGION` | `DynamoDb.Region` | e.g. `ap-south-1` |
+| `DYNAMODB_ACCESS_KEY` | `DynamoDb.AccessKey` | Optional — falls back to default credential chain |
+| `DYNAMODB_SECRET_KEY` | `DynamoDb.SecretKey` | |
+| `JWT_KEY` | `JwtConstants.Key` | **Must be ≥ 32 bytes**; startup fails otherwise |
+| `JWT_ISSUER` | `JwtConstants.Issuer` | |
+| `JWT_AUDIENCE` | `JwtConstants.Audience` | |
+| `JWT_DURATION_HOURS` | `JwtConstants.DurationInHours` | Default `12` |
+
+### Mix-and-match example: DynamoDB on AWS + binaries on Cloudflare R2
+
+```bash
+# Object storage → Cloudflare R2
+OBJECT_STORAGE_BUCKET=hikari-storage
+OBJECT_STORAGE_REGION=auto
+OBJECT_STORAGE_ACCESS_KEY=<r2-access-key-id>
+OBJECT_STORAGE_SECRET_KEY=<r2-secret-access-key>
+OBJECT_STORAGE_SERVICE_URL=https://<r2-account-id>.r2.cloudflarestorage.com
+OBJECT_STORAGE_FORCE_PATH_STYLE=true
+
+# Metadata → AWS DynamoDB
+DYNAMODB_REGION=ap-south-1
+DYNAMODB_ACCESS_KEY=<aws-access-key-id>
+DYNAMODB_SECRET_KEY=<aws-secret-access-key>
+
+# Auth
+JWT_KEY=<at-least-32-bytes-of-entropy>
+JWT_ISSUER=Hikari-sync-server
+JWT_AUDIENCE=Hikari-mobile-app
 ```
-
-> **Note:** Each content plugin declares its own DynamoDB table name (e.g., `AudioPlugin` uses `"Audio"`, `BookPlugin` uses `"Book"`). There is no global env var for content tables.
->
-> **Storage path patterns** — each plugin builds a hierarchical S3 object key from metadata:
->
-> | Plugin | S3 Object Path |
-> |--------|----------------|
-> | Audio  | `audio/{artist}/{album}/{title}.{ext}` |
-> | Book   | `book/{author}/{series}/{volume}/{title}.{ext}` |
-> | Image  | `image/{creator}/{collection}/{title}.{ext}` |
-> | Manga  | `manga/{author}/{series}/{volume}/{title}.{ext}` |
-> | Video  | `video/{type}/{series}/{season}/{episode}/{title}.{ext}` |
->
-> Missing metadata segments default to `"general"` or `"Unknown"`.
-
-Environment variables override the JSON values at runtime (see [Environment Variables](#environment-variables)).
 
 ---
 
-## Development Setup
+## API Reference
 
-### 1. Clone and restore
+All routes require a `Bearer` JWT unless explicitly marked `[AllowAnonymous]`. Roles: `User`, `Admin`.
 
-```bash
-git clone <your-repo-url>
-cd sync-server
-dotnet restore src/sync-server.csproj
+### Authentication — `/Auth` *(anonymous)*
+
+| Method | Route | Body | Returns |
+|---|---|---|---|
+| `POST` | `/Auth/login` | `{ email, password }` | `{ token, refreshToken, profile }` |
+| `POST` | `/Auth/refresh` | `{ refreshToken }` | New `{ token, refreshToken }` |
+
+JWT claims: `sub` (user id), `email`, and `ClaimTypes.Role` for each role. Default token lifetime: 12 h. Refresh tokens are 64-byte random base64 strings, currently held in an in-process dictionary with a 7-day expiry (single-instance deployments only).
+
+### Users — `/User`
+
+| Method | Route | Auth | Notes |
+|---|---|---|---|
+| `POST` | `/User` | anonymous | Self-signup; password ≥ 8 chars |
+| `GET` | `/User/{id}` | self / Admin | |
+| `GET` | `/User/by-email?email=` | self / Admin | |
+| `PUT` | `/User/{id}` | self / Admin | Update playlist / roles |
+| `POST` | `/User/{id}/change-password` | self / Admin | |
+| `DELETE` | `/User/{id}` | self / Admin | |
+
+### Admin — `/Admin` *(role: Admin)*
+
+| Method | Route | Notes |
+|---|---|---|
+| `GET` | `/Admin/users` | List all users |
+| `POST` | `/Admin/users/{id}/roles` | Body: `["User", "Admin"]` |
+
+### Content — `/content/{contentType}`
+
+`{contentType}` is resolved through the plugin registry (`audio` / `video` / `book` / `manga` / `image`).
+
+| Method | Route | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/content/{contentType}/upload-init` | Admin | Validates metadata → returns presigned **PUT** URL + required headers |
+| `POST` | `/content/{contentType}/upload-complete` | Admin | HEADs the object, persists `ContentItem` (insert or update) |
+| `GET` | `/content/{contentType}/items` | User | Paged list. Query: `limit, titlePrefix, lastModifiedSince, page=1, pageSize=10` + plugin filters |
+| `GET` | `/content/{contentType}/download` | User | Bulk: paged items + presigned **GET** URLs (`urlExpiresInMinutes`, default 15, max 60) |
+| `GET` | `/content/{contentType}/download/{id}` | User | Single item by GUID + presigned GET |
+| `PUT` | `/content/{contentType}/edit` | Admin | Update metadata only (no binary) |
+| `DELETE` | `/content/{contentType}/delete` | Admin | Body: `{ items }`. Deletes blob then row |
+| `GET` | `/content/plugins` | User | `[ { contentType, displayName, allowedMimeTypes } ]` |
+
+### Upload flow
+
 ```
-
-### 2. Set environment variables
-
-On Windows (PowerShell):
-
-```powershell
-$env:AWS_REGION = "ap-south-1"
-$env:AWS_ACCESS_KEY_ID = "<your-access-key>"
-$env:AWS_SECRET_ACCESS_KEY = "<your-secret-key>"
-$env:AWS_BUCKET = "Hikari-song"
-$env:JWT_KEY = "<a-strong-random-key-min-32-chars>"
-$env:JWT_ISSUER = "Hikari-sync-server"
-$env:JWT_AUDIENCE = "Hikari-mobile-app"
-$env:JWT_DURATION_HOURS = "12"
-```
-
-On Linux/macOS:
-
-```bash
-export AWS_REGION="ap-south-1"
-export AWS_ACCESS_KEY_ID="<your-access-key>"
-export AWS_SECRET_ACCESS_KEY="<your-secret-key>"
-export AWS_BUCKET="Hikari-song"
-export JWT_KEY="<a-strong-random-key-min-32-chars>"
-export JWT_ISSUER="Hikari-sync-server"
-export JWT_AUDIENCE="Hikari-mobile-app"
-export JWT_DURATION_HOURS="12"
-```
-
-### 3. Ensure AWS resources exist
-
-- **S3 Bucket:** Create `Hikari-song` (or your custom name) in your target region.
-- **DynamoDB Tables:**
-  - `User` — Partition key: `Id` (String), GSI: `email-index` on `Email` (String)
-  - `Music` — Partition key: `Id` (String) *(created by MusicPlugin; additional plugin tables follow the same pattern)*
-  - `Audio` — Partition key: `Id` (String)
-  - `Book` — Partition key: `Id` (String)
-  - `Image` — Partition key: `Id` (String)
-  - `Manga` — Partition key: `Id` (String)
-  - `Video` — Partition key: `Id` (String)
-
----
-
-## Building
-
-### Debug build
-
-```bash
-dotnet build src/sync-server.csproj
-```
-
-### Release build
-
-```bash
-dotnet build src/sync-server.csproj -c Release
-```
-
-### Publish (self-contained, ready-to-deploy)
-
-```bash
-dotnet publish src/sync-server.csproj -c Release -o ./publish
-```
-
-For Linux deployment targets:
-
-```bash
-dotnet publish src/sync-server.csproj -c Release -r linux-x64 --self-contained -o ./publish
+client                                  server                              S3 / R2
+  │                                       │                                   │
+  │── POST /upload-init {metadata} ──────▶│                                   │
+  │                                       │  validate via plugin              │
+  │                                       │  build storage path               │
+  │◀── 200 { url, key, headers } ─────────│                                   │
+  │                                                                          │
+  │── PUT  url  (binary)  ──────────────────────────────────────────────────▶│
+  │◀── 200 ─────────────────────────────────────────────────────────────────│
+  │                                                                          │
+  │── POST /upload-complete {key, …} ────▶│                                   │
+  │                                       │  HEAD object (size/MIME)          │
+  │                                       │  insert/update ContentItem        │
+  │◀── 201 / 200 (item) ──────────────────│                                   │
 ```
 
 ---
 
 ## Running Locally
 
-```bash
-dotnet run --project src/sync-server.csproj
-```
-
-The server starts on:
-- **HTTPS:** `https://localhost:3445`
-- **HTTP:** `http://localhost:3446`
-
-Swagger UI is available at: `https://localhost:3445/swagger`
-
----
-
-## Debugging
-
-### Visual Studio
-
-1. Open `sync-server.sln`
-2. Set `SyncServer` as the startup project
-3. Press **F5** (or Debug → Start Debugging)
-4. Breakpoints, watch, and call stack work normally
-
-### Visual Studio Code
-
-1. Open the `sync-server/` folder
-2. Install the **C# Dev Kit** extension
-3. Create `.vscode/launch.json`:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "SyncServer",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/bin/Debug/net10.0/SyncServer.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}/src",
-      "stopAtEntry": false,
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "AWS_REGION": "ap-south-1",
-        "JWT_KEY": "your-dev-secret-key-at-least-32-characters-long",
-        "JWT_ISSUER": "Hikari-dev",
-        "JWT_AUDIENCE": "Hikari-dev"
-      }
-    }
-  ]
-}
-```
-
-4. Press **F5** to start debugging
-
-### CLI Debugging
-
-```bash
-dotnet run --project src/sync-server.csproj --launch-profile SyncServer
-```
-
-### Viewing Logs
-
-The server uses structured JSON logging. In development, logs go to stdout. Use `dotnet run` and observe console output, or pipe through `jq` for readability:
-
-```bash
-dotnet run --project src/sync-server.csproj 2>&1 | jq .
-```
-
----
-
-## Docker
-
-### Generate HTTPS certificate (first time only)
-
-PowerShell (Windows):
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
-$cert = New-SelfSignedCertificate -DnsName "localhost" -CertStoreLocation "cert:\LocalMachine\My"
-$password = ConvertTo-SecureString -String "Hikari" -Force -AsPlainText
-Export-PfxCertificate -Cert $cert -FilePath ".\aspnetcore.pfx" -Password $password
+cd sync-server\src
+dotnet run
 ```
 
-Linux/macOS:
+Dev URLs (from [launchSettings.json](src/Properties/launchSettings.json)):
 
-```bash
-dotnet dev-certs https -ep ./aspnetcore.pfx -p Hikari
-```
+- HTTPS: <https://localhost:59709>
+- HTTP: <http://localhost:59710>
+- Swagger UI: `/swagger` (Development only, browser auto-launches)
 
-### Build the image
-
-```bash
-docker build -f Dockerfile -t Hikari-sync-server .
-```
-
-### Run the container
-
-```bash
-docker run -d \
-  --name Hikari-sync \
-  -p 3346:3346 \
-  -p 3445:3445 \
-  -e AWS_REGION="ap-south-1" \
-  -e AWS_ACCESS_KEY_ID="<your-key>" \
-  -e AWS_SECRET_ACCESS_KEY="<your-secret>" \
-  -e AWS_BUCKET="Hikari-song" \
-  -e JWT_KEY="<strong-secret-min-32-chars>" \
-  -e JWT_ISSUER="Hikari-sync-server" \
-  -e JWT_AUDIENCE="Hikari-mobile-app" \
-  Hikari-sync-server
-```
-
-### Verify it's running
-
-```bash
-curl http://localhost:3346/
-# => "Welcome to running ASP.NET Core on Kestrel"
-
-curl http://localhost:3346/swagger/v1/swagger.json
-# => OpenAPI spec JSON
-```
-
----
-
-## Production Deployment
-
-### Option A: Docker on a VPS (recommended for self-hosting)
-
-1. **Provision a server** (e.g., AWS EC2, DigitalOcean Droplet, Hetzner)
-2. **Install Docker** on the server
-3. **Copy the project** to the server (or build the image in CI and push to a container registry)
-4. **Create a `.env` file** on the server (never commit this):
-
-   ```env
-   AWS_REGION=ap-south-1
-   AWS_ACCESS_KEY_ID=<production-key>
-   AWS_SECRET_ACCESS_KEY=<production-secret>
-   AWS_BUCKET=Hikari-song
-   JWT_KEY=<production-jwt-secret-64-chars-recommended>
-   JWT_ISSUER=Hikari-sync-server
-   JWT_AUDIENCE=Hikari-mobile-app
-   JWT_DURATION_HOURS=12
-   ```
-
-5. **Run with Docker:**
-
-   ```bash
-   docker build -f Dockerfile -t Hikari-sync-server .
-   docker run -d \
-     --name Hikari-sync \
-     --restart unless-stopped \
-     -p 443:3445 \
-     -p 80:3346 \
-     --env-file .env \
-     Hikari-sync-server
-   ```
-
-6. **Reverse proxy (recommended):** Place nginx or Caddy in front for TLS termination:
-
-   ```nginx
-   # /etc/nginx/sites-available/Hikari
-   server {
-       listen 443 ssl;
-       server_name sync.yourdomain.com;
-       
-       ssl_certificate     /etc/letsencrypt/live/sync.yourdomain.com/fullchain.pem;
-       ssl_certificate_key /etc/letsencrypt/live/sync.yourdomain.com/privkey.pem;
-       
-       location / {
-           proxy_pass http://127.0.0.1:3346;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-           
-           # Allow large file uploads (music files)
-           client_max_body_size 100M;
-       }
-   }
-   ```
-
-### Option B: Docker Compose
-
-Create `docker-compose.yml`:
-
-```yaml
-version: "3.8"
-services:
-  sync-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "80:3346"
-      - "443:3445"
-    env_file:
-      - .env
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3346/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-```bash
-docker compose up -d
-```
-
-### Option C: Bare-metal / systemd
-
-1. **Publish:**
-
-   ```bash
-  dotnet publish src/sync-server.csproj -c Release -r linux-x64 --self-contained -o /opt/Hikari-sync
-   ```
-
-2. **Create systemd service** (`/etc/systemd/system/Hikari-sync.service`):
-
-   ```ini
-   [Unit]
-   Description=Hikari Sync Server
-   After=network.target
-
-   [Service]
-   Type=exec
-   WorkingDirectory=/opt/Hikari-sync
-   ExecStart=/opt/Hikari-sync/SyncServer
-   Restart=always
-   RestartSec=10
-   User=www-data
-   Environment=ASPNETCORE_URLS=http://+:5000
-   EnvironmentFile=/opt/Hikari-sync/.env
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-3. **Enable and start:**
-
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable Hikari-sync
-   sudo systemctl start Hikari-sync
-   sudo systemctl status Hikari-sync
-   ```
-
-### Production Checklist
-
-- [x] **Swagger disabled in production** — only enabled when `ASPNETCORE_ENVIRONMENT=Development`
-- [x] **JWT key validated at startup** — server fails fast if key is missing or < 32 bytes
-- [x] **HTTPS metadata required in production** — `RequireHttpsMetadata` is `true` except in Development
-- [x] **Password validation enforced** — minimum 8 characters on create and change-password
-- [ ] Use a proper JWT secret (64+ random characters)
-- [ ] Set `ASPNETCORE_ENVIRONMENT=Production` (disables dev exception pages)
-- [ ] Use IAM roles instead of access keys when running on AWS infrastructure
-- [ ] Enable HTTPS via reverse proxy with real TLS certificates (Let's Encrypt)
-- [ ] Set up log aggregation (CloudWatch, Grafana Loki, etc.)
-- [ ] Configure request size limits for upload endpoints
-- [ ] Set up health check monitoring
-- [ ] Back up DynamoDB tables regularly
-- [ ] Rotate JWT signing keys periodically
-- [ ] Migrate refresh tokens from in-memory to persistent storage (DynamoDB/Redis) for multi-instance deployments
-
----
-
-## API Reference
-
-All endpoints require JWT Bearer authentication unless marked `[AllowAnonymous]`.
-
-### Authentication
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `POST` | `/Auth/login` | Anonymous | Login with email + password, returns JWT + refresh token |
-| `POST` | `/Auth/refresh` | Anonymous | Exchange refresh token for new JWT |
-
-### Users
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `POST` | `/User` | Anonymous | Register new user |
-| `GET` | `/User/{id}` | User/Admin | Get user by ID (self or admin) |
-| `GET` | `/User/by-email?email=` | User/Admin | Get user by email |
-| `PUT` | `/User/{id}` | User/Admin | Update user metadata (playlist, roles) |
-| `POST` | `/User/{id}/change-password` | User/Admin | Change password |
-| `DELETE` | `/User/{id}` | User/Admin | Delete user |
-
-### Admin
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `GET` | `/Admin/users` | Admin | List all users |
-| `POST` | `/Admin/users/{id}/roles` | Admin | Set user roles |
-
-### Content (plugin-based, generic)
-
-All content operations use the route prefix `/content/{contentType}` where `{contentType}` matches a registered plugin (e.g., `music`).
-
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `POST` | `/content/{contentType}/upload-init` | Admin | Generate presigned S3 URL for direct binary upload |
-| `POST` | `/content/{contentType}/upload-complete` | Admin | Finalize metadata after client uploads directly to S3 |
-| `GET` | `/content/{contentType}/items` | User/Admin | List/search items (pagination, filters via plugin) |
-| `GET` | `/content/{contentType}/download` | User/Admin | Get presigned download URLs for matched items |
-| `GET` | `/content/{contentType}/download/{id}` | User/Admin | Get a presigned download URL for one item |
-| `PUT` | `/content/{contentType}/edit` | Admin | Update item metadata |
-| `DELETE` | `/content/{contentType}/delete` | Admin | Delete items (S3 binary + DB metadata) |
-| `GET` | `/content/plugins` | User/Admin | List all registered content plugins |
-
-Direct upload flow:
-1. Call `POST /content/{contentType}/upload-init` with metadata to receive `uploadUrl` and `requiredHeaders`.
-2. Upload the binary directly from client to S3 using HTTP `PUT` on `uploadUrl`.
-3. Call `POST /content/{contentType}/upload-complete` with the same item metadata and generated `storagePath`.
-
-#### Music plugin filters (`contentType=music`)
-
-| Query Param | Description |
-|-------------|-------------|
-| `page` | Page number (default 1) |
-| `pageSize` | Items per page (default 50) |
-| `titlePrefix` | Filter by title prefix |
-| `artist` | Filter by artist |
-| `album` | Filter by album |
-| `genre` | Filter by genre |
-| `playlist` | Filter by playlist |
-| `releaseFrom` | Release date range start (YYYY-MM-DD) |
-| `releaseTo` | Release date range end (YYYY-MM-DD) |
-| `lastModifiedSince` | Only items modified after this ISO timestamp |
-
----
-
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AWS_REGION` | Yes | — | AWS region (e.g., `ap-south-1`) |
-| `AWS_ACCESS_KEY_ID` | Yes* | — | AWS access key (*use IAM roles on EC2) |
-| `AWS_SECRET_ACCESS_KEY` | Yes* | — | AWS secret key |
-| `AWS_BUCKET` | No | `Hikari-song` | S3 bucket name |
-| `AWS_USER_TABLE_NAME` | No | `User` | DynamoDB table for users |
-| `JWT_KEY` | Yes | — | HMAC-SHA256 signing key (min 32 chars) |
-| `JWT_ISSUER` | Yes | — | JWT issuer claim |
-| `JWT_AUDIENCE` | Yes | — | JWT audience claim |
-| `JWT_DURATION_HOURS` | No | `12` | JWT token lifetime in hours |
-| `ASPNETCORE_ENVIRONMENT` | No | `Production` | Set to `Development` for dev mode |
-
-> **Note:** Content-type DynamoDB table names are defined per-plugin (e.g., `AudioPlugin` hardcodes `"Audio"`). There is no global env var for content tables.
-
----
-
-## Content Plugins
-
-Each plugin defines metadata validation, storage path patterns, MIME handling, and query filters.
-
-### Audio
-
-- **Table:** `Audio` | **S3 prefix:** `audio/`
-- **Path pattern:** `audio/{artist}/{album}/{title}.{ext}`
-- **Required metadata:** `artist`, `album`, `genre`
-- **Optional metadata:** `audioFormat`, `releaseDate`, `composer`, `lyricist`, `trackNumber`, `albumArtist`, `bitrate`, `sampleRate`, `duration`, `isrc`, `publisher`, `copyright`, `producer`, `label`, `language`, `explicitContent`
-- **Supported formats:** MP3, WAV, FLAC, AIFF, AAC, OGG, M4A
-
-### Book
-
-- **Table:** `Book` | **S3 prefix:** `book/`
-- **Path pattern:** `book/{author}/{series}/{volume}/{title}.{ext}`
-- **Required metadata:** `author`, `bookFormat`
-- **Optional metadata:** `isbn`, `publisher`, `pages`, `language`, `genre`, `series`, `volume`, `publicationDate`, `synopsis`, `coverImageUrl`
-- **Supported formats:** EPUB, PDF, MOBI, AZW3, TXT, RTF, DOCX, HTML
-
-### Image
-
-- **Table:** `Image` | **S3 prefix:** `image/`
-- **Path pattern:** `image/{creator}/{collection}/{title}.{ext}`
-- **Required metadata:** `imageFormat`
-- **Optional metadata:** `creator`, `collection`, `copyright`, `keywords`, `cameraMake`, `cameraModel`, `lens`, `aperture`, `shutterSpeed`, `iso`, `focalLength`, `gpsLocation`, `width`, `height`, `colorSpace`
-- **Supported formats:** JPEG, PNG, WebP, GIF, SVG, TIFF, AVIF, HEIF, BMP, RAW
-
-### Manga
-
-- **Table:** `Manga` | **S3 prefix:** `manga/`
-- **Path pattern:** `manga/{author}/{series}/{volume}/{title}.{ext}`
-- **Required metadata:** `author`, `mangaFormat`
-- **Optional metadata:** `artist`, `genre`, `series`, `volume`, `chapters`, `volumes`, `status`, `demographic`, `publisher`, `language`, `releaseDate`, `synopsis`, `originalTitle`, `translationGroup`
-- **Supported formats:** CBZ, CBR, PDF, EPUB, ZIP
-
-### Video
-
-- **Table:** `Video` | **S3 prefix:** `video/`
-- **Path pattern:** `video/{type}/{series}/{season}/{episode}/{title}.{ext}`
-- **Required metadata:** `videoFormat`
-- **Optional metadata:** `type` (`animation` or `live`), `series`, `season`, `episode`, `codec`, `resolution`, `fps`, `bitrate`, `duration`, `director`, `producer`, `genre`, `releaseDate`, `language`, `subtitleLanguages`, `studio`, `rating`, `country`
-- **Supported formats:** MP4, MOV, AVI, MKV, WMV, WebM, FLV
-
-> Path segments default to `"general"` or `"Unknown"` when the corresponding metadata field is not provided.
+A real DynamoDB instance + an S3-compatible bucket are required for non-trivial use. For local development you can point at [LocalStack](https://www.localstack.cloud/) or [MinIO](https://min.io/) using `OBJECT_STORAGE_SERVICE_URL` + `OBJECT_STORAGE_FORCE_PATH_STYLE=true`.
 
 ---
 
 ## Adding a New Content Plugin
 
-To add support for a new content type:
-
-1. **Create a plugin class** in `Content/Plugins/`:
-
+1. Create `src/Content/Plugins/MyTypePlugin.cs` implementing `IContentPlugin`:
+   - `ContentType`, `DisplayName`, `TableName`, `StoragePrefix`, `AllowedMimeTypes`
+   - `BuildStoragePath(metadata)` → S3 key
+   - `ValidateMetadata(metadata)` → returns errors, if any
+   - `BuildFilter(query)` → DynamoDB filter expression for list/download
+2. Register it in [`Program.cs`](src/Program.cs):
    ```csharp
-   // Content/Plugins/PodcastPlugin.cs
-   namespace SyncServer.Content.Plugins;
-
-   public class PodcastPlugin : IContentPlugin
-   {
-       public string ContentType => "podcast";
-       public string DisplayName => "Podcast";
-       public string TableName => "Podcast";
-       public string StoragePrefix => "podcast/";
-
-       public string? ValidateMetadata(Dictionary<string, string>? metadata) { ... }
-       public string BuildStoragePath(Dictionary<string, string>? metadata) { ... }
-       // e.g. "podcast/{show}/{season}/{title}.{ext}"
-       public Func<ContentItem, bool> BuildFilter(IDictionary<string, string?> queryParams) { ... }
-   }
+   builder.Services.AddSingleton<IContentPlugin, MyTypePlugin>();
    ```
+3. Create a DynamoDB table named exactly `TableName`.
+4. Done — `/content/{your-content-type}/...` is live, including upload-init, upload-complete, items, download, edit, delete, and Swagger schemas.
 
-2. **Register it** in `Program.cs`:
-
-   ```csharp
-   builder.Services.AddSingleton<IContentPlugin, BookPlugin>();
-   ```
-
-3. **Create the DynamoDB table** with the name matching `TableName` (partition key: `Id`, type `String`).
-
-The generic `ContentController` and `ContentRepository` will automatically handle all CRUD operations for the new type via `/content/book/...` routes.
+The [Android client](../android-client/README.md) follows the same contract, so adding the matching `ContentPlugin` Kotlin class registers the new type end-to-end.
 
 ---
 
-## License
+## Notes
 
-Private — all rights reserved.
+- The `Dockerfile` and `aws-lambda-tools-defaults.json` are present but currently scaffolding — they need updating to match the post-refactor project layout before being used in production.
+- Refresh tokens are held in-process; for multi-instance deployments persist them (DynamoDB / Redis) before scaling out.

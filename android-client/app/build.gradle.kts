@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.mp4parser)
     implementation(libs.zip4j)
+    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

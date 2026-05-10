@@ -1,10 +1,15 @@
 package com.example.android_client.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,24 +48,36 @@ fun ContentHubScreen(
                     animatedVisibilityScope = animatedVisibilityScope
                 )
         ) {
-            if (showUpload) {
-                UploadScreen(
-                    plugin = plugin,
-                    apiClient = apiClient,
-                    serverDomain = serverDomain,
-                    onBack = { showUpload = false }
-                )
-            } else {
-                ContentListScreen(
-                    plugin = plugin,
-                    contentSyncService = syncService,
-                    apiClient = apiClient,
-                    serverDomain = serverDomain,
-                    syncPreferencesRepository = syncPreferencesRepository,
-                    onBack = onBack,
-                    onUpload = { showUpload = true }
-                )
-            }
-        }
-    }
+            AnimatedContent(
+                targetState = showUpload,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut() using SizeTransform(clip = false)
+                },
+                label = "list_upload_transition"
+            ) { isUpload ->
+                if (isUpload) {
+                    UploadScreen(
+                        plugin = plugin,
+                        apiClient = apiClient,
+                        serverDomain = serverDomain,
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        onBack = { showUpload = false }
+                    )
+                } else {
+                    ContentListScreen(
+                        plugin = plugin,
+                        contentSyncService = syncService,
+                        apiClient = apiClient,
+                        serverDomain = serverDomain,
+                        syncPreferencesRepository = syncPreferencesRepository,
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        onBack = onBack,
+                        onUpload = { showUpload = true }
+                    )
+                }
+            } // AnimatedContent
+        } // Column
+    } // with
 }

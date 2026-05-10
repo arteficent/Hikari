@@ -15,7 +15,7 @@ public class S3BlobStorageProvider : IBlobStorageProvider
     private readonly IAmazonS3 _s3;
     private readonly string _bucketName;
 
-    public S3BlobStorageProvider(IAmazonS3 s3, IOptions<CloudStorageSettings> settings)
+    public S3BlobStorageProvider(IAmazonS3 s3, IOptions<ObjectStorageSettings> settings)
     {
         _s3 = s3;
         _bucketName = settings.Value.BucketName;

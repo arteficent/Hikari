@@ -307,6 +307,14 @@ class AudioPlugin : ContentPlugin {
         return AudioMetadataExtractor.extract(context, uri, fileName)
     }
 
+    override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
+        val file = getLocalFile(context, item) ?: return null
+        return try {
+            val audioFile = org.jaudiotagger.audio.AudioFileIO.read(file)
+            audioFile.tag?.firstArtwork?.binaryData
+        } catch (_: Exception) { null }
+    }
+
     private fun sanitize(value: String): String =
         value.replace("/", "-").replace("\\", "-").replace(" ", "-")
 }

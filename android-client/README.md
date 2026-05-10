@@ -1,273 +1,195 @@
 # Hikari Android Client
 
-A self-hosted Android app for the Hikari content sync infrastructure. Syncs content (music, books, etc.) from a Hikari Sync Server to local device storage for offline consumption. The app uses a **plugin-based architecture** — each content type is handled by a dedicated plugin that defines storage, display, and filtering behavior.
+Jetpack Compose Android app for syncing your media library with a [Hikari Sync Server](../sync-server/README.md). Browse and upload audio, video, books, manga, and images; sync the ones you care about to the device for fully offline playback / reading.
 
-## Architecture Overview
+> Material 3 · animated celestial backdrop · shared-element transitions · embedded cover-art rendering — straight from the file's own metadata.
+
+---
+
+## Highlights
+
+- **Plugin-based content engine** mirroring the server — a single `ContentPlugin` interface drives uploads, list filtering, item cards, sync, and metadata extraction for every supported content type.
+- **Cover-art everywhere**, sourced *from the file itself* (no extra API needed):
+  - Audio → ID3v2 / Vorbis / FLAC artwork via JAudioTagger
+  - Video → embedded thumbnail via `MediaMetadataRetriever`
+  - Book / Manga → EPUB cover from the OPF manifest, CBZ first page via `zip4j`
+  - Image → the file *is* the cover
+- **Metadata-aware uploads** — pick a file, the plugin pre-fills the form (ID3 tags, EXIF, EPUB Dublin Core, video metadata), edit if you like, optionally embed a new cover image, then upload. Server-side keys are derived from those tags.
+- **Direct-to-storage transfers** via short-lived presigned URLs; the app talks REST + JWT to the server but the bytes flow straight to/from S3 / R2 / MinIO.
+- **Material 3 with three Hikari themes** (`Wisteria`, `GoldenLeaf`, `Sakura`) on top of an animated `CelestialSurface` (drifting stars, suns, and crescent moons) that runs on a single shared canvas behind everything.
+- **Shared-element transitions** stitched through the entire navigation graph — the auth card morphs across server-domain ↔ login, the picker card morphs into the hub, the upload FAB expands into the upload form, and so on.
+
+---
+
+## Tech Stack
+
+| Layer | Choice |
+|---|---|
+| Language | **Kotlin 2.0.21** |
+| UI | **Jetpack Compose** (BOM 2024.09.00, Material 3, `material-icons-extended`) |
+| Build | AGP 9.0.1, Java 11 source/target, core-library desugaring |
+| SDK | `minSdk 24`, `targetSdk 36`, `compileSdk 36` |
+| Networking | **Ktor 3.4.0** (CIO engine, ContentNegotiation, kotlinx.serialization JSON) |
+| Local storage | AndroidX **DataStore Preferences** 1.2.0 (auth, settings, sync index) |
+| Image loading | **Coil 3** (`io.coil-kt.coil3:coil-compose:3.4.0`) |
+| Media metadata | **JAudioTagger** 3.0.1, **AndroidX ExifInterface** 1.3.7, **mp4parser** 1.9.56, **zip4j** 2.11.6 |
+
+---
+
+## Project Layout
 
 ```
-┌──────────────────────────────────────────────┐
-│              Android App                      │
-│                                              │
-│  ┌──────────────────────────────────────┐    │
-│  │  ui/screens/                         │    │
-│  │  ContentHubScreen (tab per plugin)   │    │
-│  │  ContentListScreen (generic list)    │    │
-│  │  LoginScreen                         │    │
-│  └──────────────┬───────────────────────┘    │
-│                 │                             │
-│  ┌──────────────▼───────────────────────┐    │
-│  │  content/                            │    │
-│  │  ContentPlugin (interface)           │    │
-│  │  ContentPluginRegistry               │    │
-│  │  plugins/MusicPlugin                 │    │
-│  └──────────────┬───────────────────────┘    │
-│                 │                             │
-│  ┌──────────────▼───────────────────────┐    │
-│  │  core/                               │    │
-│  │  network/  ApiClient, DTOs           │    │
-│  │  storage/  AuthRepo, SettingsRepo    │    │
-│  │  sync/     ContentSyncService        │    │
-│  └──────────────┬───────────────────────┘    │
-└─────────────────┼────────────────────────────┘
-                  │ HTTPS / REST
-                  ▼
-          Hikari Sync Server
+android-client/app/src/main/java/com/example/android_client/
+├── MainActivity.kt              # Entry, DI, navigation, plugin registration,
+│                                #   inline ServerDomainScreen, SharedTransitionLayout
+├── content/
+│   ├── ContentPlugin.kt         # Plugin contract: storage, MIME, forms, filters,
+│   │                            #   item card, cover-art, metadata extraction
+│   ├── ContentPluginRegistry.kt
+│   └── plugins/
+│       ├── AudioPlugin.kt           VideoPlugin.kt
+│       ├── BookPlugin.kt            MangaPlugin.kt
+│       ├── ImagePlugin.kt
+│       ├── AudioMetadataExtractor.kt   AudioMetadataRewriter.kt
+│       ├── VideoMetadataRewriter.kt    FileMetadataStripper.kt
+├── core/
+│   ├── network/  ApiClient (Ktor) + DTOs
+│   ├── storage/  AuthRepository · SettingsRepository · SyncPreferencesRepository
+│   └── sync/     ContentSyncService  (generic, plugin-driven)
+└── ui/
+    ├── screens/  ContentPickerScreen · ContentHubScreen · ContentListScreen
+    │             ContentItemCard    · LoginScreen      · UploadScreen
+    └── theme/    Theme.kt (HikariTheme: Wisteria/GoldenLeaf/Sakura)
+                  CelestialSurface · PaperSurface · Color · Shape
 ```
 
-**Stack:** Kotlin 2.0.21, Jetpack Compose, Ktor CIO (HTTP), kotlinx.serialization, DataStore Preferences, Material 3
-
-### Security Features
-
-- **TLS bypass is debug-only:** The insecure `TrustManager` (for self-signed certs) is gated behind `BuildConfig.INSECURE_TLS`, which is `true` only in `debug` builds and `false` in `release`.
-- **No credentials logged:** Auth tokens, refresh tokens, and passwords are never written to logcat. Only non-sensitive operation names are logged.
-- **Server domain validation:** The domain entry screen validates input format before allowing navigation.
-- **Application backups disabled:** `android:allowBackup="false"` prevents token/data exfiltration on rooted devices.
-- **Secure protocol selection:** HTTP is only used for explicit localhost addresses (`localhost:`, `127.0.0.1:`, `10.0.2.2:`). All other domains default to HTTPS.
-
 ---
 
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Building](#building)
-- [Running](#running)
-- [Plugin System](#plugin-system)
-- [Adding a New Content Plugin](#adding-a-new-content-plugin)
-
----
-
-## Prerequisites
-
-- [Android Studio](https://developer.android.com/studio) (Ladybug or later)
-- JDK 17+
-- Android SDK 35 (target), min SDK 27
-- A running [Hikari Sync Server](../sync-server/README.md) instance
-
----
-
-## Project Structure
+## Screens & Navigation
 
 ```
-android-client/
-├── build.gradle.kts                 # Root build file
-├── settings.gradle.kts              # Project settings
-├── gradle/
-│   └── libs.versions.toml           # Version catalog
-├── app/
-│   ├── build.gradle.kts             # App module build file (BuildConfig: INSECURE_TLS)
-│   └── src/main/java/com/example/android_client/
-│       ├── MainActivity.kt          # Entry point, navigation, DI wiring
-│       ├── core/                    # Framework-level infrastructure
-│       │   ├── network/             # HTTP client & data transfer objects
-│       │   │   ├── ApiClient.kt     # Ktor-based REST client (auth + content APIs)
-│       │   │   ├── AuthDtos.kt      # LoginRequest, LoginResponse, RefreshTokenRequest
-│       │   │   └── ContentDtos.kt   # ContentItem, ContentDownloadResponse, PluginInfo
-│       │   ├── storage/             # Local persistence (DataStore)
-│       │   │   ├── AuthRepository.kt         # JWT token storage
-│       │   │   ├── SettingsRepository.kt     # Server domain storage
-│       │   │   └── SyncPreferencesRepository.kt  # Sync state & selection tracking (JSON-serialized)
-│       │   └── sync/                # Sync engine
-│       │       └── ContentSyncService.kt  # Generic sync logic (works with any plugin)
-│       ├── content/                 # Content plugin system
-│       │   ├── ContentPlugin.kt     # Plugin interface contract
-│       │   ├── ContentPluginRegistry.kt  # Plugin registry
-│       │   └── plugins/
-│       │       ├── AudioPlugin.kt   # Audio plugin (file-based, hikari/audio/)
-│       │       ├── BookPlugin.kt    # Book plugin (file-based, hikari/book/)
-│       │       ├── ImagePlugin.kt   # Image plugin (file-based, hikari/image/)
-│       │       ├── MangaPlugin.kt   # Manga plugin (file-based, hikari/manga/)
-│       │       └── VideoPlugin.kt   # Video plugin (file-based, hikari/video/)
-│       └── ui/                      # Compose UI
-│           ├── screens/
-│           │   ├── ContentHubScreen.kt   # Tab-based hub for all plugins
-│           │   ├── ContentListScreen.kt  # Generic paginated list with sync controls
-│           │   └── LoginScreen.kt        # Email/password login
-│           └── theme/
-│               ├── Color.kt
-│               ├── Theme.kt
-│               └── Type.kt
+ServerDomainScreen ─▶ LoginScreen ─▶ ContentPickerScreen
+                                            │
+                                            ▼
+                                   ContentHubScreen
+                                   ├── ContentListScreen   (browse + sync + delete)
+                                   └── UploadScreen        (pick → fill → upload)
 ```
 
-### Domain-based organization
+`MainActivity` resolves the active screen from saved state every recomposition:
 
-| Folder | Purpose |
-|--------|---------|
-| `core/network/` | HTTP client, request/response DTOs — shared across all features |
-| `core/storage/` | DataStore-backed repositories for auth tokens, settings, sync state |
-| `core/sync/` | Generic sync engine that delegates to content plugins |
-| `content/` | Plugin interface and registry |
-| `content/plugins/` | Concrete plugin implementations (Audio, Book, Image, Manga, Video) |
-| `ui/screens/` | All Compose screens |
-| `ui/theme/` | Material 3 theme definition |
+| Condition | Destination |
+|---|---|
+| `serverDomain == null` | `ServerDomainScreen` |
+| `token == null` (after attempted refresh) | `LoginScreen` |
+| `selectedPlugin == null` | `ContentPickerScreen` |
+| otherwise | `ContentHubScreen(selectedPlugin)` |
 
----
-
-## Configuration
-
-The app is configured at runtime through the UI:
-
-1. **Server domain** — entered on first launch, stored in DataStore
-2. **Credentials** — email/password login, JWT tokens stored in DataStore
-3. **Sync selection** — per-item sync toggle, persisted in DataStore
-
-No build-time configuration files are needed beyond standard Android SDK setup.
+The whole graph is wrapped in a single `SharedTransitionLayout`+`AnimatedContent` so visual elements (auth card, plugin card, upload FAB) animate seamlessly across destinations.
 
 ---
 
-## Building
+## Content Plugins
 
-### Debug build
+All plugins store synced files under `Environment.getExternalStorageDirectory()/Hikari/`, mirroring the server's S3 key layout:
+
+| Plugin | `contentType` | Local path under `/sdcard/Hikari/` | Cover-art source |
+|---|---|---|---|
+| **Audio** | `audio` | `audio/{artist}/{album}/{title}.{ext}` | JAudioTagger artwork frame |
+| **Video** | `video` | `video/{type}/{series}/{season}/{episode}/{title}.{ext}` | `MediaMetadataRetriever.embeddedPicture` |
+| **Book** | `book` | `book/{author}/{series}/{volume}/{title}.{ext}` | EPUB OPF → cover image entry |
+| **Manga** | `manga` | `manga/{author}/{series}/{volume}/{title}.{ext}` | CBZ first image (zip4j) / EPUB cover |
+| **Image** | `image` | `image/{creator}/{collection}/{title}.{ext}` | The image file itself |
+
+Each plugin implements:
+
+- `ContentType`, `DisplayName`, `LocalDirectory`, `RequiredPermissions`, `SupportedMimeTypes`, `UploadMimeFilter`
+- `SaveLocally / DeleteLocally / GetLocalItems / DisplayName(item) / MimeType(item)` — local FS operations
+- `FilterPanel(filters)` and `FilterableFields` — Compose UI + searchable field hints for the regex filter
+- `ItemCard(...)` — used as the row composable in `ContentListScreen`
+- `UploadFormFields / ValidateUploadFields / BuildUploadMetadata / ResolveUploadMimeType / SupportsCoverImage` — upload UX
+- `ExtractFileMetadata(uri, fileName)` — pre-fill upload form
+- `RewriteFileMetadata(uri, fileName, title, fields, coverImageUri)` — strip+rewrite tags before upload (audio embeds cover art into ID3/Vorbis)
+- `ExtractCoverArt(item) → ByteArray?` — used by `ContentItemCard` (rendered with Coil)
+- `GetLocalFile(item) → File?` — resolve the synced file path
+
+---
+
+## Sync Engine
+
+[`ContentSyncService`](app/src/main/java/com/example/android_client/core/sync/ContentSyncService.kt) is generic — one instance per (plugin, server). It:
+
+1. Calls `GET /content/{type}/items?lastModifiedSince=…` for an incremental delta.
+2. For each item the user has marked for sync, calls `GET /content/{type}/download/{id}` to receive a presigned URL.
+3. Streams the binary directly from object storage and hands the bytes to `plugin.saveLocally(...)`.
+4. Maintains a `Map<itemId, displayName>` in `SyncPreferencesRepository`; deletions on the server, or unticked items locally, trigger a local file removal.
+5. `deleteItems(...)` calls `DELETE /content/{type}/delete` and then prunes the local copies.
+
+The end result: every synced file lives at `/sdcard/Hikari/{contentType}/{...metadata path...}/{title}.{ext}` — the **same hierarchy** as the server's S3 key, so any other media app (music players, e-readers, image gallery) can pick the files up natively.
+
+---
+
+## Theming
+
+`AndroidclientTheme` selects between three Material 3 colour schemes via the `HikariTheme` enum (persisted in `SettingsRepository.themeName`):
+
+| Theme | Vibe |
+|---|---|
+| **Wisteria** *(default)* | Dusk-purple / lavender |
+| **GoldenLeaf** | Warm gold / amber |
+| **Sakura** | Cherry-blossom pink |
+
+Light/dark variants follow `isSystemInDarkTheme()`. `CelestialSurface` paints an animated canvas of stars, sparkles, suns, and moons that drifts across the screen behind a transparent `Scaffold` — the background persists across every screen transition.
+
+---
+
+## Permissions
+
+Declared in [AndroidManifest.xml](app/src/main/AndroidManifest.xml):
+
+- `INTERNET` — talk to the sync server
+- `READ_MEDIA_AUDIO / VIDEO / IMAGES` (API 33+) — pick files for upload
+- `READ_EXTERNAL_STORAGE` (≤ API 32), `WRITE_EXTERNAL_STORAGE` (≤ API 29)
+- `MANAGE_EXTERNAL_STORAGE` — required to read/write `/sdcard/Hikari/...` so synced files are accessible to other apps
+
+The app sets `requestLegacyExternalStorage="true"` and ships a `network_security_config` that conditionally trusts self-signed certificates only in debug builds (gated by `BuildConfig.INSECURE_TLS`).
+
+---
+
+## Building & Installing
+
+Requires JDK 17+ and the Android SDK (`compileSdk 36`).
 
 ```bash
 cd android-client
-./gradlew assembleDebug
-```
-
-### Release build
-
-```bash
-./gradlew assembleRelease
-```
-
-### Compile check only (fast)
-
-```bash
-./gradlew compileDebugKotlin
-```
-
-### On Windows
-
-Use `gradlew.bat` instead of `./gradlew`.
-
----
-
-## Running
-
-### Android Studio
-
-1. Open the `android-client/` folder in Android Studio
-2. Wait for Gradle sync to complete
-3. Select a device/emulator
-4. Click **Run** (Shift+F10)
-
-### Command line
-
-```bash
-./gradlew installDebug
+./gradlew assembleDebug          # APK at app/build/outputs/apk/debug/
+./gradlew installDebug           # build and install on a connected device
 adb shell am start -n com.example.android_client/.MainActivity
 ```
 
-### First launch flow
+Windows: `gradlew.bat`. Fast feedback loop: `./gradlew compileDebugKotlin`.
 
-1. Enter the Hikari Sync Server domain (e.g., `sync.yourdomain.com` — HTTPS is used by default)
-2. Login with email and password
-3. The Content Hub screen appears with tabs for each registered plugin
-4. Browse content, toggle sync checkboxes, and tap **Sync** to download
+`local.properties` should point at your Android SDK:
 
----
-
-## Plugin System
-
-The app uses a `ContentPlugin` interface to support multiple content types. Each plugin defines:
-
-| Method / Property | Purpose |
-|-------------------|---------|
-| `contentType` | Unique key matching the server plugin (e.g., `"music"`) |
-| `displayName` | Human-readable label for UI tabs |
-| `localDirectory` | Where files are stored on device |
-| `requiredPermissions` | Android permissions needed (varies by SDK version) |
-| `supportedMimeTypes` | MIME types this plugin handles |
-| `saveLocally()` | Write downloaded binary to device storage |
-| `deleteLocally()` | Remove a local file by display name |
-| `getLocalItems()` | List locally stored files |
-| `displayName(item)` | Derive a filename from a `ContentItem` |
-| `mimeType(item)` | Resolve MIME type for a `ContentItem` |
-| `FilterPanel()` | Composable for plugin-specific search filters |
-| `ItemCard()` | Composable for rendering a single item in the list |
-
-### Currently registered plugins
-
-All plugins store files under `/storage/emulated/0/hikari/` with a hierarchical directory structure that mirrors the S3 object path on the server.
-
-| Plugin | Content Type | Local Storage Path Pattern | Permissions |
-|--------|-------------|---------------------------|-------------|
-| `AudioPlugin` | `audio` | `hikari/audio/{artist}/{album}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
-| `BookPlugin` | `book` | `hikari/book/{author}/{series}/{volume}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
-| `ImagePlugin` | `image` | `hikari/image/{creator}/{collection}/{title}.{ext}` | `READ_MEDIA_IMAGES` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
-| `MangaPlugin` | `manga` | `hikari/manga/{author}/{series}/{volume}/{title}.{ext}` | `READ_MEDIA_AUDIO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
-| `VideoPlugin` | `video` | `hikari/video/{type}/{series}/{season}/{episode}/{title}.{ext}` | `READ_MEDIA_VIDEO` (API 33+), `READ_EXTERNAL_STORAGE` (API 29+), `WRITE_EXTERNAL_STORAGE` (older) |
-
-> Missing metadata segments default to `"general"` or `"Unknown"` in the directory structure.
-
-### Upload behavior
-
-When uploading content from the Android client, the file is renamed according to the `{title}.{ext}` provided by the user in the metadata form. The original filename from the device is not used for storage — the server builds the S3 key from metadata, and the local copy after sync follows the same pattern.
+```properties
+sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
+```
 
 ---
 
-## Adding a New Content Plugin
+## First-Run Flow
 
-1. **Create the plugin** in `content/plugins/`:
-
-   ```kotlin
-   // content/plugins/PodcastPlugin.kt
-   package com.example.android_client.content.plugins
-
-   class PodcastPlugin : ContentPlugin {
-       override val contentType = "podcast"
-       override val displayName = "Podcast"
-       override val localDirectory = "hikari/podcast/"
-       override val requiredPermissions = listOf(...)
-       override val supportedMimeTypes = setOf("audio/mpeg", "audio/ogg")
-
-       override suspend fun saveLocally(context: Context, item: ContentItem, binary: ByteArray) { ... }
-       override fun deleteLocally(context: Context, displayName: String): Boolean { ... }
-       override fun getLocalItems(context: Context): List<String> { ... }
-       override fun displayName(item: ContentItem): String { ... }
-       override fun mimeType(item: ContentItem): String { ... }
-
-       @Composable
-       override fun FilterPanel(filters: MutableMap<String, String>) { ... }
-
-       @Composable
-       override fun ItemCard(item: ContentItem, isSelected: Boolean, onToggle: () -> Unit) { ... }
-   }
-   ```
-
-2. **Register it** in `MainActivity.onCreate()`:
-
-   ```kotlin
-   pluginRegistry.register(PodcastPlugin())
-   ```
-
-3. **Ensure the server** has a matching plugin registered for the same `contentType`.
-
-The `ContentSyncService`, `ContentHubScreen`, and `ContentListScreen` will automatically pick up the new plugin — no other code changes needed.
+1. **Connect to Server** — enter the sync server's domain (e.g. `hikari.example.com:59709`).
+2. **Login** — email + password. JWT + refresh token are stored in DataStore.
+3. **Pick a content type** — opens the corresponding hub.
+4. **Hub** — browse/filter the server library, tap items to mark for sync, hit **Sync** to download. Tap the floating cloud-up button to open the upload flow.
+5. **Upload** — pick a file, the plugin pre-fills the metadata form from the file's own tags. Optionally embed a new cover image (audio). Submit; the client does `upload-init` → direct PUT → `upload-complete`.
 
 ---
 
-## License
+## Adding a New Plugin
 
-Private — all rights reserved.
+1. Implement `com.example.android_client.content.ContentPlugin` — see [`AudioPlugin.kt`](app/src/main/java/com/example/android_client/content/plugins/AudioPlugin.kt) as the reference.
+2. Register it in [`MainActivity.onCreate()`](app/src/main/java/com/example/android_client/MainActivity.kt) alongside the existing plugins.
+3. Make sure the matching `IContentPlugin` exists on the [server](../sync-server/README.md#adding-a-new-content-plugin) with the same `contentType` string.
+4. The new content type now appears in `ContentPickerScreen` automatically.

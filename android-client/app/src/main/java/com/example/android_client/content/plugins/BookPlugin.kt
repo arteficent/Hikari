@@ -316,6 +316,67 @@ class BookPlugin : ContentPlugin {
         }
     }
 
+    override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
+        val file = getLocalFile(context, item) ?: return null
+        return try { extractEpubCoverImage(file) } catch (_: Exception) { null }
+    }
+
+    private fun extractEpubCoverImage(file: java.io.File): ByteArray? {
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var opfPath: String? = null
+            var entry = zis.nextEntry
+            // First pass: find OPF path from container.xml
+            while (entry != null) {
+                if (entry.name == "META-INF/container.xml") {
+                    val xml = zis.readBytes().toString(Charsets.UTF_8)
+                    val match = Regex("""full-path="([^"]+\.opf)"""").find(xml)
+                    opfPath = match?.groupValues?.get(1)
+                    break
+                }
+                entry = zis.nextEntry
+            }
+        }
+        if (file.extension.lowercase() != "epub") return null
+        val opfDir: String
+        val coverHref: String
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var opfContent: String? = null
+            var opfPathFull: String? = null
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name.endsWith(".opf")) {
+                    opfPathFull = entry.name
+                    opfContent = zis.readBytes().toString(Charsets.UTF_8)
+                    break
+                }
+                entry = zis.nextEntry
+            }
+            if (opfContent == null) return null
+            opfDir = opfPathFull?.substringBeforeLast('/', "")?.let { if (it.isNotEmpty()) "$it/" else "" } ?: ""
+            // Find cover image item in manifest
+            val coverId = Regex("""<meta[^>]*name="cover"[^>]*content="([^"]+)"""").find(opfContent)
+                ?.groupValues?.get(1)
+            val coverItem = if (coverId != null) {
+                Regex("""<item[^>]*id="${Regex.escape(coverId)}"[^>]*href="([^"]+)"""").find(opfContent)
+            } else {
+                Regex("""<item[^>]*media-type="image/[^"]+"[^>]*href="([^"]+)"""").find(opfContent)
+            }
+            coverHref = coverItem?.groupValues?.get(1) ?: return null
+        }
+        // Second pass: extract the cover image bytes
+        val coverPath = opfDir + coverHref
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == coverPath || entry.name.endsWith(coverHref)) {
+                    return zis.readBytes()
+                }
+                entry = zis.nextEntry
+            }
+        }
+        return null
+    }
+
     override fun extractFileMetadata(context: Context, uri: Uri, fileName: String): Map<String, String> {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         val result = linkedMapOf<String, String>()

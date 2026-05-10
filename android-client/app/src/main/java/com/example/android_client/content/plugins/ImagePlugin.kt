@@ -267,6 +267,11 @@ class ImagePlugin : ContentPlugin {
         return FileMetadataStripper.stripImage(context, uri, fileName, buildMap { putAll(fields); put("title", title) })
     }
 
+    override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
+        val file = getLocalFile(context, item) ?: return null
+        return try { file.readBytes() } catch (_: Exception) { null }
+    }
+
     override fun extractFileMetadata(context: Context, uri: Uri, fileName: String): Map<String, String> {
         val result = linkedMapOf<String, String>()
 

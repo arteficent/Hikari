@@ -10,6 +10,9 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -66,6 +69,7 @@ import kotlinx.coroutines.launch
  * The plugin provides FilterPanel and ItemCard Composables,
  * while this screen handles pagination, sync toggle, and sync execution.
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ContentListScreen(
     plugin: ContentPlugin,
@@ -73,6 +77,8 @@ fun ContentListScreen(
     apiClient: ApiClient,
     serverDomain: String,
     syncPreferencesRepository: SyncPreferencesRepository,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onBack: () -> Unit,
     onUpload: () -> Unit
 ) {
@@ -344,8 +350,9 @@ fun ContentListScreen(
                 items(items) { item ->
                     val isSync = syncIds.contains(item.id)
                     val isSyncedLocally = localSyncedIds.contains(item.id)
-                    plugin.ItemCard(
+                    ContentItemCard(
                         item = item,
+                        plugin = plugin,
                         isSelected = isSync,
                         onToggle = {
                             scope.launch {
@@ -432,20 +439,26 @@ fun ContentListScreen(
     }
 
     // ── Floating upload button ──
-    FloatingActionButton(
-        onClick = onUpload,
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = 24.dp),
-        shape = CircleShape,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
-    ) {
-        Icon(
-            Icons.Filled.CloudUpload,
-            contentDescription = "Upload",
-            modifier = Modifier.size(28.dp)
-        )
+    with(sharedTransitionScope) {
+        FloatingActionButton(
+            onClick = onUpload,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "upload_fab_${plugin.contentType}"),
+                    animatedVisibilityScope = animatedVisibilityScope
+                ),
+            shape = CircleShape,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(
+                Icons.Filled.CloudUpload,
+                contentDescription = "Upload",
+                modifier = Modifier.size(28.dp)
+            )
+        }
     }
     } // Box
 }

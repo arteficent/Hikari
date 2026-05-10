@@ -321,6 +321,17 @@ class VideoPlugin : ContentPlugin {
         return FileMetadataStripper.stripVideo(context, uri, fileName, buildMap { putAll(fields); put("title", title) })
     }
 
+    override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
+        val file = getLocalFile(context, item) ?: return null
+        return try {
+            val retriever = android.media.MediaMetadataRetriever()
+            retriever.setDataSource(file.absolutePath)
+            val art = retriever.embeddedPicture
+            retriever.release()
+            art
+        } catch (_: Exception) { null }
+    }
+
     override fun extractFileMetadata(context: Context, uri: Uri, fileName: String): Map<String, String> {
         val result = linkedMapOf<String, String>()
 

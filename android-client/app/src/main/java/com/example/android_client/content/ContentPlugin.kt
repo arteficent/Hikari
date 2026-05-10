@@ -2,8 +2,10 @@ package com.example.android_client.content
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import androidx.compose.runtime.Composable
 import com.example.android_client.core.network.ContentItem
+import java.io.File
 
 /**
  * Contract for a client-side content plugin.
@@ -89,5 +91,19 @@ interface ContentPlugin {
     ): ByteArray {
         return context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("Unable to read file")
+    }
+
+    /**
+     * Extract embedded cover art / album art from a locally synced file.
+     * Returns the image bytes, or null if unavailable.
+     */
+    fun extractCoverArt(context: Context, item: ContentItem): ByteArray? = null
+
+    /** Resolve the local file for a synced content item, or null if not present. */
+    @Suppress("DEPRECATION")
+    fun getLocalFile(context: Context, item: ContentItem): File? {
+        val base = File(Environment.getExternalStorageDirectory(), "Hikari")
+        val file = File(base, displayName(item))
+        return if (file.exists()) file else null
     }
 }
