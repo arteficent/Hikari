@@ -22,7 +22,10 @@ namespace SyncServer.Identity.Controllers
             _currentUserService = currentUserService;
         }
 
-        [AllowAnonymous]
+        // User creation is an administrative action. The first admin is provisioned via
+        // the bootstrap-admin login flow (see AuthController); after that, only an
+        // authenticated Admin can create additional users.
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateUserRequest req)
         {

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -29,6 +30,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,8 +41,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.network.ApiClient
 import com.example.android_client.core.network.ContentItem
@@ -93,6 +98,10 @@ fun UploadScreen(
     var coverImageUri by remember { mutableStateOf<Uri?>(null) }
     var coverImageName by remember { mutableStateOf<String?>(null) }
 
+    // Existing embedded artwork extracted from the picked file (read-only preview).
+    // null until a file is picked or if the file has no embedded artwork.
+    var existingCoverBytes by remember { mutableStateOf<ByteArray?>(null) }
+
     // Upload state
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
@@ -125,6 +134,9 @@ fun UploadScreen(
         uploadError = null
         uploadSuccess = null
 
+        // Reset any previously-loaded preview when a new file is picked
+        existingCoverBytes = null
+
         // Auto-fill metadata from the selected file
         if (uri != null && selectedFileName != null) {
             scope.launch {
@@ -142,6 +154,17 @@ fun UploadScreen(
                     }
                 } catch (_: Exception) {
                     // Extraction is best-effort; ignore failures
+                }
+
+                // Also extract embedded cover art for preview (only if plugin supports it)
+                if (plugin.supportsCoverImage) {
+                    try {
+                        existingCoverBytes = withContext(Dispatchers.IO) {
+                            plugin.extractCoverArtFromFile(context, uri, selectedFileName!!)
+                        }
+                    } catch (_: Exception) {
+                        // Best-effort
+                    }
                 }
             }
         }
@@ -237,19 +260,75 @@ fun UploadScreen(
                 // ── Cover image picker (only for plugins that support it) ──
                 if (plugin.supportsCoverImage) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { coverImagePickerLauncher.launch("image/*") }) {
-                            Text("Pick ${plugin.coverImageLabel}")
-                        }
-                        Text(
-                            text = coverImageName ?: "No image selected",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(start = 12.dp)
-                        )
+
+                    // Show what will be embedded:
+                    //   • newly picked cover (overrides existing)  →  highest priority
+                    //   • else: existing embedded artwork from the picked file
+                    //   • else: nothing
+                    val previewModel: Any? = coverImageUri ?: existingCoverBytes
+                    val previewLabel = when {
+                        coverImageUri != null -> "New ${plugin.coverImageLabel.lowercase()} (will replace existing)"
+                        existingCoverBytes != null -> "Existing ${plugin.coverImageLabel.lowercase()} (will be kept)"
+                        selectedUri != null -> "No ${plugin.coverImageLabel.lowercase()} embedded in this file"
+                        else -> null
                     }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(72.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            if (previewModel != null) {
+                                AsyncImage(
+                                    model = previewModel,
+                                    contentDescription = plugin.coverImageLabel,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(
+                                        text = "—",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(onClick = { coverImagePickerLauncher.launch("image/*") }) {
+                                    Text(if (coverImageUri == null) "Replace ${plugin.coverImageLabel}" else "Change")
+                                }
+                                if (coverImageUri != null) {
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    OutlinedButton(onClick = {
+                                        coverImageUri = null
+                                        coverImageName = null
+                                    }) { Text("Undo") }
+                                }
+                            }
+                            previewLabel?.let {
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
                     if (!updateMetadataInFile && coverImageUri != null) {
                         Text(
-                            text = "Note: Enable \"Update metadata in file\" to embed ${plugin.coverImageLabel.lowercase()} in the file.",
+                            text = "Note: Enable \"Update metadata in file\" to embed the new ${plugin.coverImageLabel.lowercase()} in the file.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(top = 4.dp)
@@ -382,6 +461,7 @@ fun UploadScreen(
                                             updateMetadataInFile = false
                                             coverImageUri = null
                                             coverImageName = null
+                                            existingCoverBytes = null
                                         } catch (e: ResponseException) {
                                             uploadError = "Upload failed (${e.response.status.value}): ${e.message}"
                                         } catch (e: Exception) {

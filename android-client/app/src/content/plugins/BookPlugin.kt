@@ -35,21 +35,20 @@ import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
-import net.lingala.zip4j.ZipFile
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-class MangaPlugin : ContentPlugin {
+class BookPlugin : ContentPlugin {
 
-    override val contentType = "manga"
-    override val displayName = "Manga"
-    override val localDirectory = "hikari/manga/"
+    override val contentType = "book"
+    override val displayName = "Book"
+    override val localDirectory = "hikari/book/"
 
     override val requiredPermissions: List<String>
         get() = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
-                listOf(Manifest.permission.READ_MEDIA_AUDIO) // no dedicated doc permission; handled by SAF
+                listOf(Manifest.permission.READ_MEDIA_AUDIO) // no dedicated book permission; audio is placeholder, storage access handled by SAF
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
                 listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
             else ->
@@ -57,19 +56,21 @@ class MangaPlugin : ContentPlugin {
         }
 
     override val supportedMimeTypes = setOf(
-        "application/x-cbz", "application/x-cbr", "application/pdf",
-        "application/epub+zip", "application/zip", "application/octet-stream"
+        "application/epub+zip", "application/pdf", "application/x-mobipocket-ebook",
+        "application/vnd.amazon.ebook", "text/plain", "application/rtf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/html", "application/octet-stream"
     )
 
     companion object {
-        private const val TAG = "MangaPlugin"
+        private const val TAG = "BookPlugin"
         val FORMAT_OPTIONS = listOf(
-            "cbz" to "CBZ", "cbr" to "CBR", "pdf" to "PDF",
-            "epub" to "EPUB", "zip" to "ZIP"
+            "epub" to "EPUB", "pdf" to "PDF", "mobi" to "MOBI", "azw3" to "AZW3",
+            "txt" to "TXT", "rtf" to "RTF", "docx" to "DOCX", "html" to "HTML"
         )
     }
 
-    // ── Local storage (file-based, hikari/manga/) ──────────────
+    // ── Local storage (file-based, hikari/book/) ───────────────
 
     @Suppress("DEPRECATION")
     private fun baseDir(context: Context): File {
@@ -85,7 +86,7 @@ class MangaPlugin : ContentPlugin {
         val volume = sanitize(m["volume"] ?: "general")
         val title = sanitize(item.title.ifBlank { "Unknown" })
         val ext = extensionForItem(item)
-        return "manga/$author/$series/$volume/$title.$ext"
+        return "book/$author/$series/$volume/$title.$ext"
     }
 
     override suspend fun saveLocally(context: Context, item: ContentItem, binary: ByteArray) {
@@ -104,8 +105,9 @@ class MangaPlugin : ContentPlugin {
             Log.d(TAG, "deleteLocally: ${file.absolutePath}, exists=${file.exists()}")
             val deleted = file.delete()
             Log.d(TAG, "deleteLocally: deleted=$deleted")
+            // Clean up empty parent directories
             var parent = file.parentFile
-            val base = File(baseDir(context), "manga")
+            val base = File(baseDir(context), "book")
             while (parent != null && parent != base && parent.listFiles()?.isEmpty() == true) {
                 parent.delete()
                 parent = parent.parentFile
@@ -117,12 +119,12 @@ class MangaPlugin : ContentPlugin {
     override fun getLocalItems(context: Context): List<String> {
         return try {
             val base = baseDir(context)
-            val mangaDir = File(base, "manga")
-            if (!mangaDir.exists()) return emptyList()
-            mangaDir.walkTopDown().filter { it.isFile }.map {
+            val bookDir = File(base, "book")
+            if (!bookDir.exists()) return emptyList()
+            bookDir.walkTopDown().filter { it.isFile }.map {
                 it.relativeTo(base).path.replace("\\", "/")
             }.toList()
-        } catch (e: Exception) { Log.e(TAG, "Error listing manga", e); emptyList() }
+        } catch (e: Exception) { Log.e(TAG, "Error listing books", e); emptyList() }
     }
 
     // ── Naming / MIME ────────────────────────────────────────
@@ -132,21 +134,24 @@ class MangaPlugin : ContentPlugin {
     }
 
     override fun mimeType(item: ContentItem): String {
-        val fmt = item.metadata?.get("mangaFormat") ?: item.format ?: return "application/octet-stream"
+        val fmt = item.metadata?.get("bookFormat") ?: item.format ?: return "application/octet-stream"
         return mimeForFormat(fmt)
     }
 
     private fun extensionForItem(item: ContentItem): String {
-        val fmt = item.metadata?.get("mangaFormat") ?: item.format ?: return "bin"
+        val fmt = item.metadata?.get("bookFormat") ?: item.format ?: return "bin"
         return FORMAT_OPTIONS.firstOrNull { it.first == fmt.lowercase() }?.first ?: "bin"
     }
 
     private fun mimeForFormat(fmt: String): String = when (fmt.lowercase()) {
-        "cbz" -> "application/x-cbz"
-        "cbr" -> "application/x-cbr"
-        "pdf" -> "application/pdf"
         "epub" -> "application/epub+zip"
-        "zip" -> "application/zip"
+        "pdf" -> "application/pdf"
+        "mobi" -> "application/x-mobipocket-ebook"
+        "azw3" -> "application/vnd.amazon.ebook"
+        "txt" -> "text/plain"
+        "rtf" -> "application/rtf"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "html" -> "text/html"
         else -> if (fmt.contains('/')) fmt else "application/octet-stream"
     }
 
@@ -160,24 +165,14 @@ class MangaPlugin : ContentPlugin {
                 label = { Text("Author") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             OutlinedTextField(
-                value = filters["artist"] ?: "", onValueChange = { filters["artist"] = it },
-                label = { Text("Artist") }, modifier = Modifier.weight(1f).padding(start = 8.dp)
-            )
-        }
-        Row {
-            OutlinedTextField(
                 value = filters["genre"] ?: "", onValueChange = { filters["genre"] = it },
-                label = { Text("Genre") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
-            )
-            OutlinedTextField(
-                value = filters["status"] ?: "", onValueChange = { filters["status"] = it },
-                label = { Text("Status (ongoing/completed)") }, modifier = Modifier.weight(1f).padding(start = 8.dp)
+                label = { Text("Genre") }, modifier = Modifier.weight(1f).padding(start = 8.dp)
             )
         }
         Row {
             OutlinedTextField(
-                value = filters["demographic"] ?: "", onValueChange = { filters["demographic"] = it },
-                label = { Text("Demographic") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
+                value = filters["publisher"] ?: "", onValueChange = { filters["publisher"] = it },
+                label = { Text("Publisher") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             OutlinedTextField(
                 value = filters["language"] ?: "", onValueChange = { filters["language"] = it },
@@ -186,11 +181,21 @@ class MangaPlugin : ContentPlugin {
         }
         Row {
             OutlinedTextField(
-                value = filters["releaseFrom"] ?: "", onValueChange = { filters["releaseFrom"] = it },
+                value = filters["series"] ?: "", onValueChange = { filters["series"] = it },
+                label = { Text("Series") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
+            )
+            OutlinedTextField(
+                value = filters["isbn"] ?: "", onValueChange = { filters["isbn"] = it },
+                label = { Text("ISBN") }, modifier = Modifier.weight(1f).padding(start = 8.dp)
+            )
+        }
+        Row {
+            OutlinedTextField(
+                value = filters["publicationFrom"] ?: "", onValueChange = { filters["publicationFrom"] = it },
                 label = { Text("From (YYYY-MM-DD)") }, modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             OutlinedTextField(
-                value = filters["releaseTo"] ?: "", onValueChange = { filters["releaseTo"] = it },
+                value = filters["publicationTo"] ?: "", onValueChange = { filters["publicationTo"] = it },
                 label = { Text("To (YYYY-MM-DD)") }, modifier = Modifier.weight(1f).padding(start = 8.dp)
             )
         }
@@ -209,7 +214,7 @@ class MangaPlugin : ContentPlugin {
         PaperSurface(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             ListItem(
                 headlineContent = { Text(item.title) },
-                supportingContent = { Text("${meta["author"] ?: ""} \u00b7 ${meta["genre"] ?: ""} \u00b7 ${meta["status"] ?: ""}") },
+                supportingContent = { Text("${meta["author"] ?: ""} \u00b7 ${meta["genre"] ?: ""} \u00b7 ${meta["bookFormat"]?.uppercase() ?: ""}") },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (onSyncToggle != null) {
@@ -242,11 +247,11 @@ class MangaPlugin : ContentPlugin {
 
     override val filterableFields = mapOf(
         "author" to "Author",
-        "artist" to "Artist",
         "genre" to "Genre",
-        "status" to "Status (ongoing/completed)",
-        "demographic" to "Demographic",
-        "language" to "Language"
+        "publisher" to "Publisher",
+        "language" to "Language",
+        "series" to "Series",
+        "isbn" to "ISBN"
     )
 
     override val uploadMimeFilter = "*/*"
@@ -258,33 +263,31 @@ class MangaPlugin : ContentPlugin {
 
         // Format dropdown
         var expanded by remember { mutableStateOf(false) }
-        val current = fields["mangaFormat"] ?: "cbz"
-        val label = FORMAT_OPTIONS.firstOrNull { it.first == current }?.second ?: "CBZ"
+        val current = fields["bookFormat"] ?: "epub"
+        val label = FORMAT_OPTIONS.firstOrNull { it.first == current }?.second ?: "EPUB"
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(value = label, onValueChange = {}, readOnly = true, label = { Text("Format *") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable))
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                FORMAT_OPTIONS.forEach { (v, l) -> DropdownMenuItem(text = { Text(l) }, onClick = { fields["mangaFormat"] = v; expanded = false }) }
+                FORMAT_OPTIONS.forEach { (v, l) -> DropdownMenuItem(text = { Text(l) }, onClick = { fields["bookFormat"] = v; expanded = false }) }
             }
         }
 
-        OutlinedTextField(value = fields["artist"] ?: "", onValueChange = { fields["artist"] = it }, label = { Text("Artist / Illustrator") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fields["isbn"] ?: "", onValueChange = { fields["isbn"] = it }, label = { Text("ISBN") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = fields["genre"] ?: "", onValueChange = { fields["genre"] = it }, label = { Text("Genre") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fields["publisher"] ?: "", onValueChange = { fields["publisher"] = it }, label = { Text("Publisher") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fields["pages"] ?: "", onValueChange = { fields["pages"] = it }, label = { Text("Pages") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fields["language"] ?: "", onValueChange = { fields["language"] = it }, label = { Text("Language") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = fields["series"] ?: "", onValueChange = { fields["series"] = it }, label = { Text("Series") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = fields["volume"] ?: "", onValueChange = { fields["volume"] = it }, label = { Text("Volume") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["chapters"] ?: "", onValueChange = { fields["chapters"] = it }, label = { Text("Chapters") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["volumes"] ?: "", onValueChange = { fields["volumes"] = it }, label = { Text("Volumes") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["status"] ?: "", onValueChange = { fields["status"] = it }, label = { Text("Status (ongoing / completed / hiatus)") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["demographic"] ?: "", onValueChange = { fields["demographic"] = it }, label = { Text("Demographic (shounen / seinen / shoujo / josei)") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["language"] ?: "", onValueChange = { fields["language"] = it }, label = { Text("Language") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = fields["releaseDate"] ?: "", onValueChange = { fields["releaseDate"] = it }, label = { Text("Release Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fields["publicationDate"] ?: "", onValueChange = { fields["publicationDate"] = it }, label = { Text("Publication Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
     }
 
     override fun validateUploadFields(fields: Map<String, String>): String? {
         if (fields["author"].isNullOrBlank()) return "Author is required."
-        val fmt = fields["mangaFormat"] ?: "cbz"
-        if (fmt !in FORMAT_OPTIONS.map { it.first }) return "Invalid manga format."
+        val fmt = fields["bookFormat"] ?: "epub"
+        if (fmt !in FORMAT_OPTIONS.map { it.first }) return "Invalid book format."
         return null
     }
 
@@ -292,54 +295,80 @@ class MangaPlugin : ContentPlugin {
         val meta = linkedMapOf(
             "title" to title,
             "author" to (fields["author"]?.trim() ?: ""),
-            "mangaFormat" to (fields["mangaFormat"] ?: "cbz")
+            "bookFormat" to (fields["bookFormat"] ?: "epub")
         )
-        listOf("artist", "genre", "series", "volume", "chapters", "volumes", "status", "demographic", "language", "releaseDate")
+        listOf("isbn", "genre", "publisher", "pages", "language", "series", "volume", "publicationDate")
             .forEach { k -> fields[k]?.takeIf { it.isNotBlank() }?.let { meta[k] = it.trim() } }
         return meta
     }
 
     override fun resolveUploadMimeType(fields: Map<String, String>): String {
-        return mimeForFormat(fields["mangaFormat"] ?: "cbz")
+        return mimeForFormat(fields["bookFormat"] ?: "epub")
     }
 
     override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): ByteArray {
         val allFields = buildMap { putAll(fields); put("title", title) }
         val ext = fileName.substringAfterLast('.', "").lowercase()
-        return when (ext) {
-            "epub" -> FileMetadataStripper.stripEpub(context, uri, fileName, allFields)
-            "cbz" -> FileMetadataStripper.stripCbz(context, uri, fileName, allFields)
-            else -> FileMetadataStripper.stripGeneric(context, uri)
+        return if (ext == "epub") {
+            FileMetadataStripper.stripEpub(context, uri, fileName, allFields)
+        } else {
+            FileMetadataStripper.stripGeneric(context, uri)
         }
     }
 
     override fun extractCoverArt(context: Context, item: ContentItem): ByteArray? {
         val file = getLocalFile(context, item) ?: return null
-        return try {
-            when (file.extension.lowercase()) {
-                "cbz" -> extractCbzCover(file)
-                "epub" -> extractEpubCoverFromManga(file)
-                else -> null
+        return try { extractEpubCoverImage(file) } catch (_: Exception) { null }
+    }
+
+    private fun extractEpubCoverImage(file: java.io.File): ByteArray? {
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var opfPath: String? = null
+            var entry = zis.nextEntry
+            // First pass: find OPF path from container.xml
+            while (entry != null) {
+                if (entry.name == "META-INF/container.xml") {
+                    val xml = zis.readBytes().toString(Charsets.UTF_8)
+                    val match = Regex("""full-path="([^"]+\.opf)"""").find(xml)
+                    opfPath = match?.groupValues?.get(1)
+                    break
+                }
+                entry = zis.nextEntry
             }
-        } catch (_: Exception) { null }
-    }
-
-    private fun extractCbzCover(file: java.io.File): ByteArray? {
-        val zipFile = net.lingala.zip4j.ZipFile(file)
-        val imageExts = setOf("jpg", "jpeg", "png", "webp", "gif")
-        val firstImage = zipFile.fileHeaders
-            .filter { h -> imageExts.any { h.fileName.lowercase().endsWith(".$it") } }
-            .minByOrNull { it.fileName }
-        return firstImage?.let { zipFile.getInputStream(it).use { s -> s.readBytes() } }
-    }
-
-    private fun extractEpubCoverFromManga(file: java.io.File): ByteArray? {
+        }
+        if (file.extension.lowercase() != "epub") return null
+        val opfDir: String
+        val coverHref: String
+        java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
+            var opfContent: String? = null
+            var opfPathFull: String? = null
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name.endsWith(".opf")) {
+                    opfPathFull = entry.name
+                    opfContent = zis.readBytes().toString(Charsets.UTF_8)
+                    break
+                }
+                entry = zis.nextEntry
+            }
+            if (opfContent == null) return null
+            opfDir = opfPathFull?.substringBeforeLast('/', "")?.let { if (it.isNotEmpty()) "$it/" else "" } ?: ""
+            // Find cover image item in manifest
+            val coverId = Regex("""<meta[^>]*name="cover"[^>]*content="([^"]+)"""").find(opfContent)
+                ?.groupValues?.get(1)
+            val coverItem = if (coverId != null) {
+                Regex("""<item[^>]*id="${Regex.escape(coverId)}"[^>]*href="([^"]+)"""").find(opfContent)
+            } else {
+                Regex("""<item[^>]*media-type="image/[^"]+"[^>]*href="([^"]+)"""").find(opfContent)
+            }
+            coverHref = coverItem?.groupValues?.get(1) ?: return null
+        }
+        // Second pass: extract the cover image bytes
+        val coverPath = opfDir + coverHref
         java.util.zip.ZipInputStream(file.inputStream()).use { zis ->
             var entry = zis.nextEntry
-            val imageExts = setOf(".jpg", ".jpeg", ".png", ".webp")
             while (entry != null) {
-                val name = entry.name.lowercase()
-                if (name.contains("cover") && imageExts.any { name.endsWith(it) }) {
+                if (entry.name == coverPath || entry.name.endsWith(coverHref)) {
                     return zis.readBytes()
                 }
                 entry = zis.nextEntry
@@ -352,19 +381,20 @@ class MangaPlugin : ContentPlugin {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         val result = linkedMapOf<String, String>()
 
-        val format = MangaPlugin.FORMAT_OPTIONS.firstOrNull { it.first == ext }?.first
-        if (format != null) result["mangaFormat"] = format
+        // Guess format from extension
+        val format = BookPlugin.FORMAT_OPTIONS.firstOrNull { it.first == ext }?.first
+        if (format != null) result["bookFormat"] = format
 
+        // Extract title from filename as fallback
         val titleFromFile = fileName.substringBeforeLast('.').replace('_', ' ').replace('-', ' ').trim()
         if (titleFromFile.isNotBlank()) result["title"] = titleFromFile
 
-        try {
-            when (ext) {
-                "epub" -> extractEpubMetadata(context, uri)?.let { result.putAll(it) }
-                "cbz" -> extractCbzMetadata(context, uri)?.let { result.putAll(it) }
+        if (ext == "epub") {
+            try {
+                extractEpubMetadata(context, uri)?.let { result.putAll(it) }
+            } catch (e: Exception) {
+                Log.w(TAG, "EPUB metadata extraction failed", e)
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Manga metadata extraction failed", e)
         }
 
         return result
@@ -378,20 +408,7 @@ class MangaPlugin : ContentPlugin {
                 while (entry != null) {
                     if (entry.name.endsWith(".opf", ignoreCase = true)) {
                         val opf = String(zis.readBytes(), Charsets.UTF_8)
-                        val dcRegex = Regex("""<dc:(\w+)[^>]*>([^<]+)</dc:\1>""", RegexOption.DOT_MATCHES_ALL)
-                        for (match in dcRegex.findAll(opf)) {
-                            val tag = match.groupValues[1].lowercase()
-                            val value = match.groupValues[2].trim()
-                            if (value.isBlank()) continue
-                            when (tag) {
-                                "title" -> result["title"] = value
-                                "creator" -> result["author"] = value
-                                "subject" -> result.putIfAbsent("genre", value)
-                                "publisher" -> result.putIfAbsent("publisher", value)
-                                "language" -> result["language"] = value
-                                "date" -> result["releaseDate"] = value
-                            }
-                        }
+                        extractDublinCore(opf, result)
                         break
                     }
                     entry = zis.nextEntry
@@ -401,44 +418,27 @@ class MangaPlugin : ContentPlugin {
         return result.ifEmpty { null }
     }
 
-    private fun extractCbzMetadata(context: Context, uri: Uri): Map<String, String>? {
-        val tmp = File(context.cacheDir, "hikari_cbz_read_${System.currentTimeMillis()}.cbz")
-        try {
-            context.contentResolver.openInputStream(uri)?.use { i ->
-                tmp.outputStream().use { o -> i.copyTo(o) }
-            } ?: return null
-
-            val zipFile = ZipFile(tmp)
-            val header = zipFile.fileHeaders.find {
-                it.fileName.equals("ComicInfo.xml", ignoreCase = true)
-            } ?: return null
-
-            val xml = zipFile.getInputStream(header).use { String(it.readBytes(), Charsets.UTF_8) }
-            return parseComicInfoXml(xml)
-        } catch (e: Exception) {
-            Log.w(TAG, "CBZ ComicInfo.xml extraction failed", e)
-            return null
-        } finally {
-            tmp.delete()
+    private fun extractDublinCore(opf: String, result: MutableMap<String, String>) {
+        val dcRegex = Regex("""<dc:(\w+)[^>]*>([^<]+)</dc:\1>""", RegexOption.DOT_MATCHES_ALL)
+        for (match in dcRegex.findAll(opf)) {
+            val tag = match.groupValues[1].lowercase()
+            val value = match.groupValues[2].trim()
+            if (value.isBlank()) continue
+            when (tag) {
+                "title" -> result["title"] = value
+                "creator" -> result["author"] = value
+                "subject" -> result.putIfAbsent("genre", value)
+                "publisher" -> result["publisher"] = value
+                "language" -> result["language"] = value
+                "identifier" -> {
+                    if (value.startsWith("978") || value.startsWith("979") || value.contains("isbn", ignoreCase = true)) {
+                        result["isbn"] = value
+                    }
+                }
+                "date" -> result["publicationDate"] = value
+            }
         }
     }
 
-    private fun parseComicInfoXml(xml: String): Map<String, String> {
-        val result = linkedMapOf<String, String>()
-        fun extractTag(tagName: String): String? {
-            val regex = Regex("""<$tagName>([^<]+)</$tagName>""", RegexOption.IGNORE_CASE)
-            return regex.find(xml)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
-        }
-        extractTag("Title")?.let { result["title"] = it }
-        extractTag("Writer")?.let { result["author"] = it }
-        extractTag("Penciller")?.let { result["artist"] = it }
-        extractTag("Genre")?.let { result["genre"] = it }
-        extractTag("LanguageISO")?.let { result["language"] = it }
-        extractTag("Count")?.let { result["chapters"] = it }
-        extractTag("Year")?.let { result["releaseDate"] = it }
-        return result
-    }
-
-    private fun sanitize(value: String): String =
-        value.replace("/", "-").replace("\\", "-").replace(" ", "-")
+    private fun sanitize(value: String): String = sanitizePathSegment(value)
 }

@@ -21,14 +21,22 @@ namespace SyncServer.Identity.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly JwtSettings _jwtSettings;
+        private readonly BootstrapAdminSettings _bootstrapAdmin;
+        private readonly ILogger<AuthController> _logger;
 
         // TODO: Move refresh tokens to a persistent store (DynamoDB/Redis) for multi-instance deployments.
         private static readonly ConcurrentDictionary<string, (string userId, DateTime expires)> RefreshTokens = new();
 
-        public AuthController(IUserRepository userRepository, IOptions<JwtSettings> jwtSettings)
+        public AuthController(
+            IUserRepository userRepository,
+            IOptions<JwtSettings> jwtSettings,
+            IOptions<BootstrapAdminSettings> bootstrapAdmin,
+            ILogger<AuthController> logger)
         {
             _userRepository = userRepository;
             _jwtSettings = jwtSettings?.Value ?? new JwtSettings();
+            _bootstrapAdmin = bootstrapAdmin?.Value ?? new BootstrapAdminSettings();
+            _logger = logger;
         }
 
         [HttpPost("login")]
@@ -37,11 +45,29 @@ namespace SyncServer.Identity.Controllers
             if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
                 return BadRequest("Email and password required");
 
+            // 1. DB always wins. If a user row exists for this email, we authenticate
+            //    against the stored hash and never consult the bootstrap credentials.
             var user = await _userRepository.GetByEmailAsync(req.Email);
-            if (user == null) return Unauthorized();
+            if (user != null)
+            {
+                if (!UserRepository.VerifyPassword(req.Password, user.PasswordHash))
+                    return Unauthorized();
+            }
+            else
+            {
+                // 2. No DB row. Fall back to the bootstrap admin credentials, but only
+                //    for the configured bootstrap email — and only on a constant-time
+                //    password match. On success, persist a copy as an Admin user so
+                //    that subsequent logins go through path (1) above.
+                if (!IsBootstrapMatch(req.Email, req.Password))
+                    return Unauthorized();
 
-            if (!UserRepository.VerifyPassword(req.Password, user.PasswordHash))
-                return Unauthorized();
+                user = await SeedBootstrapAdminAsync(req.Email, req.Password);
+                _logger.LogWarning(
+                    "Bootstrap admin '{Email}' authenticated via env credentials and seeded into DB. " +
+                    "Change this password immediately via /User/{{id}}/change-password.",
+                    req.Email);
+            }
 
             var token = GenerateJwt(user);
             var refresh = GenerateRefreshToken(user.Id);
@@ -58,6 +84,35 @@ namespace SyncServer.Identity.Controllers
             };
 
             return Ok(new { token, refreshToken = refresh, profile });
+        }
+
+        private bool IsBootstrapMatch(string email, string password)
+        {
+            if (string.IsNullOrWhiteSpace(_bootstrapAdmin.Email) ||
+                string.IsNullOrWhiteSpace(_bootstrapAdmin.Password))
+            {
+                return false;
+            }
+
+            if (!string.Equals(email, _bootstrapAdmin.Email, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Constant-time compare to avoid leaking the bootstrap password length / prefix
+            // through timing.
+            var a = Encoding.UTF8.GetBytes(password);
+            var b = Encoding.UTF8.GetBytes(_bootstrapAdmin.Password);
+            if (a.Length != b.Length) return false;
+            return CryptographicOperations.FixedTimeEquals(a, b);
+        }
+
+        private async Task<User> SeedBootstrapAdminAsync(string email, string password)
+        {
+            var user = new User
+            {
+                Email = email,
+                Roles = new List<Role> { Role.Admin }
+            };
+            return await _userRepository.CreateAsync(user, password);
         }
 
         [HttpPost("refresh")]

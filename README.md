@@ -107,12 +107,15 @@ $env:DYNAMODB_REGION             = "ap-south-1"
 $env:DYNAMODB_ACCESS_KEY         = "<aws-access-key>"
 $env:DYNAMODB_SECRET_KEY         = "<aws-secret>"
 $env:JWT_KEY                     = "<at-least-32-bytes-of-entropy>"
+# Optional — override the default seed admin (defaults: admin / Admin123!)
+$env:BOOTSTRAP_ADMIN_EMAIL       = "admin"
+$env:BOOTSTRAP_ADMIN_PASSWORD    = "<your-strong-bootstrap-password>"
 dotnet run
 ```
 
 Server up at <https://localhost:59709>, Swagger at `/swagger`.
-Create your first user with `POST /User`, then `POST /Auth/login` to get a JWT.
-Full reference: [sync-server/README.md](sync-server/README.md).
+Log in for the first time with the **bootstrap admin** (`admin` / `Admin123!` by default) — that single login seeds an `Admin` user row in DynamoDB and from then on auth is DB-only. Rotate the password immediately via `POST /User/{id}/change-password`, then create real users via `/User` or `/Admin`.
+Full reference: [sync-server/README.md](sync-server/README.md#bootstrap-admin).
 
 ### 2. Build & install the Android app
 

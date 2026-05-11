@@ -87,6 +87,18 @@ builder.Services.Configure<JwtSettings>(opts =>
     if (int.TryParse(dur, out var hours)) opts.DurationInHours = hours;
 });
 
+// ── Bootstrap Admin (env-only seed credentials, see BootstrapAdminSettings) ──
+builder.Services.Configure<BootstrapAdminSettings>(opts =>
+{
+    builder.Configuration.GetSection("BootstrapAdmin").Bind(opts);
+
+    var email = Environment.GetEnvironmentVariable("BOOTSTRAP_ADMIN_EMAIL");
+    if (!string.IsNullOrEmpty(email)) opts.Email = email;
+
+    var password = Environment.GetEnvironmentVariable("BOOTSTRAP_ADMIN_PASSWORD");
+    if (!string.IsNullOrEmpty(password)) opts.Password = password;
+});
+
 
 builder.Services
         .AddControllers()
@@ -249,16 +261,15 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
-// Only enable Swagger in development
-if (app.Environment.IsDevelopment())
+
+// Swagger UI is served in every environment so operators can always exercise
+// the API surface against a deployed instance.
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SyncServer V1");
-        c.RoutePrefix = "swagger"; // serve at /swagger
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SyncServer V1");
+    c.RoutePrefix = "swagger"; // serve at /swagger
+});
 
 app.UseAuthentication();
 if (!app.Environment.IsDevelopment())

@@ -47,9 +47,14 @@ object AudioMetadataRewriter {
 
             val audioFile = AudioFileIO.read(tmp)
 
+            // Capture existing artwork BEFORE deleting tags, so we can restore it
+            // if the user did not pick a replacement cover image.
+            val existingArtwork: org.jaudiotagger.tag.images.Artwork? = try {
+                audioFile.tag?.firstArtwork
+            } catch (_: Exception) { null }
+
             // Delete all existing tags
-            audioFile.tagOrCreateAndSetDefault?.let { tag ->
-                // Clear all fields first
+            audioFile.tagOrCreateAndSetDefault?.let {
                 try { AudioFileIO.delete(audioFile) } catch (_: Exception) {}
             }
 
@@ -71,7 +76,10 @@ object AudioMetadataRewriter {
             fields["isrc"]?.takeIf { it.isNotBlank() }?.let { tag.setField(FieldKey.ISRC, it) }
             fields["copyright"]?.takeIf { it.isNotBlank() }?.let { tag.setField(FieldKey.COPYRIGHT, it) }
 
-            // Embed album art / cover image if provided
+            // Embed album art / cover image
+            //  - If the user picked a new cover, embed that.
+            //  - Else, restore the artwork that was on the file before we wiped tags.
+            //    (Otherwise the rewrite would silently strip the existing album art.)
             if (coverImageUri != null) {
                 try {
                     val imageBytes = context.contentResolver.openInputStream(coverImageUri)?.use { it.readBytes() }
@@ -89,11 +97,14 @@ object AudioMetadataRewriter {
                         artwork.mimeType = context.contentResolver.getType(coverImageUri) ?: "image/jpeg"
                         tag.deleteArtworkField()
                         tag.setField(artwork)
-                        Log.d(TAG, "Embedded album art (${imageBytes.size} bytes)")
+                        Log.d(TAG, "Embedded new album art (${imageBytes.size} bytes)")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to embed album art", e)
+                    Log.w(TAG, "Failed to embed new album art; attempting to restore previous", e)
+                    restoreArtwork(tag, existingArtwork)
                 }
+            } else {
+                restoreArtwork(tag, existingArtwork)
             }
 
             fresh.commit()
@@ -109,5 +120,52 @@ object AudioMetadataRewriter {
 
     private fun fallbackRead(context: Context, uri: Uri): ByteArray {
         return context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+    }
+
+    private fun restoreArtwork(
+        tag: org.jaudiotagger.tag.Tag,
+        existing: org.jaudiotagger.tag.images.Artwork?
+    ) {
+        val bytes = existing?.binaryData ?: return
+        if (bytes.isEmpty()) return
+        try {
+            val artwork = object : AndroidArtwork() {
+                override fun setImageFromData(): Boolean {
+                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(binaryData, 0, binaryData.size, opts)
+                    width = opts.outWidth
+                    height = opts.outHeight
+                    return true
+                }
+            }
+            artwork.binaryData = bytes
+            artwork.mimeType = existing.mimeType ?: "image/jpeg"
+            tag.deleteArtworkField()
+            tag.setField(artwork)
+            Log.d(TAG, "Restored existing album art (${bytes.size} bytes)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to restore existing album art", e)
+        }
+    }
+
+    /**
+     * Read embedded album art from a picked audio file (without modifying it).
+     * Used by the upload screen to preview the file's existing artwork.
+     */
+    fun extractArtwork(context: Context, uri: Uri, fileName: String): ByteArray? {
+        val ext = fileName.substringAfterLast('.', "mp3")
+        val tmp = File(context.cacheDir, "hikari_art_${System.currentTimeMillis()}.$ext")
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                tmp.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+            val audioFile = AudioFileIO.read(tmp)
+            audioFile.tag?.firstArtwork?.binaryData?.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to extract artwork from $fileName", e)
+            null
+        } finally {
+            tmp.delete()
+        }
     }
 }

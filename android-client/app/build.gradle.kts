@@ -18,8 +18,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -44,10 +42,18 @@ android {
         compose = true
         buildConfig = true
     }
-}
 
-// AGP 9 removed the testClasses lifecycle task; register a no-op so Gradle/IDE don't fail.
-tasks.register("testClasses")
+    // Custom source layout: everything lives directly under app/src/ instead of
+    // the conventional app/src/main/{java,res,AndroidManifest.xml}.
+    sourceSets {
+        getByName("main") {
+            manifest.srcFile("src/AndroidManifest.xml")
+            java.setSrcDirs(listOf("src"))
+            kotlin.setSrcDirs(listOf("src"))
+            res.setSrcDirs(listOf("src/res"))
+        }
+    }
+}
 
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
@@ -71,11 +77,5 @@ dependencies {
     implementation(libs.mp4parser)
     implementation(libs.zip4j)
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

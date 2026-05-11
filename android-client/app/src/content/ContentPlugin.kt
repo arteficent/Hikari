@@ -99,6 +99,15 @@ interface ContentPlugin {
      */
     fun extractCoverArt(context: Context, item: ContentItem): ByteArray? = null
 
+    /**
+     * Extract embedded cover art / album art from a file the user just picked
+     * for upload (i.e. a content URI, not a local synced file). Used to preview
+     * the file's existing artwork on the upload screen so the user can see
+     * what will be preserved when they only edit text metadata.
+     * Default: null (no embedded art).
+     */
+    fun extractCoverArtFromFile(context: Context, uri: Uri, fileName: String): ByteArray? = null
+
     /** Resolve the local file for a synced content item, or null if not present. */
     @Suppress("DEPRECATION")
     fun getLocalFile(context: Context, item: ContentItem): File? {

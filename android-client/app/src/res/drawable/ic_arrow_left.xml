@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <!--
+        Material Symbols arrow_left_alt (viewBox="0 -960 960 960").
+        Group translateY=960 maps the negative-Y SVG coordinate space to Android's 0-based viewport.
+    -->
+    <group android:translateY="960">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M400,-240 L160,-480 L400,-720 L456,-662 L314,-520 L800,-520 L800,-440 L314,-440 L456,-298 Z" />
+    </group>
+</vector>

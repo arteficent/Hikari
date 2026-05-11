@@ -41,4 +41,26 @@ namespace SyncServer.Configuration
         public string Audience { get; set; } = string.Empty;
         public int DurationInHours { get; set; } = 12;
     }
+
+    /// <summary>
+    /// Bootstrap administrator credentials. Used to solve the chicken-and-egg
+    /// problem on a fresh install: there are no users in the DB yet, so no one
+    /// can authenticate to create the first admin.
+    ///
+    /// Behaviour at <c>POST /Auth/login</c>:
+    ///   1. The DB is consulted first. If a user row exists for the given email,
+    ///      authentication ALWAYS goes through the stored password hash and the
+    ///      bootstrap credentials below are ignored.
+    ///   2. If — and only if — no DB row exists for the bootstrap email, the
+    ///      submitted password is compared against the value here. On success
+    ///      the user is persisted to DynamoDB with role <c>Admin</c>, after
+    ///      which step (1) takes over forever.
+    ///
+    /// In other words, these are seed credentials, not a permanent backdoor.
+    /// </summary>
+    public class BootstrapAdminSettings
+    {
+        public string Email { get; set; } = "admin";
+        public string Password { get; set; } = "Admin123!";
+    }
 }

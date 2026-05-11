@@ -8,7 +8,7 @@ A self-hosted, plugin-driven content sync API. Stores metadata in **DynamoDB**, 
 
 ## Highlights
 
-- **ASP.NET Core on .NET 10** with controller-based routing and Swagger in Development.
+- **ASP.NET Core on .NET 10** with controller-based routing and Swagger UI exposed in every environment at `/swagger`.
 - **Plugin architecture** — each content type (audio / video / book / manga / image) is an `IContentPlugin` that owns its DynamoDB table, S3 prefix, MIME whitelist, metadata validation, storage-path layout, and query filters.
 - **Cloud-portable storage** — `IBlobStorageProvider` abstracts the blob store. The shipped `S3BlobStorageProvider` works against AWS S3 *and* any S3-compatible API (R2, MinIO, etc.) by setting a `ServiceUrl` + `ForcePathStyle`.
 - **Independent storage tiers** — DynamoDB (metadata) and the object store (binaries) are configured separately, so you can run e.g. **DynamoDB on AWS + binaries on Cloudflare R2**.
@@ -87,6 +87,7 @@ All settings live in [src/appsettings.json](src/appsettings.json). Every value c
 | `ObjectStorage` | S3-compatible blob backend (works for AWS S3, Cloudflare R2, MinIO, DO Spaces, etc.) |
 | `DynamoDb` | AWS DynamoDB credentials & region for metadata |
 | `JwtConstants` | JWT signing key, issuer, audience, lifetime |
+| `BootstrapAdmin` | Seed credentials used **only** to create the first admin user on a fresh DB (see [Bootstrap admin](#bootstrap-admin)) |
 
 ### Environment variables
 
@@ -105,6 +106,8 @@ All settings live in [src/appsettings.json](src/appsettings.json). Every value c
 | `JWT_ISSUER` | `JwtConstants.Issuer` | |
 | `JWT_AUDIENCE` | `JwtConstants.Audience` | |
 | `JWT_DURATION_HOURS` | `JwtConstants.DurationInHours` | Default `12` |
+| `BOOTSTRAP_ADMIN_EMAIL` | `BootstrapAdmin.Email` | Default `admin`. Used only on first login when no DB row exists. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | `BootstrapAdmin.Password` | Default `Admin123!`. **Override in production.** Used only on first login when no DB row exists. |
 
 ### Mix-and-match example: DynamoDB on AWS + binaries on Cloudflare R2
 
@@ -130,6 +133,49 @@ JWT_AUDIENCE=Hikari-mobile-app
 
 ---
 
+## Bootstrap admin
+
+A fresh DynamoDB has no users, so no one can authenticate to create the first admin. To break that chicken-and-egg, `POST /Auth/login` falls back to env-configured seed credentials **only when no user row exists for the submitted email**.
+
+**Login resolution order:**
+
+1. Look up the user in DynamoDB by email.
+2. **If a row exists →** authenticate against the stored PBKDF2 hash. The bootstrap credentials are *never* consulted. This is the permanent state.
+3. **If no row exists →** compare the password against `BootstrapAdmin.Password` (constant-time). Email must match `BootstrapAdmin.Email`. On success, the user is persisted to DynamoDB with role `Admin`. From the next login onward, step 2 takes over.
+
+**Defaults** (override in production via `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`):
+
+| Field | Default |
+|---|---|
+| Email | `admin` |
+| Password | `Admin123!` |
+
+**First-run flow:**
+
+```bash
+# 1. Login as bootstrap admin (this seeds the user row)
+curl -X POST https://localhost:59709/Auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"admin","password":"Admin123!"}'
+
+# 2. Immediately rotate the password
+curl -X POST https://localhost:59709/User/<id>/change-password \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"currentPassword":"Admin123!","newPassword":"<your-strong-password>"}'
+
+# 3. Create real users via /User or /Admin endpoints.
+```
+
+**Properties:**
+
+- *Not a permanent backdoor* — once the row exists, the env password is dead code for that email.
+- *Self-healing* — if you delete the bootstrap row from DynamoDB, the env credentials become valid again, so an operator is never locked out.
+- *Email-scoped* — submitting any other email never touches the env path.
+- The first bootstrap login emits a `LogWarning` reminding you to rotate the password.
+
+---
+
 ## API Reference
 
 All routes require a `Bearer` JWT unless explicitly marked `[AllowAnonymous]`. Roles: `User`, `Admin`.
@@ -138,7 +184,7 @@ All routes require a `Bearer` JWT unless explicitly marked `[AllowAnonymous]`. R
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
-| `POST` | `/Auth/login` | `{ email, password }` | `{ token, refreshToken, profile }` |
+| `POST` | `/Auth/login` | `{ email, password }` | `{ token, refreshToken, profile }` — falls back to [bootstrap admin](#bootstrap-admin) on a fresh DB |
 | `POST` | `/Auth/refresh` | `{ refreshToken }` | New `{ token, refreshToken }` |
 
 JWT claims: `sub` (user id), `email`, and `ClaimTypes.Role` for each role. Default token lifetime: 12 h. Refresh tokens are 64-byte random base64 strings, currently held in an in-process dictionary with a 7-day expiry (single-instance deployments only).
@@ -147,7 +193,7 @@ JWT claims: `sub` (user id), `email`, and `ClaimTypes.Role` for each role. Defau
 
 | Method | Route | Auth | Notes |
 |---|---|---|---|
-| `POST` | `/User` | anonymous | Self-signup; password ≥ 8 chars |
+| `POST` | `/User` | Admin | Create a user. The first admin is provisioned via the [bootstrap admin](#bootstrap-admin) login flow; all subsequent user creation is an Admin action. Password ≥ 8 chars. |
 | `GET` | `/User/{id}` | self / Admin | |
 | `GET` | `/User/by-email?email=` | self / Admin | |
 | `PUT` | `/User/{id}` | self / Admin | Update playlist / roles |
@@ -210,7 +256,7 @@ Dev URLs (from [launchSettings.json](src/Properties/launchSettings.json)):
 
 - HTTPS: <https://localhost:59709>
 - HTTP: <http://localhost:59710>
-- Swagger UI: `/swagger` (Development only, browser auto-launches)
+- Swagger UI: `/swagger` (served in **all environments**; browser auto-launches in Development)
 
 A real DynamoDB instance + an S3-compatible bucket are required for non-trivial use. For local development you can point at [LocalStack](https://www.localstack.cloud/) or [MinIO](https://min.io/) using `OBJECT_STORAGE_SERVICE_URL` + `OBJECT_STORAGE_FORCE_PATH_STYLE=true`.
 

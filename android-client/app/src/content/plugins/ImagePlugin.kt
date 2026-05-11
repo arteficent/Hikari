@@ -304,6 +304,5 @@ class ImagePlugin : ContentPlugin {
         return result
     }
 
-    private fun sanitize(value: String): String =
-        value.replace("/", "-").replace("\\", "-").replace(" ", "-")
+    private fun sanitize(value: String): String = sanitizePathSegment(value)
 }
