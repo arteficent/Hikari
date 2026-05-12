@@ -45,22 +45,22 @@ namespace SyncServer.Identity.Repositories
             }
         }
 
-        public async Task<User?> GetByEmailAsync(string email)
+        public async Task<User?> GetByUsernameAsync(string username)
         {
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(username))
                 return null;
 
             try
             {
                 var config = new QueryOperationConfig
                 {
-                    IndexName = "email-index",
+                    IndexName = "username-index",
                     KeyExpression = new Expression
                     {
-                        ExpressionStatement = "Email = :v_Email",
+                        ExpressionStatement = "Username = :v_Username",
                         ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
                 {
-                    { ":v_Email", email }
+                    { ":v_Username", username }
                 }
                     },
                     Limit = 1
@@ -71,26 +71,26 @@ namespace SyncServer.Identity.Repositories
             }
             catch (AmazonDynamoDBException ex) when (ex.Message.Contains("Query condition missed key schema element", StringComparison.OrdinalIgnoreCase))
             {
-                // Fallback for misconfigured index schemas where Email is not the partition key.
-                logger.LogWarning(ex, "Email index is not queryable by Email alone. Falling back to scan for {Email}", email);
+                // Fallback for misconfigured index schemas where Username is not the partition key.
+                logger.LogWarning(ex, "Username index is not queryable by Username alone. Falling back to scan for {Username}", username);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to query user by email via GSI. Falling back to scan for {Email}", email);
+                logger.LogWarning(ex, "Failed to query user by username via GSI. Falling back to scan for {Username}", username);
             }
 
             try
             {
                 var scan = context.ScanAsync<User>(new List<ScanCondition>
                 {
-                    new ScanCondition("Email", ScanOperator.Equal, email)
+                    new ScanCondition("Username", ScanOperator.Equal, username)
                 });
                 var results = await scan.GetRemainingAsync();
                 return results.FirstOrDefault();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to scan user by email {Email}", email);
+                logger.LogError(ex, "Failed to scan user by username {Username}", username);
                 return null;
             }
         }

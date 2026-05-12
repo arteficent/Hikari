@@ -44,7 +44,10 @@ import com.example.android_client.content.plugins.ImagePlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.screens.ContentHubScreen
 import com.example.android_client.ui.screens.ContentPickerScreen
+import com.example.android_client.ui.screens.CreateUserScreen
 import com.example.android_client.ui.screens.LoginScreen
+import com.example.android_client.ui.screens.ProfileOverlay
+import com.example.android_client.ui.screens.UserListScreen
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -127,6 +130,9 @@ class MainActivity : ComponentActivity() {
                     val currentToken = token
                     val appContext = applicationContext
                     var selectedPlugin by remember { mutableStateOf<ContentPlugin?>(null) }
+                    var profileOpen by remember { mutableStateOf(false) }
+                    var userListOpen by remember { mutableStateOf(false) }
+                    var createUserOpen by remember { mutableStateOf(false) }
 
                     // Compute a screen ordinal so we know forward vs backward
                     data class ScreenState(
@@ -140,6 +146,9 @@ class MainActivity : ComponentActivity() {
                         isRefreshing -> ScreenState("loading", 0, null, null)
                         currentDomain == null -> ScreenState("domain", 1, null, null)
                         currentToken == null -> ScreenState("login", 2, currentDomain, null)
+                        createUserOpen -> ScreenState("create_user", 5, currentDomain, null)
+                        userListOpen -> ScreenState("users", 5, currentDomain, null)
+                        profileOpen -> ScreenState("profile", 4, currentDomain, null)
                         selectedPlugin != null -> ScreenState("hub_${selectedPlugin!!.contentType}", 4, currentDomain, selectedPlugin)
                         else -> ScreenState("picker", 3, currentDomain, null)
                     }
@@ -180,10 +189,10 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.padding(innerPadding),
                                         sharedTransitionScope = this@SharedTransitionLayout,
                                         animatedVisibilityScope = this@AnimatedContent,
-                                        onLoginClicked = { email, password ->
+                                        onLoginClicked = { username, password ->
                                             scope.launch {
                                                 try {
-                                                    val loginResponse = apiClient.login(target.domain!!, LoginRequest(email, password))
+                                                    val loginResponse = apiClient.login(target.domain!!, LoginRequest(username, password))
                                                     authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
                                                 } catch (e: Exception) {
                                                     error = e.message
@@ -210,7 +219,47 @@ class MainActivity : ComponentActivity() {
                                         onPluginSelected = { plugin -> selectedPlugin = plugin },
                                         onLogout = {
                                             scope.launch { authRepository.clearTokens() }
+                                        },
+                                        onProfileClicked = { profileOpen = true }
+                                    )
+                                }
+                                target.key == "profile" -> {
+                                    ProfileOverlay(
+                                        apiClient = apiClient,
+                                        serverDomain = target.domain!!,
+                                        accessToken = currentToken!!,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        onDismiss = { profileOpen = false },
+                                        onOpenUserList = {
+                                            profileOpen = false
+                                            userListOpen = true
+                                        },
+                                        onOpenCreateUser = {
+                                            profileOpen = false
+                                            createUserOpen = true
                                         }
+                                    )
+                                }
+                                target.key == "users" -> {
+                                    UserListScreen(
+                                        apiClient = apiClient,
+                                        serverDomain = target.domain!!,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        onBack = { userListOpen = false }
+                                    )
+                                }
+                                target.key == "create_user" -> {
+                                    CreateUserScreen(
+                                        apiClient = apiClient,
+                                        serverDomain = target.domain!!,
+                                        isRoot = com.example.android_client.core.network.JwtDecoder
+                                            .decode(currentToken)?.isRoot == true,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        onBack = { createUserOpen = false },
+                                        onCreated = { createUserOpen = false }
                                     )
                                 }
                                 target.plugin != null -> {
@@ -225,6 +274,8 @@ class MainActivity : ComponentActivity() {
                                         apiClient = apiClient,
                                         serverDomain = target.domain,
                                         syncPreferencesRepository = syncPreferencesRepository,
+                                        canManage = com.example.android_client.core.network.JwtDecoder
+                                            .decode(currentToken)?.isAdmin == true,
                                         onBack = { selectedPlugin = null }
                                     )
                                 }

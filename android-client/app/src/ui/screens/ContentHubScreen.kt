@@ -35,6 +35,7 @@ fun ContentHubScreen(
     apiClient: ApiClient,
     serverDomain: String,
     syncPreferencesRepository: SyncPreferencesRepository,
+    canManage: Boolean,
     onBack: () -> Unit
 ) {
     var showUpload by remember { mutableStateOf(false) }
@@ -73,6 +74,7 @@ fun ContentHubScreen(
                         syncPreferencesRepository = syncPreferencesRepository,
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = this@AnimatedContent,
+                        canManage = canManage,
                         onBack = onBack,
                         onUpload = { showUpload = true }
                     )

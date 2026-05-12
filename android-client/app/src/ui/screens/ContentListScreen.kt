@@ -54,8 +54,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.android_client.R
 import com.example.android_client.core.storage.SyncPreferencesRepository
 import com.example.android_client.core.network.ApiClient
 import com.example.android_client.core.network.ContentItem
@@ -79,6 +81,7 @@ fun ContentListScreen(
     syncPreferencesRepository: SyncPreferencesRepository,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    canManage: Boolean,
     onBack: () -> Unit,
     onUpload: () -> Unit
 ) {
@@ -286,37 +289,64 @@ fun ContentListScreen(
         }
 
         // ── Action buttons ──
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { fetchItems() }) { Text("Refresh") }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Button(onClick = {
-                ensureStorageAndRun {
-                    val selected = items.filter { syncIds.contains(it.id) }
-                    contentSyncService.sync(selected)
-                    Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
-                }
-            }) { Text("Sync ${plugin.displayName}") }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Batch delete button — only enabled when items are selected
-            val selectedItems = items.filter { syncIds.contains(it.id) }
-            Button(
-                onClick = {
-                    deleteTarget = selectedItems
-                    showDeleteConfirm = true
-                },
-                enabled = selectedItems.isNotEmpty() && !isBusy,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { fetchItems() }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_refresh),
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
                 )
+            }
+
+            // Batch delete button — only shown to admins/root; plain users can only consume.
+            if (canManage) {
+                Spacer(modifier = Modifier.width(8.dp))
+                val selectedItems = items.filter { syncIds.contains(it.id) }
+                Button(
+                    onClick = {
+                        deleteTarget = selectedItems
+                        showDeleteConfirm = true
+                    },
+                    enabled = selectedItems.isNotEmpty() && !isBusy,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete (${selectedItems.size})")
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Sync selected items — right-aligned action.
+            val selectedSyncCount = items.count { syncIds.contains(it.id) }
+            IconButton(
+                onClick = {
+                    ensureStorageAndRun {
+                        val selected = items.filter { syncIds.contains(it.id) }
+                        contentSyncService.sync(selected)
+                        Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                enabled = selectedSyncCount > 0
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Delete (${selectedItems.size})")
+                Icon(
+                    painter = painterResource(R.drawable.ic_cached),
+                    contentDescription = "Sync ${plugin.displayName}",
+                    tint = if (selectedSyncCount > 0) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                    },
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
 
@@ -382,10 +412,12 @@ fun ContentListScreen(
                                 }
                             }
                         },
-                        onDelete = {
-                            deleteTarget = listOf(item)
-                            showDeleteConfirm = true
-                        }
+                        onDelete = if (canManage) {
+                            {
+                                deleteTarget = listOf(item)
+                                showDeleteConfirm = true
+                            }
+                        } else null
                     )
                 }
             }
@@ -438,26 +470,28 @@ fun ContentListScreen(
         }
     }
 
-    // ── Floating upload button ──
-    with(sharedTransitionScope) {
-        FloatingActionButton(
-            onClick = onUpload,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
-                .sharedBounds(
-                    sharedContentState = rememberSharedContentState(key = "upload_fab_${plugin.contentType}"),
-                    animatedVisibilityScope = animatedVisibilityScope
-                ),
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ) {
-            Icon(
-                Icons.Filled.CloudUpload,
-                contentDescription = "Upload",
-                modifier = Modifier.size(28.dp)
-            )
+    // ── Floating upload button (admins/root only) ──
+    if (canManage) {
+        with(sharedTransitionScope) {
+            FloatingActionButton(
+                onClick = onUpload,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "upload_fab_${plugin.contentType}"),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    ),
+                shape = CircleShape,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    Icons.Filled.CloudUpload,
+                    contentDescription = "Upload",
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
     } // Box

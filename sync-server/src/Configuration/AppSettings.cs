@@ -48,19 +48,19 @@ namespace SyncServer.Configuration
     /// can authenticate to create the first admin.
     ///
     /// Behaviour at <c>POST /Auth/login</c>:
-    ///   1. The DB is consulted first. If a user row exists for the given email,
+    ///   1. The DB is consulted first. If a user row exists for the given username,
     ///      authentication ALWAYS goes through the stored password hash and the
     ///      bootstrap credentials below are ignored.
-    ///   2. If — and only if — no DB row exists for the bootstrap email, the
+    ///   2. If — and only if — no DB row exists for the bootstrap username, the
     ///      submitted password is compared against the value here. On success
-    ///      the user is persisted to DynamoDB with role <c>Admin</c>, after
+    ///      the user is persisted to DynamoDB with role <c>Root</c>, after
     ///      which step (1) takes over forever.
     ///
     /// In other words, these are seed credentials, not a permanent backdoor.
     /// </summary>
     public class BootstrapAdminSettings
     {
-        public string Email { get; set; } = "admin";
+        public string Username { get; set; } = "admin";
         public string Password { get; set; } = "Admin123!";
     }
 }

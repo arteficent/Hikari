@@ -7,8 +7,7 @@ namespace SyncServer.Identity.Dtos
     public class CreateUserRequest
     {
         [Required]
-        [EmailAddress]
-        public string Email { get; set; } = null!;
+        public string Username { get; set; } = null!;
         [Required]
         [PasswordPropertyText]
         public string Password { get; set; } = null!;
@@ -28,9 +27,15 @@ namespace SyncServer.Identity.Dtos
         public string NewPassword { get; set; } = null!;
     }
 
+    public class UpdateUsernameRequest
+    {
+        [Required]
+        public string Username { get; set; } = null!;
+    }
+
     public class LoginRequest
     {
-        public string Email { get; set; } = null!;
+        public string Username { get; set; } = null!;
         public string Password { get; set; } = null!;
     }
 

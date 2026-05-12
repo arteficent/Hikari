@@ -41,7 +41,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── UPLOAD ──────────────────────────
     [HttpPost("upload-init")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Root,Admin")]
     public IActionResult UploadInit([FromRoute] string contentType, [FromBody] ContentUploadInitRequest request)
     {
         var plugin = _pluginRegistry.Get(contentType);
@@ -88,7 +88,7 @@ public class ContentController : ControllerBase
     }
 
     [HttpPost("upload-complete")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Root,Admin")]
     public async Task<IActionResult> UploadComplete([FromRoute] string contentType, [FromBody] ContentUploadCompleteRequest request)
     {
         var plugin = _pluginRegistry.Get(contentType);
@@ -160,7 +160,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── GET ITEMS (metadata only) ──────────────────────────
     [HttpGet("items")]
-    [Authorize(Roles = "User,Admin")]
+    [Authorize(Roles = "User,Admin,Root")]
     public async Task<IActionResult> GetItems(
         [FromRoute] string contentType,
         [FromQuery] int? limit,
@@ -194,7 +194,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── DOWNLOAD (bulk) ──────────────────────────
     [HttpGet("download")]
-    [Authorize(Roles = "User,Admin")]
+    [Authorize(Roles = "User,Admin,Root")]
     public async Task<IActionResult> Download(
         [FromRoute] string contentType,
         [FromQuery] int? limit,
@@ -247,7 +247,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── DOWNLOAD SINGLE ──────────────────────────
     [HttpGet("download/{id}")]
-    [Authorize(Roles = "User,Admin")]
+    [Authorize(Roles = "User,Admin,Root")]
     public async Task<IActionResult> DownloadById(
         [FromRoute] string contentType,
         [FromRoute] string id,
@@ -284,7 +284,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── EDIT ──────────────────────────
     [HttpPut("edit")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Root,Admin")]
     public async Task<IActionResult> Edit([FromRoute] string contentType, [FromBody] ContentItem item)
     {
         var plugin = _pluginRegistry.Get(contentType);
@@ -312,7 +312,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── DELETE ──────────────────────────
     [HttpDelete("delete")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Root,Admin")]
     public async Task<IActionResult> Delete([FromRoute] string contentType, [FromBody] ContentDeleteRequest request)
     {
         var plugin = _pluginRegistry.Get(contentType);
@@ -383,7 +383,7 @@ public class ContentController : ControllerBase
 
     // ────────────────────────── LIST PLUGINS ──────────────────────────
     [HttpGet("/content/plugins")]
-    [Authorize(Roles = "User,Admin")]
+    [Authorize(Roles = "User,Admin,Root")]
     public IActionResult ListPlugins()
     {
         var plugins = _pluginRegistry.GetAll()

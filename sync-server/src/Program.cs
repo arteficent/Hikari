@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
@@ -92,8 +93,8 @@ builder.Services.Configure<BootstrapAdminSettings>(opts =>
 {
     builder.Configuration.GetSection("BootstrapAdmin").Bind(opts);
 
-    var email = Environment.GetEnvironmentVariable("BOOTSTRAP_ADMIN_EMAIL");
-    if (!string.IsNullOrEmpty(email)) opts.Email = email;
+    var username = Environment.GetEnvironmentVariable("BOOTSTRAP_ADMIN_USERNAME");
+    if (!string.IsNullOrEmpty(username)) opts.Username = username;
 
     var password = Environment.GetEnvironmentVariable("BOOTSTRAP_ADMIN_PASSWORD");
     if (!string.IsNullOrEmpty(password)) opts.Password = password;
@@ -105,6 +106,10 @@ builder.Services
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            // Serialise enums (notably Role) by name so the wire format matches the
+            // [Authorize(Roles = "Admin")] string and clients can deal in human-
+            // readable values like "User" / "Admin" instead of magic ints.
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
 // ── Helper: load both settings with env overrides applied for early use ──
@@ -145,6 +150,7 @@ builder.Services
 // ── Identity ──
 builder.Services
         .AddScoped<IUserRepository, UserRepository>()
+        .AddScoped<IRefreshTokenRepository, RefreshTokenRepository>()
         .AddHttpContextAccessor()
         .AddScoped<ICurrentUserService, CurrentUserService>();
 

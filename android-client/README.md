@@ -38,8 +38,10 @@ Jetpack Compose Android app for syncing your media library with a [Hikari Sync S
 
 ## Project Layout
 
+The app uses a flattened source set (`app/src/...` directly, no `main/java/com/example/...` prefix — see [`app/build.gradle.kts`](app/build.gradle.kts) `kotlin.setSrcDirs(listOf("src"))`).
+
 ```
-android-client/app/src/main/java/com/example/android_client/
+android-client/app/src/
 ├── MainActivity.kt              # Entry, DI, navigation, plugin registration,
 │                                #   inline ServerDomainScreen, SharedTransitionLayout
 ├── content/
@@ -53,12 +55,13 @@ android-client/app/src/main/java/com/example/android_client/
 │       ├── AudioMetadataExtractor.kt   AudioMetadataRewriter.kt
 │       ├── VideoMetadataRewriter.kt    FileMetadataStripper.kt
 ├── core/
-│   ├── network/  ApiClient (Ktor) + DTOs
+│   ├── network/  ApiClient (Ktor) + DTOs + JwtDecoder
 │   ├── storage/  AuthRepository · SettingsRepository · SyncPreferencesRepository
 │   └── sync/     ContentSyncService  (generic, plugin-driven)
 └── ui/
     ├── screens/  ContentPickerScreen · ContentHubScreen · ContentListScreen
     │             ContentItemCard    · LoginScreen      · UploadScreen
+    │             ProfileOverlay     · CreateUserScreen · UserListScreen
     └── theme/    Theme.kt (HikariTheme: Wisteria/GoldenLeaf/Sakura)
                   CelestialSurface · PaperSurface · Color · Shape
 ```
@@ -117,7 +120,7 @@ Each plugin implements:
 
 ## Sync Engine
 
-[`ContentSyncService`](app/src/main/java/com/example/android_client/core/sync/ContentSyncService.kt) is generic — one instance per (plugin, server). It:
+[`ContentSyncService`](app/src/core/sync/ContentSyncService.kt) is generic — one instance per (plugin, server). It:
 
 1. Calls `GET /content/{type}/items?lastModifiedSince=…` for an incremental delta.
 2. For each item the user has marked for sync, calls `GET /content/{type}/download/{id}` to receive a presigned URL.
@@ -180,16 +183,30 @@ sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 ## First-Run Flow
 
 1. **Connect to Server** — enter the sync server's domain (e.g. `hikari.example.com:59709`).
-2. **Login** — email + password. JWT + refresh token are stored in DataStore.
+2. **Login** — username + password (the username is any unique string the operator chose; for a fresh server the bootstrap default is `admin` / `Admin123!`). JWT + refresh token are stored in DataStore.
 3. **Pick a content type** — opens the corresponding hub.
 4. **Hub** — browse/filter the server library, tap items to mark for sync, hit **Sync** to download. Tap the floating cloud-up button to open the upload flow.
 5. **Upload** — pick a file, the plugin pre-fills the metadata form from the file's own tags. Optionally embed a new cover image (audio). Submit; the client does `upload-init` → direct PUT → `upload-complete`.
 
 ---
 
+## Roles & Admin UI
+
+The client mirrors the server's three-tier role model (`Root` > `Admin` > `User`). Roles and the username are decoded locally from the JWT (`JwtDecoder` reads the custom `username` claim) and used to gate the UI — server-side authorization is still the source of truth.
+
+| Role | What the UI surfaces |
+|---|---|
+| **User** | Content picker, hub, list, upload-disabled. The Profile overlay shows username + password edit only. |
+| **Admin** | Everything `User` sees, plus the **upload** flow on every hub, and a **Create user** icon in the Profile overlay (restricted to creating plain `User` accounts). |
+| **Root** | Everything `Admin` sees, plus a **Manage users** icon in the Profile overlay that opens `UserListScreen` (toggle Admin role, remove users). The role chip in `CreateUserScreen` exposes both `User` and `Admin` only when the caller is Root. The Root row itself is rendered without any action icons — Root cannot be demoted or deleted. |
+
+Tap the person icon on `ContentPickerScreen` to open the Profile overlay; admin/root tools live there.
+
+---
+
 ## Adding a New Plugin
 
-1. Implement `com.example.android_client.content.ContentPlugin` — see [`AudioPlugin.kt`](app/src/main/java/com/example/android_client/content/plugins/AudioPlugin.kt) as the reference.
-2. Register it in [`MainActivity.onCreate()`](app/src/main/java/com/example/android_client/MainActivity.kt) alongside the existing plugins.
+1. Implement `com.example.android_client.content.ContentPlugin` — see [`AudioPlugin.kt`](app/src/content/plugins/AudioPlugin.kt) as the reference.
+2. Register it in [`MainActivity.onCreate()`](app/src/MainActivity.kt) alongside the existing plugins.
 3. Make sure the matching `IContentPlugin` exists on the [server](../sync-server/README.md#adding-a-new-content-plugin) with the same `contentType` string.
 4. The new content type now appears in `ContentPickerScreen` automatically.

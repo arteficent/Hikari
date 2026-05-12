@@ -107,15 +107,25 @@ $env:DYNAMODB_REGION             = "ap-south-1"
 $env:DYNAMODB_ACCESS_KEY         = "<aws-access-key>"
 $env:DYNAMODB_SECRET_KEY         = "<aws-secret>"
 $env:JWT_KEY                     = "<at-least-32-bytes-of-entropy>"
-# Optional — override the default seed admin (defaults: admin / Admin123!)
-$env:BOOTSTRAP_ADMIN_EMAIL       = "admin"
+# Optional — override the default seed Root account (defaults: admin / Admin123!)
+$env:BOOTSTRAP_ADMIN_USERNAME    = "admin"
 $env:BOOTSTRAP_ADMIN_PASSWORD    = "<your-strong-bootstrap-password>"
 dotnet run
 ```
 
 Server up at <https://localhost:59709>, Swagger at `/swagger`.
-Log in for the first time with the **bootstrap admin** (`admin` / `Admin123!` by default) — that single login seeds an `Admin` user row in DynamoDB and from then on auth is DB-only. Rotate the password immediately via `POST /User/{id}/change-password`, then create real users via `/User` or `/Admin`.
-Full reference: [sync-server/README.md](sync-server/README.md#bootstrap-admin).
+Log in for the first time with the **bootstrap root** (`admin` / `Admin123!` by default) — that single login seeds a `Root` user row in DynamoDB and from then on auth is DB-only. Rotate the password immediately via `POST /User/{id}/change-password`, then create real users via `/User`.
+
+Three roles ship out of the box, with a strict hierarchy `root > admin > user`:
+
+| Role | Manage other users / roles | Create admins | Create users | Manage content | Consume content |
+|---|---|---|---|---|---|
+| **Root** *(singleton, bootstrap-seeded)* | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Admin** | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **User** | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+`Root` is reserved for the bootstrap account: it can never be assigned, demoted, or deleted via the API.
+Full reference: [sync-server/README.md](sync-server/README.md#bootstrap-root).
 
 ### 2. Build & install the Android app
 
@@ -134,7 +144,7 @@ Full reference: [android-client/README.md](android-client/README.md).
 Hikari's plugin contract is identical on both sides — same `contentType` string, same metadata keys, same storage path layout. To support a new type end-to-end:
 
 1. **Server** — implement [`IContentPlugin`](sync-server/src/Content/Contracts/IContentPlugin.cs), register it in [`Program.cs`](sync-server/src/Program.cs), create the matching DynamoDB table.
-2. **Client** — implement [`ContentPlugin`](android-client/app/src/main/java/com/example/android_client/content/ContentPlugin.kt), register it in [`MainActivity.onCreate()`](android-client/app/src/main/java/com/example/android_client/MainActivity.kt).
+2. **Client** — implement [`ContentPlugin`](android-client/app/src/content/ContentPlugin.kt), register it in [`MainActivity.onCreate()`](android-client/app/src/MainActivity.kt).
 3. That's it. The new type appears in the Android picker, exposes its own filters and upload form, and rides the same upload / sync / delete pipeline as everything else.
 
 ---
@@ -155,9 +165,9 @@ Hikari/
 - ✅ Core sync flow — uploads, downloads, deletes, paged listing, server-side filters
 - ✅ Five built-in content types with on-device cover-art extraction
 - ✅ R2 / S3 / MinIO support via the unified `ObjectStorage` config
-- ✅ JWT auth with refresh tokens, role-based authorization
+- ✅ JWT auth with refresh tokens, role-based authorization (`Root` / `Admin` / `User`)
+- ✅ Refresh tokens persisted (SHA-256 hashed) in DynamoDB with TTL auto-eviction
 - 🚧 Production Dockerfile (current one needs a path fix)
-- 🚧 Refresh-token persistence (currently in-process — single-instance only)
 - 🚧 iOS client — same plugin contract, different paint job
 
 ---

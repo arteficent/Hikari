@@ -11,8 +11,8 @@ namespace SyncServer.Identity.Models
 
         [Required]
         [DynamoDBProperty]
-        [DynamoDBGlobalSecondaryIndexHashKey("email-index")]
-        public string Email { get; set; } = null!;
+        [DynamoDBGlobalSecondaryIndexHashKey("username-index")]
+        public string Username { get; set; } = null!;
 
         // Stored as "{salt}:{hash}"
         [Required]

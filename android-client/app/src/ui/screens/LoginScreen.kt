@@ -45,7 +45,7 @@ fun LoginScreen(
     onBackClicked: () -> Unit,
     error: String?
 ) {
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     Column(
@@ -69,9 +69,10 @@ fun LoginScreen(
                 Text("Sign In", style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
                 OutlinedTextField(
@@ -101,7 +102,7 @@ fun LoginScreen(
                             modifier = Modifier.size(32.dp)
                         )
                     }
-                    IconButton(onClick = { onLoginClicked(email, password) }) {
+                    IconButton(onClick = { onLoginClicked(username, password) }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_face),
                             contentDescription = "Login",
