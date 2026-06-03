@@ -183,7 +183,7 @@ sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 ## First-Run Flow
 
 1. **Connect to Server** — enter the sync server's domain (e.g. `hikari.example.com:59709`).
-2. **Login** — username + password (the username is any unique string the operator chose; for a fresh server the bootstrap default is `admin` / `Admin123!`). JWT + refresh token are stored in DataStore.
+2. **Login** — username + password (the username is any unique string the operator chose; for a fresh server the bootstrap default is `root` / `Root123!`). JWT + refresh token are stored in DataStore.
 3. **Pick a content type** — opens the corresponding hub.
 4. **Hub** — browse/filter the server library, tap items to mark for sync, hit **Sync** to download. Tap the floating cloud-up button to open the upload flow.
 5. **Upload** — pick a file, the plugin pre-fills the metadata form from the file's own tags. Optionally embed a new cover image (audio). Submit; the client does `upload-init` → direct PUT → `upload-complete`.

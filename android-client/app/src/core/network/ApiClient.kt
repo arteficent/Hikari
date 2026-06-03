@@ -318,6 +318,27 @@ class ApiClient(private val authRepository: AuthRepository) {
         }.body()
     }
 
+    /**
+     * Metadata-only update for an existing content item. The binary is left untouched.
+     * Server endpoint: PUT /content/{contentType}/edit
+     */
+    suspend fun editContent(
+        serverDomain: String,
+        contentType: String,
+        item: ContentItem
+    ) {
+        executeAuthed(serverDomain) { token ->
+            val resp = client.put(getUrl(serverDomain, "/content/$contentType/edit")) {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(item)
+            }
+            if (!resp.status.isSuccess()) {
+                error("Edit failed: ${resp.status} ${resp.body<String>()}")
+            }
+        }
+    }
+
     // ── User / Admin ────────────────────────────────────────────
 
     /** Returns the currently-authenticated user's profile (server reload of token claims). */

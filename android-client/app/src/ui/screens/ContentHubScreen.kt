@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.android_client.core.storage.SyncPreferencesRepository
 import com.example.android_client.core.network.ApiClient
+import com.example.android_client.core.network.ContentItem
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.sync.ContentSyncService
 
@@ -39,6 +40,7 @@ fun ContentHubScreen(
     onBack: () -> Unit
 ) {
     var showUpload by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<ContentItem?>(null) }
 
     with(sharedTransitionScope) {
         Column(
@@ -63,7 +65,11 @@ fun ContentHubScreen(
                         serverDomain = serverDomain,
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = this@AnimatedContent,
-                        onBack = { showUpload = false }
+                        editingItem = editingItem,
+                        onBack = {
+                            showUpload = false
+                            editingItem = null
+                        }
                     )
                 } else {
                     ContentListScreen(
@@ -76,7 +82,14 @@ fun ContentHubScreen(
                         animatedVisibilityScope = this@AnimatedContent,
                         canManage = canManage,
                         onBack = onBack,
-                        onUpload = { showUpload = true }
+                        onUpload = {
+                            editingItem = null
+                            showUpload = true
+                        },
+                        onEdit = { item ->
+                            editingItem = item
+                            showUpload = true
+                        }
                     )
                 }
             } // AnimatedContent

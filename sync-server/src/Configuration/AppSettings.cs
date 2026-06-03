@@ -60,7 +60,7 @@ namespace SyncServer.Configuration
     /// </summary>
     public class BootstrapAdminSettings
     {
-        public string Username { get; set; } = "admin";
-        public string Password { get; set; } = "Admin123!";
+        public string Username { get; set; } = "root";
+        public string Password { get; set; } = "Root123!";
     }
 }

@@ -74,22 +74,28 @@ fun UploadScreen(
     serverDomain: String,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    editingItem: ContentItem? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isEditing = editingItem != null
 
     // File picker state
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
 
-    // Generic fields
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var tags by remember { mutableStateOf("") }
+    // Generic fields — pre-filled from editingItem if present
+    var title by remember { mutableStateOf(editingItem?.title.orEmpty()) }
+    var description by remember { mutableStateOf(editingItem?.description.orEmpty()) }
+    var tags by remember { mutableStateOf(editingItem?.tags?.joinToString(", ").orEmpty()) }
 
-    // Plugin-specific fields
-    val pluginFields = remember { mutableStateMapOf<String, String>() }
+    // Plugin-specific fields — pre-filled from editingItem.metadata if present
+    val pluginFields = remember {
+        mutableStateMapOf<String, String>().apply {
+            editingItem?.metadata?.let { putAll(it) }
+        }
+    }
 
     // Metadata options
     var updateMetadataInFile by remember { mutableStateOf(false) }
@@ -187,7 +193,7 @@ fun UploadScreen(
     ) {
         // ── Header ──
         Text(
-            text = "Upload ${plugin.displayName}",
+            text = if (isEditing) "Edit ${plugin.displayName}" else "Upload ${plugin.displayName}",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 12.dp)
         )
@@ -198,12 +204,22 @@ fun UploadScreen(
                 // ── File picker ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = { filePickerLauncher.launch(plugin.uploadMimeFilter) }) {
-                        Text("Pick File")
+                        Text(if (isEditing) "Replace File" else "Pick File")
                     }
                     Text(
-                        text = selectedFileName ?: "No file selected",
+                        text = selectedFileName
+                            ?: editingItem?.storagePath?.substringAfterLast('/')
+                            ?: "No file selected",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 12.dp)
+                    )
+                }
+                if (isEditing && selectedUri == null) {
+                    Text(
+                        text = "Leave file empty to update metadata only; pick a file to replace the stored binary.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                     )
                 }
 
@@ -367,7 +383,7 @@ fun UploadScreen(
 
                         // ── Validation ──
                         when {
-                            currentUri == null ->
+                            !isEditing && currentUri == null ->
                                 uploadError = "Please select a file."
                             trimmedTitle.isBlank() ->
                                 uploadError = "Title is required."
@@ -375,8 +391,48 @@ fun UploadScreen(
                                 val pluginError = plugin.validateUploadFields(pluginFields)
                                 if (pluginError != null) {
                                     uploadError = pluginError
+                                } else if (isEditing && currentUri == null) {
+                                    // ── Metadata-only edit (no new file) ──
+                                    scope.launch {
+                                        isUploading = true
+                                        try {
+                                            val metadata = plugin.buildUploadMetadata(
+                                                trimmedTitle, pluginFields
+                                            )
+                                            val mimeType = plugin.resolveUploadMimeType(pluginFields)
+                                            val tagList = tags.split(',')
+                                                .map { it.trim() }
+                                                .filter { it.isNotBlank() }
+                                                .ifEmpty { null }
+
+                                            val updated = editingItem!!.copy(
+                                                title = trimmedTitle,
+                                                description = description.trim().ifBlank { null },
+                                                format = mimeType.ifBlank { editingItem.format },
+                                                tags = tagList,
+                                                metadata = metadata,
+                                                lastModified = null
+                                            )
+
+                                            apiClient.editContent(
+                                                serverDomain = serverDomain,
+                                                contentType = plugin.contentType,
+                                                item = updated
+                                            )
+
+                                            uploadSuccess = "Metadata updated: '$trimmedTitle'"
+                                            Toast.makeText(context, "Saved!", Toast.LENGTH_SHORT).show()
+                                            onBack()
+                                        } catch (e: ResponseException) {
+                                            uploadError = "Save failed (${e.response.status.value}): ${e.message}"
+                                        } catch (e: Exception) {
+                                            uploadError = e.message ?: "Save failed"
+                                        } finally {
+                                            isUploading = false
+                                        }
+                                    }
                                 } else {
-                                    // ── Execute 3-step upload ──
+                                    // ── Execute 3-step upload (create or replace binary) ──
                                     scope.launch {
                                         isUploading = true
                                         try {
@@ -384,7 +440,7 @@ fun UploadScreen(
                                             val bytes = if (updateMetadataInFile) {
                                                 plugin.rewriteFileMetadata(
                                                     context = context,
-                                                    uri = currentUri,
+                                                    uri = currentUri!!,
                                                     fileName = selectedFileName ?: "file",
                                                     title = trimmedTitle,
                                                     fields = pluginFields,
@@ -392,7 +448,7 @@ fun UploadScreen(
                                                 )
                                             } else {
                                                 // Upload raw file without metadata changes
-                                                context.contentResolver.openInputStream(currentUri)
+                                                context.contentResolver.openInputStream(currentUri!!)
                                                     ?.use { it.readBytes() }
                                                     ?: throw IllegalStateException("Unable to read file")
                                             }
@@ -410,7 +466,7 @@ fun UploadScreen(
 
                                             // Build ContentItem matching server's ContentItem model
                                             val uploadItem = ContentItem(
-                                                id = UUID.randomUUID().toString(),
+                                                id = editingItem?.id ?: UUID.randomUUID().toString(),
                                                 contentType = plugin.contentType,
                                                 title = trimmedTitle,
                                                 description = description.trim().ifBlank { null },
@@ -418,7 +474,7 @@ fun UploadScreen(
                                                 sizeInBytes = bytes.size.toLong(),
                                                 storagePath = null,
                                                 lastModified = null,
-                                                createdAt = null,
+                                                createdAt = editingItem?.createdAt,
                                                 tags = tagList,
                                                 metadata = metadata
                                             )
@@ -440,7 +496,7 @@ fun UploadScreen(
                                             )
 
                                             // Step 3: upload-complete → finalize metadata
-                                            apiClient.uploadComplete(
+                                            val completeResp = apiClient.uploadComplete(
                                                 serverDomain = serverDomain,
                                                 contentType = plugin.contentType,
                                                 request = ContentUploadCompleteRequest(
@@ -448,20 +504,52 @@ fun UploadScreen(
                                                 )
                                             )
 
-                                            uploadSuccess = "Upload complete: '$trimmedTitle'"
-                                            Toast.makeText(context, "Upload complete!", Toast.LENGTH_SHORT).show()
+                                            // If editing and the new storage path differs from the old one,
+                                            // the server created a fresh row at the new path; remove the
+                                            // orphan row (and its blob) at the old path.
+                                            val newItem = completeResp.legacyItem ?: completeResp.item
+                                            val oldPath = editingItem?.storagePath
+                                            val newPath = newItem.storagePath ?: initResponse.item.storagePath
+                                            if (editingItem != null && !oldPath.isNullOrBlank() &&
+                                                !newPath.isNullOrBlank() && oldPath != newPath
+                                            ) {
+                                                try {
+                                                    apiClient.deleteItems(
+                                                        serverDomain = serverDomain,
+                                                        contentType = plugin.contentType,
+                                                        items = listOf(editingItem)
+                                                    )
+                                                } catch (_: Exception) {
+                                                    // Best-effort cleanup; surface but don't fail the edit.
+                                                }
+                                            }
 
-                                            // Reset form
-                                            selectedUri = null
-                                            selectedFileName = null
-                                            title = ""
-                                            description = ""
-                                            tags = ""
-                                            pluginFields.clear()
-                                            updateMetadataInFile = false
-                                            coverImageUri = null
-                                            coverImageName = null
-                                            existingCoverBytes = null
+                                            uploadSuccess = if (isEditing) {
+                                                "Updated: '$trimmedTitle'"
+                                            } else {
+                                                "Upload complete: '$trimmedTitle'"
+                                            }
+                                            Toast.makeText(
+                                                context,
+                                                if (isEditing) "Update complete!" else "Upload complete!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+
+                                            if (isEditing) {
+                                                onBack()
+                                            } else {
+                                                // Reset form for next upload
+                                                selectedUri = null
+                                                selectedFileName = null
+                                                title = ""
+                                                description = ""
+                                                tags = ""
+                                                pluginFields.clear()
+                                                updateMetadataInFile = false
+                                                coverImageUri = null
+                                                coverImageName = null
+                                                existingCoverBytes = null
+                                            }
                                         } catch (e: ResponseException) {
                                             uploadError = "Upload failed (${e.response.status.value}): ${e.message}"
                                         } catch (e: Exception) {
@@ -482,9 +570,12 @@ fun UploadScreen(
                             color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.height(20.dp)
                         )
-                        Text("  Uploading...", modifier = Modifier.padding(start = 8.dp))
+                        Text(
+                            "  ${if (isEditing) "Saving..." else "Uploading..."}",
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
                     } else {
-                        Text("Upload")
+                        Text(if (isEditing) "Save Changes" else "Upload")
                     }
                 }
             }

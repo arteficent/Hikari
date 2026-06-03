@@ -106,8 +106,8 @@ All settings live in [src/appsettings.json](src/appsettings.json). Every value c
 | `JWT_ISSUER` | `JwtConstants.Issuer` | |
 | `JWT_AUDIENCE` | `JwtConstants.Audience` | |
 | `JWT_DURATION_HOURS` | `JwtConstants.DurationInHours` | Default `12` |
-| `BOOTSTRAP_ADMIN_USERNAME` | `BootstrapAdmin.Username` | Default `admin`. Used only on first login when no DB row exists. |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `BootstrapAdmin.Password` | Default `Admin123!`. **Override in production.** Used only on first login when no DB row exists. |
+| `BOOTSTRAP_ADMIN_USERNAME` | `BootstrapAdmin.Username` | Default `root`. Used only on first login when no DB row exists. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | `BootstrapAdmin.Password` | Default `Root123!`. **Override in production.** Used only on first login when no DB row exists. |
 
 ### Mix-and-match example: DynamoDB on AWS + binaries on Cloudflare R2
 
@@ -169,8 +169,8 @@ A fresh DynamoDB has no users, so no one can authenticate to create the first us
 
 | Field | Default |
 |---|---|
-| Username | `admin` |
-| Password | `Admin123!` |
+| Username | `root` |
+| Password | `Root123!` |
 
 **First-run flow:**
 
@@ -178,7 +178,7 @@ A fresh DynamoDB has no users, so no one can authenticate to create the first us
 # 1. Login as bootstrap root (this seeds the Root user row)
 curl -X POST https://localhost:59709/Auth/login \
      -H "Content-Type: application/json" \
-     -d '{"username":"admin","password":"Admin123!"}'
+     -d '{"username":"admin","password":"Root123!"}'
 
 # 2. Immediately rotate the password
 curl -X POST https://localhost:59709/User/<id>/change-password \

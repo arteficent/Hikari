@@ -83,7 +83,8 @@ fun ContentListScreen(
     animatedVisibilityScope: AnimatedVisibilityScope,
     canManage: Boolean,
     onBack: () -> Unit,
-    onUpload: () -> Unit
+    onUpload: () -> Unit,
+    onEdit: (ContentItem) -> Unit
 ) {
     var allItems by remember { mutableStateOf<List<ContentItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -417,6 +418,9 @@ fun ContentListScreen(
                                 deleteTarget = listOf(item)
                                 showDeleteConfirm = true
                             }
+                        } else null,
+                        onEdit = if (canManage) {
+                            { onEdit(item) }
                         } else null
                     )
                 }

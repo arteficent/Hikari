@@ -44,9 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.example.android_client.R
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
@@ -61,6 +63,7 @@ fun ContentItemCard(
     onToggle: () -> Unit,
     isSynced: Boolean = false,
     onSyncToggle: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
     var showDetails by remember { mutableStateOf(false) }
@@ -152,6 +155,16 @@ fun ContentItemCard(
                                     contentDescription = if (isSynced) "Synced" else "Not synced",
                                     tint = if (isSynced) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (onEdit != null) {
+                            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_edit),
+                                    contentDescription = "Edit",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
