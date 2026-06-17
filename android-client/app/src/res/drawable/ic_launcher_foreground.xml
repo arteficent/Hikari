@@ -1,10 +1,38 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
-    <!-- Flare/Sparkle icon: 4-point star burst with golden light -->
-    <path
-        android:fillColor="#e3e3e3"
-        android:pathData="M40,-440v-80h240v80H40Zm270,-154l-84,-84l56,-56l84,84l-56,56Zm130,-86v-240h80v240h-80Zm210,86l-56,-56l84,-84l56,56l-84,84Zm30,154v-80h240v80H680Zm-285,45q-35,-35l-35,-85t35,-85q35,-35l85,-35t85,35q35,35l35,85t-35,85q-35,35l-85,35t-85,-35Zm283,169l-84,-84l56,-56l84,84l-56,56Zm-396,0l-56,-56l84,-84l56,56l-84,84ZM440,-40v-240h80v240h-80Z" />
+    <!--
+      Flare/sparkle icon with golden gradient.
+      The source SVG uses viewBox "0 -960 960 960" (negative Y), so the path
+      is shifted into the 0..960 viewport via translateY="960". An outer scale
+      group shrinks it into the adaptive-icon safe zone (centre ~66%).
+    -->
+    <group
+        android:name="safezone"
+        android:pivotX="480"
+        android:pivotY="480"
+        android:scaleX="0.62"
+        android:scaleY="0.62">
+        <group
+            android:name="viewboxOffset"
+            android:translateY="960">
+            <path android:pathData="M40,-440v-80h240v80H40Zm270,-154l-84,-84l56,-56l84,84l-56,56Zm130,-86v-240h80v240h-80Zm210,86l-56,-56l84,-84l56,56l-84,84Zm30,154v-80h240v80H680Zm-285,45q-35,-35 -35,-85t35,-85q35,-35 85,-35t85,35q35,35 35,85t-35,85q-35,35 -85,35t-85,-35Zm283,169l-84,-84l56,-56l84,84l-56,56Zm-396,0l-56,-56l84,-84l56,56l-84,84ZM440,-40v-240h80v240h-80Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="linear"
+                        android:startX="40"
+                        android:startY="-920"
+                        android:endX="920"
+                        android:endY="-40">
+                        <item android:offset="0.0" android:color="#FFFFE89A" />
+                        <item android:offset="0.45" android:color="#FFFFC83D" />
+                        <item android:offset="1.0" android:color="#FFF59E0B" />
+                    </gradient>
+                </aapt:attr>
+            </path>
+        </group>
+    </group>
 </vector>
