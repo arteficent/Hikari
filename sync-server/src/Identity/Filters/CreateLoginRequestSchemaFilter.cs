@@ -18,8 +18,8 @@ namespace SyncServer.Identity.Filters
             openApiSchema.Example = JsonNode.Parse(
                 """
                 {
-                  "email": "root",
-                  "password": "Root123!"
+                  "username": "user",
+                  "password": "pass"
                 }
                 """
             );

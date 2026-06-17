@@ -100,6 +100,20 @@ builder.Services.Configure<BootstrapAdminSettings>(opts =>
     if (!string.IsNullOrEmpty(password)) opts.Password = password;
 });
 
+// ── Hosting (proxy / HTTPS redirection knobs) ──
+builder.Services.Configure<HostingSettings>(opts =>
+{
+    builder.Configuration.GetSection("Hosting").Bind(opts);
+
+    var envDisable = Environment.GetEnvironmentVariable("DISABLE_HTTPS_REDIRECT");
+    if (bool.TryParse(envDisable, out var disable)) opts.DisableHttpsRedirect = disable;
+});
+
+// Resolve early so we can consult it during pipeline configuration below.
+var hostingSettings = builder.Configuration.GetSection("Hosting").Get<HostingSettings>() ?? new HostingSettings();
+if (bool.TryParse(Environment.GetEnvironmentVariable("DISABLE_HTTPS_REDIRECT"), out var earlyDisableHttpsRedirect))
+    hostingSettings.DisableHttpsRedirect = earlyDisableHttpsRedirect;
+
 
 builder.Services
         .AddControllers()
@@ -278,7 +292,14 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseAuthentication();
-if (!app.Environment.IsDevelopment())
+// When running behind a TLS-terminating proxy (e.g. Google Cloud Run, an L7
+// load balancer, or an ingress controller) the inbound connection is already
+// HTTPS for the client even though the container only sees HTTP. In that case
+// `UseHttpsRedirection` would either no-op (when `ASPNETCORE_HTTPS_PORT` is
+// unset) or, worse, issue redirects that loop. The toggle lives in
+// `HostingSettings.DisableHttpsRedirect` (appsettings.json -> Hosting), and
+// can be overridden by the `DISABLE_HTTPS_REDIRECT` env var.
+if (!app.Environment.IsDevelopment() && !hostingSettings.DisableHttpsRedirect)
 {
     app.UseHttpsRedirection();
 }

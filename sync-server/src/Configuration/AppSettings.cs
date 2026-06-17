@@ -63,4 +63,18 @@ namespace SyncServer.Configuration
         public string Username { get; set; } = "root";
         public string Password { get; set; } = "Root123!";
     }
+
+    /// <summary>
+    /// Hosting / reverse-proxy related settings. When the server runs behind a
+    /// TLS-terminating proxy (Google Cloud Run, an L7 load balancer, an ingress
+    /// controller, etc.) the inbound request reaches the container as plain
+    /// HTTP and <c>UseHttpsRedirection</c> would either no-op or, worse, issue
+    /// redirects that loop. Toggling <see cref="DisableHttpsRedirect"/> opts the
+    /// pipeline out of HTTPS redirection so the same image can be deployed in
+    /// both proxied and non-proxied environments.
+    /// </summary>
+    public class HostingSettings
+    {
+        public bool DisableHttpsRedirect { get; set; }
+    }
 }
