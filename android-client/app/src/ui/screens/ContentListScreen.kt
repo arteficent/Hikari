@@ -66,6 +66,7 @@ import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.launch
 
+//Interesting file size
 /**
  * Generic content list screen — works for any content plugin.
  * The plugin provides FilterPanel and ItemCard Composables,
