@@ -326,22 +326,30 @@ fun ContentListScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Sync selected items — right-aligned action.
-            val selectedSyncCount = items.count { syncIds.contains(it.id) }
+            // Sync selected items — right-aligned action. Always available so that
+            // pressing it reconciles local storage with the current marked state:
+            // marked items are downloaded and unmarked items are removed locally.
             IconButton(
                 onClick = {
                     ensureStorageAndRun {
-                        val selected = items.filter { syncIds.contains(it.id) }
-                        contentSyncService.sync(selected)
-                        Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
+                        isBusy = true
+                        try {
+                            val selected = items.filter { syncIds.contains(it.id) }
+                            contentSyncService.sync(selected)
+                            Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isBusy = false
+                        }
                     }
                 },
-                enabled = selectedSyncCount > 0
+                enabled = !isBusy
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_cached),
                     contentDescription = "Sync ${plugin.displayName}",
-                    tint = if (selectedSyncCount > 0) {
+                    tint = if (!isBusy) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)

@@ -1,9 +1,19 @@
 package com.example.android_client
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -73,6 +83,58 @@ class MainActivity : ComponentActivity() {
 
     // ── Plugin infrastructure ──
     private val pluginRegistry = ContentPluginRegistry()
+
+    // ── Storage permission handling ──
+    // Guards against re-launching the permission flow while a request is already in
+    // flight (e.g. when returning from the system settings screen re-triggers onStart).
+    private var isRequestingStoragePermission = false
+
+    private val manageStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        isRequestingStoragePermission = false
+        if (!hasStorageAccess()) {
+            Toast.makeText(this, "Storage permission is required to sync content", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val legacyStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isRequestingStoragePermission = false
+        if (!granted) {
+            Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun hasStorageAccess(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                    PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestStoragePermissionIfNeeded() {
+        if (isRequestingStoragePermission || hasStorageAccess()) return
+        isRequestingStoragePermission = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            manageStorageLauncher.launch(intent)
+        } else {
+            legacyStorageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Prompt for file read/write access on every app access if not already granted.
+        requestStoragePermissionIfNeeded()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -54,22 +54,25 @@ class ContentSyncService(
         }
 
         val expectedById = selected.associate { it.id to plugin.displayName(it) }
-        val expectedNames = expectedById.values.toSet()
-        val localAfter = plugin.getLocalItems(context).toSet()
-        val toDeleteNames = localAfter.filter { it !in expectedNames }.toSet()
 
-        Log.d(TAG, "Expected: $expectedNames, localAfter: $localAfter, toDelete: $toDeleteNames")
+        // Reconcile local storage against the marked (desired) state. Anything that is
+        // synced locally but no longer marked must be removed from local storage. We key
+        // off the global marked set rather than the currently visible selection so that
+        // marked items on other pages are never deleted just because they aren't on screen.
+        val markedIds = syncPreferencesRepository.syncIds.first()
+        val idsToRemove = syncIndex.keys.filter { it !in markedIds }
 
-        for (displayName in toDeleteNames) {
-            plugin.deleteLocally(context, displayName)
-        }
+        Log.d(TAG, "Marked ids: $markedIds, removing unmarked local items: $idsToRemove")
 
-        val idsToRemove = syncIndex.filterValues { it in toDeleteNames }.keys +
-                syncIndex.keys.filter { it !in expectedById.keys }
         for (id in idsToRemove) {
+            syncIndex[id]?.let { displayName ->
+                plugin.deleteLocally(context, displayName)
+            }
             syncPreferencesRepository.removeSyncEntry(id)
         }
 
+        // Ensure the sync index reflects what is actually on disk for marked items.
+        val localAfter = plugin.getLocalItems(context).toSet()
         for ((id, name) in expectedById) {
             if (localAfter.contains(name)) {
                 syncPreferencesRepository.setSyncEntry(id, name)
