@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2026 and Sourabh Singh
+Copyright (c) 2026 Hikari Contributors
 
 All rights reserved.
 
