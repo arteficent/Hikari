@@ -155,7 +155,7 @@ Hikari's plugin contract is identical on both sides — same `contentType` strin
 Hikari/
 ├── README.md            ← you are here
 ├── sync-server/         ASP.NET Core API  (see sync-server/README.md)
-└── android-client/      Compose Android app (see android-client/README.md)
+└── android-client/      Compose Android app (see android-client/README.md).
 ```
 
 ---
