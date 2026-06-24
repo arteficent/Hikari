@@ -172,4 +172,4 @@ Hikari/
 
 ---
 
-*Made with light. Powered by your own cloud.*
+*Made with light.*
