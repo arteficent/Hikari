@@ -1,0 +1,165 @@
+# ──────────────────────────────────────────────────────────────────────
+# Hikari Sync Server — local backend infra (MongoDB + MinIO)
+#
+# Spins up a complete, self-contained backend:
+#   • mongo         — metadata store      (Database:Provider = MongoDb)
+#   • minio         — object storage       (ObjectStorage:Provider = Minio)
+#   • createbuckets — one-shot bucket init (creates the content bucket)
+#   • sync-server   — the API, wired to both of the above
+#
+# Quick start:
+#   cd sync-server
+#   copy .env.example .env      # (PowerShell: Copy-Item .env.example .env)
+#   docker compose up --build
+#
+# Then:
+#   API      → http://localhost:8080  (Swagger at /swagger)
+#   MinIO    → http://localhost:9000  (console at http://localhost:9001)
+#
+# This stack swaps in the *new* providers; the AWS S3 / DynamoDB code paths
+# remain fully supported and are simply not used here.
+#
+# Optional: back MinIO's object data with an SMB/CIFS share (NAS / Samba /
+# Windows share) by setting SMB_HOST (+ share path & credentials) in .env —
+# no extra compose file needed. See the "SMB / CIFS share" block in
+# .env.example and the volumes section at the bottom of this file.
+# ──────────────────────────────────────────────────────────────────────
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-hikari}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-hikari-mongo-pw}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-hikari}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-hikari-minio-pw}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"        # S3 API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001" # web console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # One-shot job: wait for MinIO, then create the content bucket if missing.
+  createbuckets:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-hikari}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-hikari-minio-pw}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-hikari-storage}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do
+        echo 'waiting for minio...'; sleep 2;
+      done;
+      mc mb --ignore-existing local/$$OBJECT_STORAGE_BUCKET;
+      echo 'bucket ready: '$$OBJECT_STORAGE_BUCKET;
+      "
+
+  sync-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+    ports:
+      - "${SYNC_SERVER_PORT:-8080}:8080"
+    environment:
+      # ── Database: MongoDB ──
+      DATABASE_PROVIDER: MongoDb
+      MONGODB_CONNECTION_STRING: mongodb://${MONGO_ROOT_USERNAME:-hikari}:${MONGO_ROOT_PASSWORD:-hikari-mongo-pw}@mongo:27017/?authSource=admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-hikari}
+
+      # ── Object storage: MinIO ──
+      OBJECT_STORAGE_PROVIDER: Minio
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-hikari-storage}
+      OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-hikari}
+      OBJECT_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-hikari-minio-pw}
+      # Internal endpoint the server uses to reach MinIO (HEAD/DELETE).
+      OBJECT_STORAGE_SERVICE_URL: http://minio:9000
+      # Public endpoint embedded in presigned URLs handed to clients. Override for a
+      # physical device / emulator (e.g. http://10.0.2.2:9000 or http://<lan-ip>:9000).
+      OBJECT_STORAGE_PUBLIC_SERVICE_URL: ${OBJECT_STORAGE_PUBLIC_SERVICE_URL:-http://localhost:9000}
+      OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
+
+      # ── Auth ──
+      JWT_KEY: ${JWT_KEY:-change-me-to-at-least-32-bytes-of-entropy!!}
+      JWT_ISSUER: ${JWT_ISSUER:-Hikari-sync-server}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-Hikari-mobile-app}
+      JWT_DURATION_HOURS: ${JWT_DURATION_HOURS:-12}
+
+      # ── Bootstrap root (override the password in any real deployment) ──
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-root}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-Root123!}
+
+      # ── Hosting ── (no TLS inside the container; terminate upstream if needed)
+      ASPNETCORE_ENVIRONMENT: Production
+      DISABLE_HTTPS_REDIRECT: "true"
+
+volumes:
+  # MongoDB metadata.
+  #   • Default (no MONGO_SMB_SHARE_PATH): a normal Docker-managed local volume.
+  #   • SMB/CIFS mode: set BOTH SMB_HOST and MONGO_SMB_SHARE_PATH in .env and Mongo's
+  #     /data/db is mounted from //${SMB_HOST}/${MONGO_SMB_SHARE_PATH}.
+  #
+  # ⚠ Storing MongoDB data files on SMB/CIFS (or any network FS) is NOT recommended:
+  # the WiredTiger engine relies on file locking + memory mapping that network shares
+  # don't guarantee, which can corrupt the database. Prefer keeping mongo-data local.
+  # This is therefore a SEPARATE opt-in — enabling SMB for MinIO (SMB_HOST alone) does
+  # NOT move Mongo to SMB; you must also set MONGO_SMB_SHARE_PATH. The double gate
+  # `${SMB_HOST:+${MONGO_SMB_SHARE_PATH:+…}}` resolves to "" (plain local volume)
+  # unless both are set.
+  mongo-data:
+    driver: local
+    driver_opts:
+      type: "${SMB_HOST:+${MONGO_SMB_SHARE_PATH:+cifs}}"
+      o: "${SMB_HOST:+${MONGO_SMB_SHARE_PATH:+username=${SMB_USERNAME:-},password=${SMB_PASSWORD:-},uid=${SMB_UID:-0},gid=${SMB_GID:-0},vers=${SMB_VERSION:-3.0},file_mode=0770,dir_mode=0770${SMB_EXTRA_OPTS:+,${SMB_EXTRA_OPTS:-}}}}"
+      device: "${SMB_HOST:+${MONGO_SMB_SHARE_PATH:+//${SMB_HOST:-}/${MONGO_SMB_SHARE_PATH:-}}}"
+
+  # MinIO object data.
+  #   • Default (no SMB vars set): a normal Docker-managed local volume — zero config.
+  #   • SMB/CIFS mode: set SMB_HOST (+ SMB_SHARE_PATH, SMB_USERNAME, SMB_PASSWORD) in .env
+  #     and MinIO's /data is mounted from //${SMB_HOST}/${SMB_SHARE_PATH} on your SMB
+  #     server (NAS / Samba / Windows share). See the "SMB / CIFS share" block in
+  #     .env.example and the README.
+  #
+  # The whole CIFS block is gated on SMB_HOST via `${SMB_HOST:+…}`, so when SMB_HOST is
+  # empty every option resolves to "" and Docker falls back to a plain local volume.
+  # The CIFS mount is performed by the Docker host kernel (which must have cifs support
+  # and reach SMB_HOST); switching an existing local volume to SMB needs a one-time
+  # `docker compose down -v` so the old local volume isn't reused.
+  minio-data:
+    driver: local
+    driver_opts:
+      type: "${SMB_HOST:+cifs}"
+      o: "${SMB_HOST:+username=${SMB_USERNAME:-},password=${SMB_PASSWORD:-},uid=${SMB_UID:-0},gid=${SMB_GID:-0},vers=${SMB_VERSION:-3.0},file_mode=0770,dir_mode=0770${SMB_EXTRA_OPTS:+,${SMB_EXTRA_OPTS:-}}}"
+      device: "${SMB_HOST:+//${SMB_HOST:-}/${SMB_SHARE_PATH:-}}"
