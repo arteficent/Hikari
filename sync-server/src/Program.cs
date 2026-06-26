@@ -4,6 +4,7 @@ using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.S3;
+using MongoDB.Driver;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -20,6 +21,7 @@ using SyncServer.Identity.Middlewares;
 using SyncServer.Identity.Repositories;
 using SyncServer.Identity.Services;
 using SyncServer.Infrastructure;
+using SyncServer.Infrastructure.Mongo;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +53,12 @@ builder.Services.Configure<ObjectStorageSettings>(opts =>
     var envServiceUrl = Environment.GetEnvironmentVariable("OBJECT_STORAGE_SERVICE_URL");
     if (!string.IsNullOrEmpty(envServiceUrl)) opts.ServiceUrl = envServiceUrl;
 
+    var envPublicServiceUrl = Environment.GetEnvironmentVariable("OBJECT_STORAGE_PUBLIC_SERVICE_URL");
+    if (!string.IsNullOrEmpty(envPublicServiceUrl)) opts.PublicServiceUrl = envPublicServiceUrl;
+
+    var envProvider = Environment.GetEnvironmentVariable("OBJECT_STORAGE_PROVIDER");
+    if (!string.IsNullOrEmpty(envProvider)) opts.Provider = envProvider;
+
     var envForcePathStyle = Environment.GetEnvironmentVariable("OBJECT_STORAGE_FORCE_PATH_STYLE");
     if (bool.TryParse(envForcePathStyle, out var fps)) opts.ForcePathStyle = fps;
 });
@@ -68,6 +76,27 @@ builder.Services.Configure<DynamoDbSettings>(opts =>
 
     var envSecret = Environment.GetEnvironmentVariable("DYNAMODB_SECRET_KEY");
     if (!string.IsNullOrEmpty(envSecret)) opts.SecretKey = envSecret;
+});
+
+// ── Database Provider Selection (DynamoDb | MongoDb) ──
+builder.Services.Configure<DatabaseSettings>(opts =>
+{
+    builder.Configuration.GetSection("Database").Bind(opts);
+
+    var envProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER");
+    if (!string.IsNullOrEmpty(envProvider)) opts.Provider = envProvider;
+});
+
+// ── MongoDB Settings (used when Database:Provider == "MongoDb") ──
+builder.Services.Configure<MongoDbSettings>(opts =>
+{
+    builder.Configuration.GetSection("MongoDb").Bind(opts);
+
+    var envConn = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING");
+    if (!string.IsNullOrEmpty(envConn)) opts.ConnectionString = envConn;
+
+    var envDb = Environment.GetEnvironmentVariable("MONGODB_DATABASE");
+    if (!string.IsNullOrEmpty(envDb)) opts.DatabaseName = envDb;
 });
 
 
@@ -133,6 +162,8 @@ ApplyEnv("OBJECT_STORAGE_REGION", v => objectStorage.Region = v);
 ApplyEnv("OBJECT_STORAGE_ACCESS_KEY", v => objectStorage.AccessKey = v);
 ApplyEnv("OBJECT_STORAGE_SECRET_KEY", v => objectStorage.SecretKey = v);
 ApplyEnv("OBJECT_STORAGE_SERVICE_URL", v => objectStorage.ServiceUrl = v);
+ApplyEnv("OBJECT_STORAGE_PUBLIC_SERVICE_URL", v => objectStorage.PublicServiceUrl = v);
+ApplyEnv("OBJECT_STORAGE_PROVIDER", v => objectStorage.Provider = v);
 if (bool.TryParse(Environment.GetEnvironmentVariable("OBJECT_STORAGE_FORCE_PATH_STYLE"), out var earlyFps))
     objectStorage.ForcePathStyle = earlyFps;
 
@@ -141,30 +172,66 @@ ApplyEnv("DYNAMODB_REGION", v => dynamoDb.Region = v);
 ApplyEnv("DYNAMODB_ACCESS_KEY", v => dynamoDb.AccessKey = v);
 ApplyEnv("DYNAMODB_SECRET_KEY", v => dynamoDb.SecretKey = v);
 
+// ── Provider selection (resolved early so DI can register only the chosen backends) ──
+var databaseSettings = builder.Configuration.GetSection("Database").Get<DatabaseSettings>() ?? new DatabaseSettings();
+ApplyEnv("DATABASE_PROVIDER", v => databaseSettings.Provider = v);
+
+var mongoDb = builder.Configuration.GetSection("MongoDb").Get<MongoDbSettings>() ?? new MongoDbSettings();
+ApplyEnv("MONGODB_CONNECTION_STRING", v => mongoDb.ConnectionString = v);
+ApplyEnv("MONGODB_DATABASE", v => mongoDb.DatabaseName = v);
+
+var useMongoDb = string.Equals(databaseSettings.Provider, "MongoDb", StringComparison.OrdinalIgnoreCase);
+var useMinio = string.Equals(objectStorage.Provider, "Minio", StringComparison.OrdinalIgnoreCase);
+
 static void ApplyEnv(string name, Action<string> setter)
 {
     var value = Environment.GetEnvironmentVariable(name);
     if (!string.IsNullOrEmpty(value)) setter(value);
 }
 
-// ── Core Infrastructure: DynamoDB (AWS) ──
-var dynamoCredentials = (!string.IsNullOrEmpty(dynamoDb.AccessKey) && !string.IsNullOrEmpty(dynamoDb.SecretKey))
-    ? new Amazon.Runtime.BasicAWSCredentials(dynamoDb.AccessKey, dynamoDb.SecretKey)
-    : null;
-var dynamoConfig = new AmazonDynamoDBConfig
+// ── Database provider: DynamoDB (AWS) or MongoDB ──
+// Only the selected backend's services are registered, so a MongoDB deployment requires no
+// AWS configuration (and a DynamoDB deployment needs no Mongo connection string). Both sets
+// implement the same IUserRepository / IRefreshTokenRepository / IContentRepository contracts.
+if (useMongoDb)
 {
-    RegionEndpoint = RegionEndpoint.GetBySystemName(dynamoDb.Region)
-};
-builder.Services
-        .AddSingleton<IAmazonDynamoDB>(dynamoCredentials != null
-            ? new AmazonDynamoDBClient(dynamoCredentials, dynamoConfig)
-            : new AmazonDynamoDBClient(dynamoConfig))
-        .AddScoped<IDynamoDBContext, DynamoDBContext>();
+    if (string.IsNullOrWhiteSpace(mongoDb.ConnectionString))
+        throw new InvalidOperationException(
+            "MongoDb:ConnectionString (or MONGODB_CONNECTION_STRING) is required when Database:Provider is \"MongoDb\".");
 
-// ── Identity ──
+    MongoMappings.Register();
+    var mongoClient = new MongoClient(mongoDb.ConnectionString);
+    builder.Services.AddSingleton<IMongoClient>(mongoClient);
+    builder.Services.AddSingleton(mongoClient.GetDatabase(mongoDb.DatabaseName));
+
+    builder.Services
+            .AddScoped<IUserRepository, MongoUserRepository>()
+            .AddScoped<IRefreshTokenRepository, MongoRefreshTokenRepository>()
+            .AddScoped<IContentRepository, MongoContentRepository>();
+}
+else
+{
+    var dynamoCredentials = (!string.IsNullOrEmpty(dynamoDb.AccessKey) && !string.IsNullOrEmpty(dynamoDb.SecretKey))
+        ? new Amazon.Runtime.BasicAWSCredentials(dynamoDb.AccessKey, dynamoDb.SecretKey)
+        : null;
+    var dynamoConfig = new AmazonDynamoDBConfig
+    {
+        RegionEndpoint = RegionEndpoint.GetBySystemName(dynamoDb.Region)
+    };
+    builder.Services
+            .AddSingleton<IAmazonDynamoDB>(dynamoCredentials != null
+                ? new AmazonDynamoDBClient(dynamoCredentials, dynamoConfig)
+                : new AmazonDynamoDBClient(dynamoConfig))
+            .AddScoped<IDynamoDBContext, DynamoDBContext>();
+
+    builder.Services
+            .AddScoped<IUserRepository, UserRepository>()
+            .AddScoped<IRefreshTokenRepository, RefreshTokenRepository>()
+            .AddScoped<IContentRepository, ContentRepository>();
+}
+
+// ── Identity (provider-agnostic) ──
 builder.Services
-        .AddScoped<IUserRepository, UserRepository>()
-        .AddScoped<IRefreshTokenRepository, RefreshTokenRepository>()
         .AddHttpContextAccessor()
         .AddScoped<ICurrentUserService, CurrentUserService>();
 
@@ -179,30 +246,37 @@ builder.Services.AddSingleton<IContentPlugin, ImagePlugin>();
 // Build the plugin registry from all registered IContentPlugin instances
 builder.Services.BuildContentPluginRegistry();
 
-// Generic content repository used by all plugins
-builder.Services.AddScoped<IContentRepository, ContentRepository>();
+// The generic IContentRepository is registered above alongside the selected database provider.
 
-// ── Object Storage (S3-compatible: AWS S3 / Cloudflare R2 / MinIO / etc.) ──
-var objectStorageCredentials = (!string.IsNullOrEmpty(objectStorage.AccessKey) && !string.IsNullOrEmpty(objectStorage.SecretKey))
-    ? new Amazon.Runtime.BasicAWSCredentials(objectStorage.AccessKey, objectStorage.SecretKey)
-    : null;
-builder.Services.AddSingleton<IAmazonS3>(sp =>
+// ── Object Storage provider: S3-compatible (AWS S3 / Cloudflare R2 / MinIO / …) or native MinIO ──
+if (useMinio)
 {
-    var s3Config = new AmazonS3Config();
-    if (!string.IsNullOrEmpty(objectStorage.ServiceUrl))
+    // MinioBlobStorageProvider reads ObjectStorageSettings directly via IOptions.
+    builder.Services.AddSingleton<IBlobStorageProvider, MinioBlobStorageProvider>();
+}
+else
+{
+    var objectStorageCredentials = (!string.IsNullOrEmpty(objectStorage.AccessKey) && !string.IsNullOrEmpty(objectStorage.SecretKey))
+        ? new Amazon.Runtime.BasicAWSCredentials(objectStorage.AccessKey, objectStorage.SecretKey)
+        : null;
+    builder.Services.AddSingleton<IAmazonS3>(sp =>
     {
-        s3Config.ServiceURL = objectStorage.ServiceUrl;
-        s3Config.ForcePathStyle = objectStorage.ForcePathStyle;
-    }
-    else if (!string.IsNullOrEmpty(objectStorage.Region))
-    {
-        s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(objectStorage.Region);
-    }
-    return objectStorageCredentials != null
-        ? new AmazonS3Client(objectStorageCredentials, s3Config)
-        : new AmazonS3Client(s3Config);
-});
-builder.Services.AddSingleton<IBlobStorageProvider, S3BlobStorageProvider>();
+        var s3Config = new AmazonS3Config();
+        if (!string.IsNullOrEmpty(objectStorage.ServiceUrl))
+        {
+            s3Config.ServiceURL = objectStorage.ServiceUrl;
+            s3Config.ForcePathStyle = objectStorage.ForcePathStyle;
+        }
+        else if (!string.IsNullOrEmpty(objectStorage.Region))
+        {
+            s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(objectStorage.Region);
+        }
+        return objectStorageCredentials != null
+            ? new AmazonS3Client(objectStorageCredentials, s3Config)
+            : new AmazonS3Client(s3Config);
+    });
+    builder.Services.AddSingleton<IBlobStorageProvider, S3BlobStorageProvider>();
+}
 
 // JWT Authentication
 var jwtConstants = builder.Configuration.GetSection("JwtConstants").Get<JwtSettings>() ?? new JwtSettings();

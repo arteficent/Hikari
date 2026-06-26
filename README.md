@@ -11,7 +11,7 @@ No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your 
 
 ## ✨ Why Hikari?
 
-- **Bring your own cloud.** DynamoDB on AWS. Binaries on Cloudflare R2 — or AWS S3, MinIO, DigitalOcean Spaces, anything S3-compatible. The two are configured **independently**, so you can pair the cheapest object store with the most convenient metadata store.
+- **Bring your own cloud — or none at all.** Metadata in **DynamoDB on AWS or self-hosted MongoDB**. Binaries on Cloudflare R2 — or AWS S3, MinIO, DigitalOcean Spaces, anything S3-compatible. Database and object store are configured **independently**, so you can pair the cheapest object store with the most convenient metadata store, or run the whole thing on your own hardware with **MongoDB + MinIO** via one `docker compose up`.
 - **Offline-first, by design.** The server is for *sync*, not playback. Synced files land in `/sdcard/Hikari/...` mirroring the server's storage layout, so your existing music players, e-readers, and gallery apps Just See Them.
 - **One contract, many media types.** A `ContentPlugin` interface — implemented identically on the server (C#) and the client (Kotlin) — owns everything specific to a content type. Drop in a new plugin pair → a new endpoint, a new tab, a new sync flow. No core code touched.
 - **Cover art straight from the file.** ID3v2 frames, EPUB OPFs, CBZ first pages, MP4 thumbnails — extracted on-device, rendered with Coil, no separate metadata API.
@@ -36,13 +36,13 @@ No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your 
                 │  the server)                         │         │
                 ▼                                      ▼         ▼
         ┌─────────────────┐                 ┌──────────────┐  ┌───────────┐
-        │ Object storage  │                 │  DynamoDB    │  │   JWT     │
-        │ AWS S3 / R2 /   │                 │  (metadata)  │  │  signing  │
-        │ MinIO / Spaces  │                 │              │  │           │
+        │ Object storage  │                 │  DynamoDB /  │  │   JWT     │
+        │ S3 / R2 / MinIO │                 │  MongoDB     │  │  signing  │
+        │ / Spaces        │                 │  (metadata)  │  │           │
         └─────────────────┘                 └──────────────┘  └───────────┘
 ```
 
-Two long-running processes, three storage tiers, zero coupling between binaries and metadata. The Android app talks REST + JWT to the server; the **bytes** flow directly between device and object storage via short-lived presigned URLs.
+Two long-running processes, three storage tiers, zero coupling between binaries and metadata. The metadata database (DynamoDB or MongoDB) and object store (S3-compatible or MinIO) are each pluggable and chosen by config. The Android app talks REST + JWT to the server; the **bytes** flow directly between device and object storage via short-lived presigned URLs.
 
 ---
 
@@ -53,7 +53,7 @@ Two long-running processes, three storage tiers, zero coupling between binaries 
 | Stack | ASP.NET Core · .NET 10 · AWSSDK v4 | Kotlin 2.0.21 · Compose · Ktor 3 · Coil 3 |
 | Owns | Auth, metadata DB, storage paths, presigned URLs | UI, local sync, metadata extraction, cover art |
 | Plugins | `IContentPlugin` (C#) | `ContentPlugin` (Kotlin) |
-| State | DynamoDB + S3-compatible bucket | DataStore + `/sdcard/Hikari/...` |
+| State | DynamoDB *or* MongoDB + S3-compatible *or* MinIO bucket | DataStore + `/sdcard/Hikari/...` |
 
 Each half ships with full setup, configuration, and API docs in its own README.
 
@@ -143,7 +143,7 @@ Full reference: [android-client/README.md](android-client/README.md).
 
 Hikari's plugin contract is identical on both sides — same `contentType` string, same metadata keys, same storage path layout. To support a new type end-to-end:
 
-1. **Server** — implement [`IContentPlugin`](sync-server/src/Content/Contracts/IContentPlugin.cs), register it in [`Program.cs`](sync-server/src/Program.cs), create the matching DynamoDB table.
+1. **Server** — implement [`IContentPlugin`](sync-server/src/Content/Contracts/IContentPlugin.cs), register it in [`Program.cs`](sync-server/src/Program.cs), and provision its `TableName` (create the DynamoDB table, or nothing — MongoDB collections are created on first write).
 2. **Client** — implement [`ContentPlugin`](android-client/app/src/content/ContentPlugin.kt), register it in [`MainActivity.onCreate()`](android-client/app/src/MainActivity.kt).
 3. That's it. The new type appears in the Android picker, exposes its own filters and upload form, and rides the same upload / sync / delete pipeline as everything else.
 
@@ -164,10 +164,11 @@ Hikari/
 
 - ✅ Core sync flow — uploads, downloads, deletes, paged listing, server-side filters
 - ✅ Five built-in content types with on-device cover-art extraction
-- ✅ R2 / S3 / MinIO support via the unified `ObjectStorage` config
+- ✅ Pluggable storage — S3 / R2 / MinIO (S3-compatible **or** native MinIO SDK) via `ObjectStorage:Provider`
+- ✅ Pluggable database — DynamoDB **or** MongoDB via `Database:Provider`, schema-compatible across both
+- ✅ One-command self-hosted backend — `docker compose up` (MongoDB + MinIO + server) in [`sync-server/`](sync-server/README.md#quick-start-with-docker-compose-mongodb--minio)
 - ✅ JWT auth with refresh tokens, role-based authorization (`Root` / `Admin` / `User`)
-- ✅ Refresh tokens persisted (SHA-256 hashed) in DynamoDB with TTL auto-eviction
-- 🚧 Production Dockerfile (current one needs a path fix)
+- ✅ Refresh tokens persisted (SHA-256 hashed) with TTL auto-eviction (DynamoDB TTL / MongoDB TTL index)
 - 🚧 iOS client — same plugin contract, different paint job
 
 ---
