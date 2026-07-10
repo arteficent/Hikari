@@ -404,3 +404,7 @@ __pycache__/
 .aws-sam/
 
 # End of https://www.gitignore.io/api/macos,linux,windows,sublimetext,dotsettings,visualstudio,visualstudiocode
+
+# Docker Compose local environment (may hold secrets) — keep the example tracked.
+.env
+!.env.example

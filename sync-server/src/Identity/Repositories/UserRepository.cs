@@ -2,8 +2,7 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 using SyncServer.Identity.Models;
-using System.Security.Cryptography;
-using System.Text;
+using SyncServer.Identity.Security;
 
 namespace SyncServer.Identity.Repositories
 {
@@ -149,24 +148,10 @@ namespace SyncServer.Identity.Repositories
             return true;
         }
 
-        // Simple salted PBKDF2 password hashing
-        private static string HashPassword(string password)
-        {
-            using var rng = RandomNumberGenerator.Create();
-            var salt = new byte[16];
-            rng.GetBytes(salt);
-            var hash = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, 100_000, HashAlgorithmName.SHA256, 32);
-            return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
-        }
+        // Simple salted PBKDF2 password hashing (shared across repository backends).
+        private static string HashPassword(string password) => PasswordHasher.Hash(password);
 
-        public static bool VerifyPassword(string password, string storedHash)
-        {
-            var parts = storedHash.Split(':');
-            if (parts.Length != 2) return false;
-            var salt = Convert.FromBase64String(parts[0]);
-            var hash = Convert.FromBase64String(parts[1]);
-            var computed = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, 100_000, HashAlgorithmName.SHA256, hash.Length);
-            return CryptographicOperations.FixedTimeEquals(hash, computed);
-        }
+        public static bool VerifyPassword(string password, string storedHash) =>
+            PasswordHasher.Verify(password, storedHash);
     }
 }

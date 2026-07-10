@@ -1,18 +1,13 @@
-# Graph Report - Hikari  (2026-06-26)
+# Graph Report - .  (2026-06-17)
 
 ## Corpus Check
-- 133 files · ~61,780 words
+- 140 files · ~56,710 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1547 nodes · 2272 edges · 140 communities (134 shown, 6 thin omitted)
+- 1410 nodes · 2092 edges · 130 communities (125 shown, 5 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 51 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
-
-## Graph Freshness
-- Built from commit: `265dd75e`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Android API Client|Android API Client]]
@@ -130,16 +125,6 @@
 - [[_COMMUNITY_ICurrentUserService Contract|ICurrentUserService Contract]]
 - [[_COMMUNITY_ContentItem Model|ContentItem Model]]
 - [[_COMMUNITY_Role Model|Role Model]]
-- [[_COMMUNITY_Community 130|Community 130]]
-- [[_COMMUNITY_Community 131|Community 131]]
-- [[_COMMUNITY_Community 132|Community 132]]
-- [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
-- [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `MangaPlugin` - 28 edges
@@ -150,20 +135,20 @@
 6. `ApiClient` - 23 edges
 7. `ContentPlugin` - 22 edges
 8. `String` - 22 edges
-9. `Hikari Sync Server` - 21 edges
-10. `ContentController` - 20 edges
+9. `String` - 19 edges
+10. `ContentController` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Upload flow` --semantically_similar_to--> `Presigned URLs`  [INFERRED] [semantically similar]
-  sync-server/README.md → README.md
 - `IContentPlugin` --semantically_similar_to--> `ContentPlugin`  [INFERRED] [semantically similar]
+  sync-server/README.md → README.md
+- `Upload flow` --semantically_similar_to--> `Presigned URLs`  [INFERRED] [semantically similar]
   sync-server/README.md → README.md
 - `HikariTheme` --semantically_similar_to--> `Hikari themes`  [INFERRED] [semantically similar]
   android-client/README.md → README.md
-- `✦ Hikari ✦` --references--> `Hikari Android Client`  [EXTRACTED]
+- `Cover-art extraction` --conceptually_related_to--> `ContentPlugin`  [EXTRACTED]
+  android-client/README.md → README.md
+- `ContentSyncService` --implements--> `Direct-to-storage transfers`  [EXTRACTED]
   README.md → android-client/README.md
-- `✦ Hikari ✦` --references--> `Hikari Sync Server`  [EXTRACTED]
-  README.md → sync-server/README.md
 
 ## Import Cycles
 - None detected.
@@ -173,43 +158,43 @@
 - **Cross-platform plugin contract** — readme_contentplugin, readme_icontentplugin, android_client_readme_contentplugin, sync_server_readme_icontentplugin, readme_built_in_content_types [EXTRACTED 1.00]
 - **Authentication and authorization flow** — sync_server_readme_jwt_bearer_auth, sync_server_readme_refresh_tokens, sync_server_readme_role_hierarchy, sync_server_readme_bootstrap_root, android_client_readme_roles_admin_ui [EXTRACTED 1.00]
 
-## Communities (140 total, 6 thin omitted)
+## Communities (130 total, 5 thin omitted)
 
 ### Community 0 - "Android API Client"
 Cohesion: 0.09
 Nodes (27): ByteArray, ContentItem, ContentUploadCompleteRequest, ContentUploadInitRequest, Int, List, LoginRequest, Map (+19 more)
 
 ### Community 1 - "Server Content Plugins"
-Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, AudioPlugin
+Cohesion: 0.06
+Nodes (19): IContentPlugin, ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, AudioPlugin, ContentItem (+11 more)
 
 ### Community 2 - "Manga Plugin (Client)"
 Cohesion: 0.14
 Nodes (13): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+5 more)
 
 ### Community 3 - "Auth & Admin Controllers"
-Cohesion: 0.15
-Nodes (14): BootstrapAdminSettings, AuthController, SyncServer.Identity.Controllers, JwtSettings, RefreshRequest, HttpPost, IActionResult, ILogger (+6 more)
+Cohesion: 0.08
+Nodes (25): BootstrapAdminSettings, ControllerBase, AdminController, SyncServer.Identity.Controllers, AuthController, SyncServer.Identity.Controllers, JwtSettings, RefreshRequest (+17 more)
 
 ### Community 4 - "Book Plugin (Client)"
 Cohesion: 0.14
 Nodes (13): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+5 more)
 
 ### Community 5 - "Video Plugin (Client)"
-Cohesion: 0.15
-Nodes (13): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+5 more)
+Cohesion: 0.14
+Nodes (14): String, Boolean, ByteArray, ContentItem, Context, File, List, Map (+6 more)
 
 ### Community 6 - "Audio Plugin (Client)"
 Cohesion: 0.16
 Nodes (12): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+4 more)
 
 ### Community 7 - "Image Plugin (Client)"
-Cohesion: 0.13
-Nodes (14): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+6 more)
+Cohesion: 0.15
+Nodes (13): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+5 more)
 
 ### Community 8 - "Architecture Overview (Docs)"
-Cohesion: 0.12
-Nodes (19): ApiClient, Direct-to-storage transfers, External storage permissions, SyncPreferencesRepository, ContentSyncService, Hikari Android client, Object storage, Offline-first sync (+11 more)
+Cohesion: 0.08
+Nodes (33): ApiClient, Content screens, ContentPluginRegistry, Cover-art extraction, Direct-to-storage transfers, External storage permissions, Hikari Android Client, MainActivity (+25 more)
 
 ### Community 9 - "Swagger Schema Filters"
 Cohesion: 0.06
@@ -220,8 +205,8 @@ Cohesion: 0.06
 Nodes (33): default, description, type, default, description, enum, type, oneOf (+25 more)
 
 ### Community 11 - "Content Controller (API)"
-Cohesion: 0.08
-Nodes (30): ContentDeleteRequest, ControllerBase, AdminController, SyncServer.Identity.Controllers, ContentController, IContentPluginRegistry, Role, Authorize (+22 more)
+Cohesion: 0.13
+Nodes (19): ContentDeleteRequest, ContentController, IContentPluginRegistry, IContentRepository, Authorize, ContentItem, ContentUploadCompleteRequest, ContentUploadInitRequest (+11 more)
 
 ### Community 12 - "Client ContentPlugin Base"
 Cohesion: 0.16
@@ -236,8 +221,8 @@ Cohesion: 0.17
 Nodes (16): ChangePasswordRequest, SyncServer.Identity.Controllers, UserController, CreateUserRequest, Authorize, HttpDelete, HttpGet, HttpPost (+8 more)
 
 ### Community 15 - "Serilog Config Schema"
-Cohesion: 0.15
-Nodes (13): allOf, description, title, allOf, description, title, ^AuditTo:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$, ^Destructure:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$ (+5 more)
+Cohesion: 0.08
+Nodes (26): allOf, description, title, Serilog, allOf, description, title, allOf (+18 more)
 
 ### Community 16 - "PWA / Service Worker Schema"
 Cohesion: 0.08
@@ -245,27 +230,27 @@ Nodes (26): default, description, type, pwa, default, description, type, cacheId
 
 ### Community 17 - "Content Repository (DynamoDB)"
 Cohesion: 0.21
-Nodes (10): DynamoDBOperationConfig, ContentRepository, IContentRepository, ContentItem, Func, Guid, IDynamoDBContext, IList (+2 more)
+Nodes (10): DynamoDBOperationConfig, Guid, ContentRepository, IContentRepository, ContentItem, Func, IDynamoDBContext, IList (+2 more)
 
 ### Community 18 - "User Repository (DynamoDB)"
-Cohesion: 0.10
-Nodes (17): IUserRepository, MongoUserRepository, SyncServer.Identity.Repositories, SyncServer.Identity.Repositories, UserRepository, IList, ILogger, IMongoCollection (+9 more)
+Cohesion: 0.20
+Nodes (8): IUserRepository, SyncServer.Identity.Repositories, UserRepository, IDynamoDBContext, IList, ILogger, Task, User
 
 ### Community 19 - "File Metadata Stripper"
 Cohesion: 0.41
 Nodes (6): ByteArray, Context, Map, String, Uri, FileMetadataStripper
 
 ### Community 20 - "App Settings Schema Root"
-Cohesion: 0.11
-Nodes (17): description, type, definitions, allowedHosts, ElmahIo, NLog, protocols, required (+9 more)
+Cohesion: 0.13
+Nodes (14): description, type, definitions, allowedHosts, logLevelThreshold, protocols, $id, description (+6 more)
 
 ### Community 21 - "MainActivity & App Bootstrap"
-Cohesion: 0.26
-Nodes (8): ApiClient, Boolean, SyncPreferencesRepository, AuthRepository, Bundle, ComponentActivity, SettingsRepository, MainActivity
+Cohesion: 0.21
+Nodes (12): AnimatedVisibilityScope, ApiClient, Modifier, SharedTransitionScope, SyncPreferencesRepository, AuthRepository, Bundle, ComponentActivity (+4 more)
 
 ### Community 22 - "Celestial Surface Animation"
-Cohesion: 0.29
-Nodes (12): Boolean, List, Modifier, Float, Random, buildBodyDefinitions(), CelestialBody, CelestialShape (+4 more)
+Cohesion: 0.27
+Nodes (13): Boolean, List, Modifier, Float, Random, buildBodyDefinitions(), CelestialBody, CelestialShape (+5 more)
 
 ### Community 23 - "IContentPlugin Contract (Server)"
 Cohesion: 0.20
@@ -276,8 +261,8 @@ Cohesion: 0.22
 Nodes (7): IReadOnlyCollection, IServiceCollection, ContentPluginRegistry, ContentPluginServiceExtensions, IContentPluginRegistry, Dictionary, IContentPlugin
 
 ### Community 25 - "Manga Plugin (Server)"
-Cohesion: 0.33
-Nodes (3): IContentPlugin, Dictionary, MangaPlugin
+Cohesion: 0.20
+Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, MangaPlugin
 
 ### Community 26 - "Video Plugin (Server)"
 Cohesion: 0.20
@@ -292,12 +277,12 @@ Cohesion: 0.19
 Nodes (9): HttpContext, CurrentUserExtensions, CurrentUserMiddleware, SyncServer.Identity.Middlewares, RequestDelegate, ICurrentUserService, IUserRepository, Task (+1 more)
 
 ### Community 29 - "Refresh Token Repository"
-Cohesion: 0.10
-Nodes (18): IRefreshTokenRepository, MongoRefreshTokenRepository, SyncServer.Identity.Repositories, RefreshTokenRepository, SyncServer.Identity.Repositories, DateTime, FilterDefinition, ILogger (+10 more)
+Cohesion: 0.23
+Nodes (8): IRefreshTokenRepository, RefreshTokenRepository, SyncServer.Identity.Repositories, DateTime, IDynamoDBContext, ILogger, RefreshTokenRecord, Task
 
 ### Community 30 - "Elmah.Io Logging Schema"
-Cohesion: 0.22
-Nodes (11): IContentRepository, IMongoDatabase, MongoContentRepository, ContentItem, FilterDefinition, Func, Guid, IList (+3 more)
+Cohesion: 0.15
+Nodes (13): description, pattern, type, description, type, ElmahIo, properties, required (+5 more)
 
 ### Community 31 - "CDN Config Schema"
 Cohesion: 0.15
@@ -324,20 +309,20 @@ Cohesion: 0.35
 Nodes (5): ContentItem, List, String, Pair, ContentSyncService
 
 ### Community 37 - "Sync Server Build & Deps"
-Cohesion: 0.14
-Nodes (11): net10.0, AWSSDK.DynamoDBv2 (4.0.14), AWSSDK.Extensions.NETCore.Setup (4.0.3.22), AWSSDK.S3 (4.0.18.6), Microsoft.AspNetCore.Authentication.JwtBearer (10.0.3), Minio (7.0.0), MongoDB.Driver (3.9.0), Swashbuckle.AspNetCore (10.1.2) (+3 more)
+Cohesion: 0.17
+Nodes (9): net10.0, AWSSDK.DynamoDBv2 (4.0.14), AWSSDK.Extensions.NETCore.Setup (4.0.3.22), AWSSDK.S3 (4.0.18.6), Microsoft.AspNetCore.Authentication.JwtBearer (10.0.3), Swashbuckle.AspNetCore (10.1.2), System.IdentityModel.Tokens.Jwt (8.16.0), Microsoft.NET.Sdk.Web (+1 more)
 
 ### Community 38 - "S3 Blob Storage Provider"
-Cohesion: 0.10
-Nodes (13): IAmazonS3, IBlobStorageProvider, IMinioClient, MinioBlobStorageProvider, S3BlobStorageProvider, BlobMetadata, string, Task (+5 more)
+Cohesion: 0.20
+Nodes (7): IAmazonS3, IBlobStorageProvider, S3BlobStorageProvider, BlobMetadata, string, Task, TimeSpan
 
 ### Community 39 - "Logging Config Schema"
 Cohesion: 0.21
 Nodes (12): description, required, title, type, additionalProperties, logging, additionalProperties, additionalProperties (+4 more)
 
 ### Community 40 - "Log Level Schema"
-Cohesion: 0.05
-Nodes (45): description, pattern, type, description, type, properties, properties, properties (+37 more)
+Cohesion: 0.23
+Nodes (12): properties, properties, properties, properties, properties, $ref, Debug, ElmahIo (+4 more)
 
 ### Community 41 - "Web Optimizer Schema"
 Cohesion: 0.17
@@ -349,19 +334,19 @@ Nodes (7): Context, Map, org, String, Uri, FieldKey, AudioMetadataExtractor
 
 ### Community 43 - "Auth & Roles (Concepts)"
 Cohesion: 0.20
-Nodes (11): DataStore Preferences, JwtDecoder, Roles & Admin UI, Role hierarchy, AdminController, AuthController, Bootstrap root, JWT bearer auth (+3 more)
+Nodes (11): DataStore Preferences, JwtDecoder, Roles and Admin UI, Bootstrap root, Role hierarchy, AdminController, AuthController, JWT bearer auth (+3 more)
 
 ### Community 44 - "Kestrel Certificates Schema"
 Cohesion: 0.18
 Nodes (11): $ref, additionalProperties, description, title, type, logLevel, additionalProperties, description (+3 more)
 
 ### Community 45 - "SSL Protocols Schema"
-Cohesion: 0.10
-Nodes (22): sslProtocols, default, description, items, type, description, items, type (+14 more)
+Cohesion: 0.18
+Nodes (11): sslProtocols, description, items, type, default, enum, type, HandledStatusCodesToLog (+3 more)
 
 ### Community 46 - "Static Assets Schema"
-Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, BookPlugin
+Cohesion: 0.18
+Nodes (11): default, description, items, type, description, properties, title, assembly (+3 more)
 
 ### Community 47 - "Plugin Registry (Client)"
 Cohesion: 0.27
@@ -397,7 +382,7 @@ Nodes (10): $ref, $ref, DetailedMinimumLevel, additionalProperties, description,
 
 ### Community 55 - "NLog Internal Logging Schema"
 Cohesion: 0.20
-Nodes (10): description, type, default, description, type, properties, internalLogFile, internalLogToConsole (+2 more)
+Nodes (10): description, type, default, description, type, properties, internalLogFile, internalLogToConsoleError (+2 more)
 
 ### Community 56 - "Content DTOs (Client)"
 Cohesion: 0.20
@@ -412,8 +397,8 @@ Cohesion: 0.22
 Nodes (9): description, type, async, targets, default, description, properties, title (+1 more)
 
 ### Community 59 - "Console Logger Schema"
-Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, ImagePlugin
+Cohesion: 0.22
+Nodes (9): properties, default, description, type, description, $ref, Console, FormatterName (+1 more)
 
 ### Community 60 - "NLog Variables Schema"
 Cohesion: 0.22
@@ -440,12 +425,12 @@ Cohesion: 0.25
 Nodes (8): additionalProperties, required, type, ComplexMethodCallReference, MethodCallReferenceItem, oneOf, type, definitions
 
 ### Community 66 - "Serilog Filter Schema"
-Cohesion: 0.22
-Nodes (9): allOf, description, title, allOf, description, title, AuditTo, Filter (+1 more)
+Cohesion: 0.25
+Nodes (8): allOf, description, title, additionalProperties, type, Filter, LevelSwitches, properties
 
 ### Community 67 - "Serilog Filter Switches Schema"
-Cohesion: 0.18
-Nodes (11): additionalProperties, patternProperties, type, additionalProperties, patternProperties, type, ^(?\u003CSerilogLevelSwitcherName\u003E\\${0,1}[A-Za-z]\u002B[A-Za-z0-9]*)$, FilterSwitches (+3 more)
+Cohesion: 0.25
+Nodes (8): additionalProperties, patternProperties, type, patternProperties, ^(?\u003CSerilogLevelSwitcherName\u003E\\${0,1}[A-Za-z]\u002B[A-Za-z0-9]*)$, FilterSwitches, $ref, type
 
 ### Community 68 - "Settings Repository (Client)"
 Cohesion: 0.38
@@ -460,8 +445,8 @@ Cohesion: 0.33
 Nodes (6): AnimatedVisibilityScope, Modifier, SharedTransitionScope, String, LoginScreen(), LoginScreenPreview()
 
 ### Community 71 - "Server Configuration Settings"
-Cohesion: 0.22
-Nodes (8): BootstrapAdminSettings, DatabaseSettings, DynamoDbSettings, HostingSettings, JwtSettings, MongoDbSettings, ObjectStorageSettings, SyncServer.Configuration
+Cohesion: 0.29
+Nodes (6): BootstrapAdminSettings, DynamoDbSettings, HostingSettings, JwtSettings, ObjectStorageSettings, SyncServer.Configuration
 
 ### Community 72 - "NLog Args Schema"
 Cohesion: 0.29
@@ -484,15 +469,15 @@ Cohesion: 0.33
 Nodes (5): AnimatedVisibilityScope, SharedTransitionScope, ContentPluginRegistry, HikariTheme, ContentPickerScreen()
 
 ### Community 77 - "App Theme System"
-Cohesion: 0.48
-Nodes (6): Boolean, ColorScheme, CelestialSurfaceLightPreview(), AndroidclientTheme(), HikariTheme, resolveScheme()
+Cohesion: 0.60
+Nodes (5): Boolean, ColorScheme, AndroidclientTheme(), HikariTheme, resolveScheme()
 
 ### Community 78 - "Content DTOs (Server)"
 Cohesion: 0.33
 Nodes (5): ContentDeleteRequest, ContentDownloadUrlResponse, ContentUploadCompleteRequest, ContentUploadInitRequest, ContentUploadInitResponse
 
 ### Community 79 - "Graphify Tooling Notes"
-Cohesion: 0.29
+Cohesion: 0.33
 Nodes (6): GRAPH_REPORT, graphify, graphify explain, graphify path, graphify query, graphify wiki index
 
 ### Community 80 - "NLog Assembly Schema"
@@ -520,8 +505,8 @@ Cohesion: 0.40
 Nodes (5): LoggingLevelSwitch, description, pattern, title, type
 
 ### Community 86 - "NLog Root Schema"
-Cohesion: 0.14
-Nodes (13): DynamoDB, JWT auth, Adding a New Content Plugin, Allowed MIME types (excerpt), ASP.NET Core on .NET 10, Built-in Content Plugins, Highlights, Hikari Sync Server (+5 more)
+Cohesion: 0.40
+Nodes (5): NLog, default, description, title, type
 
 ### Community 87 - "Serilog Log Level Enum"
 Cohesion: 0.40
@@ -532,8 +517,8 @@ Cohesion: 0.40
 Nodes (5): SerilogLogLevelThreshold, anyOf, description, title, type
 
 ### Community 89 - "Formatter Options Schema"
-Cohesion: 0.15
-Nodes (12): Adding a New Plugin, Building & Installing, Content Plugins, First-Run Flow, Highlights, Hikari Android Client, Permissions, Project Layout (+4 more)
+Cohesion: 0.40
+Nodes (5): description, properties, title, type, FormatterOptions
 
 ### Community 90 - "NLog Global Threshold Schema"
 Cohesion: 0.40
@@ -560,8 +545,8 @@ Cohesion: 0.50
 Nodes (3): ICurrentUserService, CurrentUserService, SyncServer.Identity.Services
 
 ### Community 96 - "Serilog AuditTo Schema"
-Cohesion: 0.17
-Nodes (11): 1. Spin up the server, 2. Build & install the Android app, ✦ A typical upload, end-to-end, ✦ Adding a content type, ✦ Architecture at a glance, ✦ Hikari ✦, ✦ Quickstart, ✦ Repository layout (+3 more)
+Cohesion: 0.50
+Nodes (4): allOf, description, title, AuditTo
 
 ### Community 97 - "NLog AutoReload Schema"
 Cohesion: 0.50
@@ -584,16 +569,16 @@ Cohesion: 0.50
 Nodes (4): allOf, description, title, Enrich
 
 ### Community 102 - "Elmah.Io Heartbeat Schema"
-Cohesion: 0.22
-Nodes (6): Action, bool, BsonClassMap, MongoMappings, object, T
+Cohesion: 0.50
+Nodes (4): description, pattern, type, HeartbeatId
 
 ### Community 103 - "NLog Internal Console Schema"
-Cohesion: 0.29
-Nodes (8): Content screens, ContentPluginRegistry, Cover-art extraction, MainActivity, SharedTransitionLayout, ✦ Built-in content types, ContentPlugin, IContentPlugin
+Cohesion: 0.50
+Nodes (4): default, description, type, internalLogToConsole
 
 ### Community 104 - "Elmah.Io LogId Schema"
-Cohesion: 0.40
-Nodes (5): AnimatedVisibilityScope, Modifier, SharedTransitionScope, ServerDomainScreen(), ServerDomainScreenPreview()
+Cohesion: 0.50
+Nodes (4): description, pattern, type, LogId
 
 ### Community 105 - "JSON Schema Root"
 Cohesion: 0.50
@@ -615,61 +600,25 @@ Nodes (3): CelestialSurface, HikariTheme, Hikari themes
 Cohesion: 1.00
 Nodes (3): App Launcher Icon (square/adaptive), App Launcher Icon (round), Default Android Studio Launcher Branding
 
-### Community 130 - "Community 130"
-Cohesion: 0.33
-Nodes (4): ContentItem, DateTimeOffset, Func, IDictionary
-
-### Community 131 - "Community 131"
-Cohesion: 0.33
-Nodes (3): PasswordHasher, SyncServer.Identity.Security, int
-
-### Community 132 - "Community 132"
-Cohesion: 0.33
-Nodes (6): Choosing providers, Configuration, Environment variables, Mix-and-match example: DynamoDB on AWS + binaries on Cloudflare R2, Sections, Self-hosted example: MongoDB + MinIO
-
-### Community 133 - "Community 133"
-Cohesion: 0.40
-Nodes (5): Serilog, additionalProperties, description, title, type
-
-### Community 134 - "Community 134"
-Cohesion: 0.40
-Nodes (5): Admin — `/Admin` *(role: Root)*, API Reference, Authentication — `/Auth` *(anonymous)*, Content — `/content/{contentType}`, Users — `/User`
-
-### Community 135 - "Community 135"
-Cohesion: 0.50
-Nodes (4): logLevelThreshold, description, enum, type
-
-### Community 136 - "Community 136"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, ^Enrich:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$
-
-### Community 137 - "Community 137"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, ^Filter:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$
-
-### Community 138 - "Community 138"
-Cohesion: 0.50
-Nodes (4): default, description, type, internalLogToConsoleError
-
 ## Knowledge Gaps
-- **654 isolated node(s):** `Boolean`, `Bundle`, `Modifier`, `SharedTransitionScope`, `AnimatedVisibilityScope` (+649 more)
+- **584 isolated node(s):** `Bundle`, `Modifier`, `SharedTransitionScope`, `AnimatedVisibilityScope`, `Set` (+579 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `definitions` connect `App Settings Schema Root` to `Kestrel Endpoints Schema`, `Connection Strings Schema`, `Community 133`, `Logging Config Schema`, `Community 135`, `Web Optimizer Schema`, `Kestrel Certificates Schema`, `Kestrel Certificate Schema`, `SSL Protocols Schema`, `PWA / Service Worker Schema`, `NLog Rules Schema`, `Client Certificate Mode Schema`, `CDN Config Schema`?**
-  _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `Serilog` connect `Community 133` to `NLog Method Call Schema`, `Serilog Filter Schema`, `App Settings Schema Root`, `Serilog Config Schema`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
-- **Why does `PaperSurface()` connect `Paper Surface & Profile UI` to `Manga Plugin (Client)`, `Book Plugin (Client)`, `Video Plugin (Client)`, `Audio Plugin (Client)`, `Image Plugin (Client)`, `Create User Screen`, `Login Screen`, `Elmah.Io LogId Schema`, `Content Picker Screen`, `Content Item Card UI`, `Content List Screen`, `Upload Screen`, `User List Screen`?**
-  _High betweenness centrality (0.027) - this node is a cross-community bridge._
-- **What connects `Boolean`, `Bundle`, `Modifier` to the rest of the system?**
-  _654 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `definitions` connect `App Settings Schema Root` to `Kestrel Endpoints Schema`, `Connection Strings Schema`, `Logging Config Schema`, `Web Optimizer Schema`, `Kestrel Certificates Schema`, `Kestrel Certificate Schema`, `SSL Protocols Schema`, `Serilog Config Schema`, `PWA / Service Worker Schema`, `NLog Rules Schema`, `Client Certificate Mode Schema`, `NLog Root Schema`, `Elmah.Io Logging Schema`, `CDN Config Schema`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Why does `Serilog` connect `Serilog Config Schema` to `NLog Method Call Schema`, `Serilog Filter Schema`, `App Settings Schema Root`?**
+  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Why does `PaperSurface()` connect `Paper Surface & Profile UI` to `Manga Plugin (Client)`, `Book Plugin (Client)`, `Video Plugin (Client)`, `Audio Plugin (Client)`, `Image Plugin (Client)`, `Create User Screen`, `Login Screen`, `Content Picker Screen`, `Content Item Card UI`, `Content List Screen`, `MainActivity & App Bootstrap`, `Upload Screen`, `User List Screen`?**
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
+- **What connects `Bundle`, `Modifier`, `SharedTransitionScope` to the rest of the system?**
+  _584 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Android API Client` be split into smaller, more focused modules?**
   _Cohesion score 0.09276018099547512 - nodes in this community are weakly interconnected._
+- **Should `Server Content Plugins` be split into smaller, more focused modules?**
+  _Cohesion score 0.06312292358803986 - nodes in this community are weakly interconnected._
 - **Should `Manga Plugin (Client)` be split into smaller, more focused modules?**
   _Cohesion score 0.14366998577524892 - nodes in this community are weakly interconnected._
-- **Should `Auth & Admin Controllers` be split into smaller, more focused modules?**
-  _Cohesion score 0.1471861471861472 - nodes in this community are weakly interconnected._

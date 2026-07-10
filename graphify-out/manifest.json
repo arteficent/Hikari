@@ -1,702 +1,747 @@
 {
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\build.gradle.kts": {
+  "android-client/app/build.gradle.kts": {
     "mtime": 1778514418.6654818,
     "ast_hash": "52299edb14fcbfb6f540a17189dda15e",
     "semantic_hash": "52299edb14fcbfb6f540a17189dda15e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\MainActivity.kt": {
-    "mtime": 1778601752.8330572,
-    "ast_hash": "51f7208eadb39f6e8457e026b92bf7e8",
-    "semantic_hash": "51f7208eadb39f6e8457e026b92bf7e8"
+  "android-client/app/src/MainActivity.kt": {
+    "mtime": 1781714434.2033699,
+    "ast_hash": "18e046f425f79cb48a02e7e34328c0b3",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\ContentPlugin.kt": {
+  "android-client/app/src/content/ContentPlugin.kt": {
     "mtime": 1778436091.2660012,
     "ast_hash": "0957e0a7272d9b849ed6aa57e77014cf",
     "semantic_hash": "0957e0a7272d9b849ed6aa57e77014cf"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\ContentPluginRegistry.kt": {
+  "android-client/app/src/content/ContentPluginRegistry.kt": {
     "mtime": 1772883158.7891486,
     "ast_hash": "67cc60e14f6e3aa98d298e9e93cc0567",
     "semantic_hash": "67cc60e14f6e3aa98d298e9e93cc0567"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\AudioMetadataExtractor.kt": {
+  "android-client/app/src/content/plugins/AudioMetadataExtractor.kt": {
     "mtime": 1775053572.9315753,
     "ast_hash": "2417178e013db46422ee4537de423334",
     "semantic_hash": "2417178e013db46422ee4537de423334"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\AudioMetadataRewriter.kt": {
+  "android-client/app/src/content/plugins/AudioMetadataRewriter.kt": {
     "mtime": 1778436091.2670014,
     "ast_hash": "58dd8f87ad915bad09d99ea502b75284",
     "semantic_hash": "58dd8f87ad915bad09d99ea502b75284"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\AudioPlugin.kt": {
+  "android-client/app/src/content/plugins/AudioPlugin.kt": {
     "mtime": 1778436091.2660012,
     "ast_hash": "d3381f564d652d17c6c2506f713578e4",
     "semantic_hash": "d3381f564d652d17c6c2506f713578e4"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\BookPlugin.kt": {
+  "android-client/app/src/content/plugins/BookPlugin.kt": {
     "mtime": 1778435492.3660657,
     "ast_hash": "5b4d9fa2f6eb6c6c934bc40c69f32baa",
     "semantic_hash": "5b4d9fa2f6eb6c6c934bc40c69f32baa"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\FileMetadataStripper.kt": {
+  "android-client/app/src/content/plugins/FileMetadataStripper.kt": {
     "mtime": 1774981505.223893,
     "ast_hash": "797ef9dce288a1a633fabdb6f426005a",
     "semantic_hash": "797ef9dce288a1a633fabdb6f426005a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\ImagePlugin.kt": {
+  "android-client/app/src/content/plugins/ImagePlugin.kt": {
     "mtime": 1778435492.3711524,
     "ast_hash": "384f8371596dbd4e66a7668a58716625",
     "semantic_hash": "384f8371596dbd4e66a7668a58716625"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\MangaPlugin.kt": {
+  "android-client/app/src/content/plugins/MangaPlugin.kt": {
     "mtime": 1778435492.3660657,
     "ast_hash": "c9ca8fbf383cd81b4d0a55d56697726b",
     "semantic_hash": "c9ca8fbf383cd81b4d0a55d56697726b"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\PathSanitizer.kt": {
+  "android-client/app/src/content/plugins/PathSanitizer.kt": {
     "mtime": 1778435492.3721578,
     "ast_hash": "559c77cbedbecdd08e24391e9f471925",
     "semantic_hash": "559c77cbedbecdd08e24391e9f471925"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\VideoMetadataRewriter.kt": {
+  "android-client/app/src/content/plugins/VideoMetadataRewriter.kt": {
     "mtime": 1774981505.223893,
     "ast_hash": "37d1708a0777ca40e657850d1eb8c083",
     "semantic_hash": "37d1708a0777ca40e657850d1eb8c083"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\content\\plugins\\VideoPlugin.kt": {
+  "android-client/app/src/content/plugins/VideoPlugin.kt": {
     "mtime": 1778435492.3650658,
     "ast_hash": "e832323f34d9d74d1df81262de14dc70",
     "semantic_hash": "e832323f34d9d74d1df81262de14dc70"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\network\\ApiClient.kt": {
+  "android-client/app/src/core/network/ApiClient.kt": {
     "mtime": 1778646348.9068446,
     "ast_hash": "e26bc6209c9ad43237a3d0c2d334ce71",
     "semantic_hash": "e26bc6209c9ad43237a3d0c2d334ce71"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\network\\AuthDtos.kt": {
+  "android-client/app/src/core/network/AuthDtos.kt": {
     "mtime": 1778601752.8330572,
     "ast_hash": "49d49cafd609f24999d591696d8a7499",
     "semantic_hash": "49d49cafd609f24999d591696d8a7499"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\network\\ContentDtos.kt": {
+  "android-client/app/src/core/network/ContentDtos.kt": {
     "mtime": 1775198988.7757492,
     "ast_hash": "047a1234890cc5b1fc3856b8c73d3591",
     "semantic_hash": "047a1234890cc5b1fc3856b8c73d3591"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\network\\JwtDecoder.kt": {
+  "android-client/app/src/core/network/JwtDecoder.kt": {
     "mtime": 1778601752.8330572,
     "ast_hash": "8e64f2d7fa716b2b4cea744960310021",
     "semantic_hash": "8e64f2d7fa716b2b4cea744960310021"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\network\\UserDtos.kt": {
+  "android-client/app/src/core/network/UserDtos.kt": {
     "mtime": 1778601752.8330572,
     "ast_hash": "5b13994f62824c3693d7e09e6de1075a",
     "semantic_hash": "5b13994f62824c3693d7e09e6de1075a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\storage\\AuthRepository.kt": {
+  "android-client/app/src/core/storage/AuthRepository.kt": {
     "mtime": 1772883158.7901485,
     "ast_hash": "2100064320df2e4c0f1585a14dd03df0",
     "semantic_hash": "2100064320df2e4c0f1585a14dd03df0"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\storage\\SettingsRepository.kt": {
+  "android-client/app/src/core/storage/SettingsRepository.kt": {
     "mtime": 1774854533.8264623,
     "ast_hash": "8de458d85a6bd44998af396b0e02ec7f",
     "semantic_hash": "8de458d85a6bd44998af396b0e02ec7f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\storage\\SyncPreferencesRepository.kt": {
+  "android-client/app/src/core/storage/SyncPreferencesRepository.kt": {
     "mtime": 1772883158.791171,
     "ast_hash": "21f5575f69e9706e09a5a8aacd41d523",
     "semantic_hash": "21f5575f69e9706e09a5a8aacd41d523"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\core\\sync\\ContentSyncService.kt": {
-    "mtime": 1775200428.3786998,
-    "ast_hash": "3f2310a86af027075b18e14caa77f8c7",
-    "semantic_hash": "3f2310a86af027075b18e14caa77f8c7"
+  "android-client/app/src/core/sync/ContentSyncService.kt": {
+    "mtime": 1781714290.0452793,
+    "ast_hash": "5a1485890f0f3553f1abf8ee803e84d6",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\ContentHubScreen.kt": {
+  "android-client/app/src/ui/screens/ContentHubScreen.kt": {
     "mtime": 1778646348.9068446,
     "ast_hash": "7741a5d2146d034d18c3bc6b8ded3795",
     "semantic_hash": "7741a5d2146d034d18c3bc6b8ded3795"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\ContentItemCard.kt": {
+  "android-client/app/src/ui/screens/ContentItemCard.kt": {
     "mtime": 1778646348.9102156,
     "ast_hash": "91b6aac41097152057ae31c3302168fc",
     "semantic_hash": "91b6aac41097152057ae31c3302168fc"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\ContentListScreen.kt": {
-    "mtime": 1778646348.9068446,
-    "ast_hash": "80b25a567963ca5c2d2ffff7a0183c36",
-    "semantic_hash": "80b25a567963ca5c2d2ffff7a0183c36"
+  "android-client/app/src/ui/screens/ContentListScreen.kt": {
+    "mtime": 1782453039.267725,
+    "ast_hash": "84bda4166c07c729d50de516a8de119e",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\ContentPickerScreen.kt": {
+  "android-client/app/src/ui/screens/ContentPickerScreen.kt": {
     "mtime": 1778602736.0245578,
     "ast_hash": "b981c9d12dbf3e526ec34e9cf8f8bdb5",
     "semantic_hash": "b981c9d12dbf3e526ec34e9cf8f8bdb5"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\CreateUserScreen.kt": {
+  "android-client/app/src/ui/screens/CreateUserScreen.kt": {
     "mtime": 1778601752.8330572,
     "ast_hash": "cbc1cae231a48ae2bd7b7071f9d5acf0",
     "semantic_hash": "cbc1cae231a48ae2bd7b7071f9d5acf0"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\LoginScreen.kt": {
+  "android-client/app/src/ui/screens/LoginScreen.kt": {
     "mtime": 1778601752.8246794,
     "ast_hash": "2a517e12276020101796b1195d13f86c",
     "semantic_hash": "2a517e12276020101796b1195d13f86c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\ProfileOverlay.kt": {
+  "android-client/app/src/ui/screens/ProfileOverlay.kt": {
     "mtime": 1778601752.8330572,
     "ast_hash": "60a38fa9070185b533160dec321eb0ad",
     "semantic_hash": "60a38fa9070185b533160dec321eb0ad"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\UploadScreen.kt": {
+  "android-client/app/src/ui/screens/UploadScreen.kt": {
     "mtime": 1778646348.9102156,
     "ast_hash": "847fdd383d115cdf9a334066bc8af2e8",
     "semantic_hash": "847fdd383d115cdf9a334066bc8af2e8"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\screens\\UserListScreen.kt": {
+  "android-client/app/src/ui/screens/UserListScreen.kt": {
     "mtime": 1778602553.9787097,
     "ast_hash": "5f15b2bb9a0a476df5a8f892ebce043b",
     "semantic_hash": "5f15b2bb9a0a476df5a8f892ebce043b"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\CelestialSurface.kt": {
+  "android-client/app/src/ui/theme/CelestialSurface.kt": {
     "mtime": 1775891090.1731012,
     "ast_hash": "74433e191daddd02bc3e9ab685a264ae",
     "semantic_hash": "74433e191daddd02bc3e9ab685a264ae"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\Color.kt": {
+  "android-client/app/src/ui/theme/Color.kt": {
     "mtime": 1775242687.3197937,
     "ast_hash": "615c02aaf9639c662afbb3fe8ff16a20",
     "semantic_hash": "615c02aaf9639c662afbb3fe8ff16a20"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\PaperSurface.kt": {
+  "android-client/app/src/ui/theme/PaperSurface.kt": {
     "mtime": 1775239792.5908759,
     "ast_hash": "4cc968f5e4f9804c1cf89ab1e9b9e39c",
     "semantic_hash": "4cc968f5e4f9804c1cf89ab1e9b9e39c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\Shape.kt": {
+  "android-client/app/src/ui/theme/Shape.kt": {
     "mtime": 1774853693.3139434,
     "ast_hash": "2ace8544e7405c10bcf8d2ee6f5776f1",
     "semantic_hash": "2ace8544e7405c10bcf8d2ee6f5776f1"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\Theme.kt": {
+  "android-client/app/src/ui/theme/Theme.kt": {
     "mtime": 1775242687.3197937,
     "ast_hash": "d70c8dc7ea66be425b741ef7e5ff0a9e",
     "semantic_hash": "d70c8dc7ea66be425b741ef7e5ff0a9e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\ui\\theme\\Type.kt": {
+  "android-client/app/src/ui/theme/Type.kt": {
     "mtime": 1774853693.3139434,
     "ast_hash": "1b3ddbbc30df079ed6c2cb8508b1a38c",
     "semantic_hash": "1b3ddbbc30df079ed6c2cb8508b1a38c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\build.gradle.kts": {
+  "android-client/build.gradle.kts": {
     "mtime": 1772883158.7981727,
     "ast_hash": "e69d7bf95e77af1885a033bb80031a35",
     "semantic_hash": "e69d7bf95e77af1885a033bb80031a35"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\gradlew": {
+  "android-client/gradlew": {
     "mtime": 1772883158.8001735,
     "ast_hash": "4f7a8a3a765f6f751d47568dc3bb913f",
     "semantic_hash": "4f7a8a3a765f6f751d47568dc3bb913f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\settings.gradle.kts": {
+  "android-client/settings.gradle.kts": {
     "mtime": 1772883158.8001735,
     "ast_hash": "8d16bb01942f6678f7ccf477664b32ad",
     "semantic_hash": "8d16bb01942f6678f7ccf477664b32ad"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\.vs\\sync-server\\v18\\DocumentLayout.backup.json": {
-    "mtime": 1780471009.662634,
-    "ast_hash": "6aaa6b262febc4693cd8af1d1042f753",
-    "semantic_hash": "6aaa6b262febc4693cd8af1d1042f753"
-  },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\.vs\\sync-server\\v18\\DocumentLayout.json": {
+  "sync-server/.vs/sync-server/v18/DocumentLayout.backup.json": {
     "mtime": 1780471098.65151,
     "ast_hash": "d8a228321465d27d9ce56b49eb5acbee",
-    "semantic_hash": "d8a228321465d27d9ce56b49eb5acbee"
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Configuration\\AppSettings.cs": {
-    "mtime": 1780468801.1508057,
-    "ast_hash": "65a4b330b119d98dde1939f624fcb476",
-    "semantic_hash": "65a4b330b119d98dde1939f624fcb476"
+  "sync-server/.vs/sync-server/v18/DocumentLayout.json": {
+    "mtime": 1782413687.0669835,
+    "ast_hash": "f990df078233d659d8d72eb613c235ed",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Contracts\\IContentPlugin.cs": {
+  "sync-server/src/Configuration/AppSettings.cs": {
+    "mtime": 1782453853.3146968,
+    "ast_hash": "a23c96666444f05e9ae9905e82a2cc8c",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Content/Contracts/IContentPlugin.cs": {
     "mtime": 1772883158.8391762,
     "ast_hash": "336c20bf75b2789644d986de85230448",
     "semantic_hash": "336c20bf75b2789644d986de85230448"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Controllers\\ContentController.cs": {
+  "sync-server/src/Content/Controllers/ContentController.cs": {
     "mtime": 1778598980.960211,
     "ast_hash": "84d059e2abee1b4391b13fabfb981e65",
     "semantic_hash": "84d059e2abee1b4391b13fabfb981e65"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Dtos\\ContentDtos.cs": {
+  "sync-server/src/Content/Dtos/ContentDtos.cs": {
     "mtime": 1772883158.8401747,
     "ast_hash": "7ea0e54bb972d3199052a1c51e37c83e",
     "semantic_hash": "7ea0e54bb972d3199052a1c51e37c83e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Filters\\CreateContentDeleteRequestSchemaFilter.cs": {
+  "sync-server/src/Content/Filters/CreateContentDeleteRequestSchemaFilter.cs": {
     "mtime": 1772883158.8401747,
     "ast_hash": "08176cb81ccf84df75642e1a5318a059",
     "semantic_hash": "08176cb81ccf84df75642e1a5318a059"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Filters\\CreateContentItemSchemaFilter.cs": {
+  "sync-server/src/Content/Filters/CreateContentItemSchemaFilter.cs": {
     "mtime": 1772883158.8401747,
     "ast_hash": "8b6f0bf938a318a0f87577e68aa4d7b4",
     "semantic_hash": "8b6f0bf938a318a0f87577e68aa4d7b4"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Filters\\CreateContentUploadCompleteRequestSchemaFilter.cs": {
+  "sync-server/src/Content/Filters/CreateContentUploadCompleteRequestSchemaFilter.cs": {
     "mtime": 1772883158.8412855,
     "ast_hash": "9e34b616e2622d8abd26e774976f56d5",
     "semantic_hash": "9e34b616e2622d8abd26e774976f56d5"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Filters\\CreateContentUploadInitRequestSchemaFilter.cs": {
+  "sync-server/src/Content/Filters/CreateContentUploadInitRequestSchemaFilter.cs": {
     "mtime": 1772883158.8412855,
     "ast_hash": "1da75baef43522ddffdc62ec3a2b21eb",
     "semantic_hash": "1da75baef43522ddffdc62ec3a2b21eb"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Models\\ContentItem.cs": {
-    "mtime": 1772883158.8412855,
+  "sync-server/src/Content/Models/ContentItem.cs": {
+    "mtime": 1782453017.835615,
     "ast_hash": "1c58ee58c3f05be7e0aaacbe60ed98dd",
     "semantic_hash": "1c58ee58c3f05be7e0aaacbe60ed98dd"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Plugins\\AudioPlugin.cs": {
+  "sync-server/src/Content/Plugins/AudioPlugin.cs": {
     "mtime": 1774980462.0318387,
     "ast_hash": "25a9f733f29bfe3423909d05a4261f75",
     "semantic_hash": "25a9f733f29bfe3423909d05a4261f75"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Plugins\\BookPlugin.cs": {
+  "sync-server/src/Content/Plugins/BookPlugin.cs": {
     "mtime": 1775029479.5745337,
     "ast_hash": "d615985853797b0943bf0e56f6d4673d",
     "semantic_hash": "d615985853797b0943bf0e56f6d4673d"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Plugins\\ImagePlugin.cs": {
+  "sync-server/src/Content/Plugins/ImagePlugin.cs": {
     "mtime": 1775029479.5745337,
     "ast_hash": "16e7fd6cfb4744c9b0e361881cdee830",
     "semantic_hash": "16e7fd6cfb4744c9b0e361881cdee830"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Plugins\\MangaPlugin.cs": {
+  "sync-server/src/Content/Plugins/MangaPlugin.cs": {
     "mtime": 1775029479.5745337,
     "ast_hash": "0a902d81f176037165a64cb3a179bc8d",
     "semantic_hash": "0a902d81f176037165a64cb3a179bc8d"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Plugins\\VideoPlugin.cs": {
+  "sync-server/src/Content/Plugins/VideoPlugin.cs": {
     "mtime": 1775029479.5745337,
     "ast_hash": "a6309efdee1f524fc4bb06fcb1b61b4f",
     "semantic_hash": "a6309efdee1f524fc4bb06fcb1b61b4f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Registries\\ContentPluginRegistry.cs": {
+  "sync-server/src/Content/Registries/ContentPluginRegistry.cs": {
     "mtime": 1772883158.8422885,
     "ast_hash": "6193061e62b61eb9c6c04420e614d5cc",
     "semantic_hash": "6193061e62b61eb9c6c04420e614d5cc"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Content\\Repositories\\ContentRepository.cs": {
+  "sync-server/src/Content/Repositories/ContentRepository.cs": {
     "mtime": 1772883158.8422885,
     "ast_hash": "537cee66a179a79ddffe10a25634b7b5",
     "semantic_hash": "537cee66a179a79ddffe10a25634b7b5"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Controllers\\AdminController.cs": {
+  "sync-server/src/Identity/Controllers/AdminController.cs": {
     "mtime": 1778601752.8330572,
     "ast_hash": "627ba7f0612149e7b785f5466a996dbc",
     "semantic_hash": "627ba7f0612149e7b785f5466a996dbc"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Controllers\\AuthController.cs": {
+  "sync-server/src/Identity/Controllers/AuthController.cs": {
     "mtime": 1778601752.8246794,
     "ast_hash": "14035fb3b824f0778b44e893e2714191",
     "semantic_hash": "14035fb3b824f0778b44e893e2714191"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Controllers\\UserController.cs": {
+  "sync-server/src/Identity/Controllers/UserController.cs": {
     "mtime": 1778601752.8246794,
     "ast_hash": "9b9e67e0d5ea821c25d9a4b8a40cb48d",
     "semantic_hash": "9b9e67e0d5ea821c25d9a4b8a40cb48d"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Dtos\\AuthDtos.cs": {
+  "sync-server/src/Identity/Dtos/AuthDtos.cs": {
     "mtime": 1778601752.8330572,
     "ast_hash": "2e2f39ba4e5043459a1381f9ac915c2e",
     "semantic_hash": "2e2f39ba4e5043459a1381f9ac915c2e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Filters\\CreateLoginRequestSchemaFilter.cs": {
+  "sync-server/src/Identity/Filters/CreateLoginRequestSchemaFilter.cs": {
     "mtime": 1780471356.4604242,
     "ast_hash": "845ce106a830d4d9972a646df68da3af",
     "semantic_hash": "845ce106a830d4d9972a646df68da3af"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Filters\\CreateUserRequestSchemaFilter.cs": {
+  "sync-server/src/Identity/Filters/CreateUserRequestSchemaFilter.cs": {
     "mtime": 1780471309.1016674,
     "ast_hash": "e7fe3ee813eef4688ef568084e779712",
     "semantic_hash": "e7fe3ee813eef4688ef568084e779712"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Middlewares\\CurrentUserMiddleware.cs": {
+  "sync-server/src/Identity/Middlewares/CurrentUserMiddleware.cs": {
     "mtime": 1772883158.844288,
     "ast_hash": "56c27e4b4a7bba6209a1661ca4a7fdb8",
     "semantic_hash": "56c27e4b4a7bba6209a1661ca4a7fdb8"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Models\\RefreshTokenRecord.cs": {
+  "sync-server/src/Identity/Models/RefreshTokenRecord.cs": {
     "mtime": 1778567349.5452182,
     "ast_hash": "2908ba85bc2bc00509fc8edfab6b4b7b",
     "semantic_hash": "2908ba85bc2bc00509fc8edfab6b4b7b"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Models\\Role.cs": {
+  "sync-server/src/Identity/Models/Role.cs": {
     "mtime": 1778599247.1999571,
     "ast_hash": "0bc19af2e083a01e0e9348bce321b330",
     "semantic_hash": "0bc19af2e083a01e0e9348bce321b330"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Models\\User.cs": {
+  "sync-server/src/Identity/Models/User.cs": {
     "mtime": 1778601752.8330572,
     "ast_hash": "13895040d6514652abff1cd005dd8089",
     "semantic_hash": "13895040d6514652abff1cd005dd8089"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Repositories\\IRefreshTokenRepository.cs": {
+  "sync-server/src/Identity/Repositories/IRefreshTokenRepository.cs": {
     "mtime": 1778567349.5452182,
     "ast_hash": "044e8d9723643a204ad11a1abdc73100",
     "semantic_hash": "044e8d9723643a204ad11a1abdc73100"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Repositories\\IUserRepository.cs": {
+  "sync-server/src/Identity/Repositories/IUserRepository.cs": {
     "mtime": 1778601752.8330572,
     "ast_hash": "32651ec2b7fc073d784c3f6e9c94abe6",
     "semantic_hash": "32651ec2b7fc073d784c3f6e9c94abe6"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Repositories\\RefreshTokenRepository.cs": {
-    "mtime": 1778567349.5452182,
-    "ast_hash": "aeda7034059890174a240a976141c3fe",
-    "semantic_hash": "aeda7034059890174a240a976141c3fe"
+  "sync-server/src/Identity/Repositories/RefreshTokenRepository.cs": {
+    "mtime": 1782454048.6101544,
+    "ast_hash": "a535e5f894a0bc802b0a1a2cb305f5ac",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Repositories\\UserRepository.cs": {
-    "mtime": 1778601752.8330572,
-    "ast_hash": "2457c076fe4ebef705abaaddd485e007",
-    "semantic_hash": "2457c076fe4ebef705abaaddd485e007"
+  "sync-server/src/Identity/Repositories/UserRepository.cs": {
+    "mtime": 1782453986.2515748,
+    "ast_hash": "710a1d53bb5c4abed5c10f5a9e39f146",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Services\\CurrentUserService.cs": {
+  "sync-server/src/Identity/Services/CurrentUserService.cs": {
     "mtime": 1772883158.845288,
     "ast_hash": "a354a121beec7fc41d56fd543540a204",
     "semantic_hash": "a354a121beec7fc41d56fd543540a204"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Identity\\Services\\ICurrentUserService.cs": {
+  "sync-server/src/Identity/Services/ICurrentUserService.cs": {
     "mtime": 1772883158.845288,
     "ast_hash": "3bd4718cf426706713c5cf73caef0ead",
     "semantic_hash": "3bd4718cf426706713c5cf73caef0ead"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Infrastructure\\IBlobStorageProvider.cs": {
+  "sync-server/src/Infrastructure/IBlobStorageProvider.cs": {
     "mtime": 1777225582.808453,
     "ast_hash": "66a5b4ccb0617a7ac2ee3809641d0540",
     "semantic_hash": "66a5b4ccb0617a7ac2ee3809641d0540"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Infrastructure\\S3BlobStorageProvider.cs": {
+  "sync-server/src/Infrastructure/S3BlobStorageProvider.cs": {
     "mtime": 1778427561.156916,
     "ast_hash": "bf7db02fad617853854c3b1443e867b7",
     "semantic_hash": "bf7db02fad617853854c3b1443e867b7"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Program.cs": {
-    "mtime": 1780468801.1508057,
-    "ast_hash": "fa84ee31f093b9210d5522b80f1968c1",
-    "semantic_hash": "fa84ee31f093b9210d5522b80f1968c1"
+  "sync-server/src/Program.cs": {
+    "mtime": 1782454219.1420965,
+    "ast_hash": "61058086241c8b484af36e828322c259",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\Properties\\launchSettings.json": {
+  "sync-server/src/Properties/launchSettings.json": {
     "mtime": 1773577508.0145366,
     "ast_hash": "376c00940feae157ee2640e16486bb35",
     "semantic_hash": "376c00940feae157ee2640e16486bb35"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\appsettings.Development.json": {
+  "sync-server/src/appsettings.Development.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "a4a451a3989732e980f53e4613de8f7f",
     "semantic_hash": "a4a451a3989732e980f53e4613de8f7f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\appsettings.json": {
-    "mtime": 1780468801.1508057,
-    "ast_hash": "175c20f5acdc2786578dc49c7aa7970b",
-    "semantic_hash": "175c20f5acdc2786578dc49c7aa7970b"
+  "sync-server/src/appsettings.json": {
+    "mtime": 1782453859.801601,
+    "ast_hash": "0b42c39166ee305474db61133062fd60",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\aws-lambda-tools-defaults.json": {
+  "sync-server/src/aws-lambda-tools-defaults.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c",
     "semantic_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\SyncServer.deps.json": {
-    "mtime": 1780471012.833794,
-    "ast_hash": "2616969408a5ee4b57aba27262fcad38",
-    "semantic_hash": "2616969408a5ee4b57aba27262fcad38"
+  "sync-server/src/bin/Debug/net10.0/SyncServer.deps.json": {
+    "mtime": 1782454233.1575272,
+    "ast_hash": "0a219469244a36ddacf6fbe1648f1edf",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\SyncServer.runtimeconfig.json": {
-    "mtime": 1780471012.849452,
+  "sync-server/src/bin/Debug/net10.0/SyncServer.runtimeconfig.json": {
+    "mtime": 1782454233.1655314,
     "ast_hash": "956d14c3cf7df124fa7c71cf141f2b48",
     "semantic_hash": "956d14c3cf7df124fa7c71cf141f2b48"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\SyncServer.staticwebassets.endpoints.json": {
+  "sync-server/src/bin/Debug/net10.0/SyncServer.staticwebassets.endpoints.json": {
     "mtime": 1777227249.6399024,
     "ast_hash": "f44ca44dd881261586b84442f2201257",
     "semantic_hash": "f44ca44dd881261586b84442f2201257"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\appsettings.Development.json": {
+  "sync-server/src/bin/Debug/net10.0/appsettings.Development.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "a4a451a3989732e980f53e4613de8f7f",
     "semantic_hash": "a4a451a3989732e980f53e4613de8f7f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\appsettings.json": {
-    "mtime": 1780468801.1508057,
-    "ast_hash": "175c20f5acdc2786578dc49c7aa7970b",
-    "semantic_hash": "175c20f5acdc2786578dc49c7aa7970b"
+  "sync-server/src/bin/Debug/net10.0/appsettings.json": {
+    "mtime": 1782453859.801601,
+    "ast_hash": "0b42c39166ee305474db61133062fd60",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Debug\\net10.0\\aws-lambda-tools-defaults.json": {
+  "sync-server/src/bin/Debug/net10.0/aws-lambda-tools-defaults.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c",
     "semantic_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\SyncServer.deps.json": {
+  "sync-server/src/bin/Release/net10.0/SyncServer.deps.json": {
     "mtime": 1780468419.1420107,
     "ast_hash": "2616969408a5ee4b57aba27262fcad38",
     "semantic_hash": "2616969408a5ee4b57aba27262fcad38"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\SyncServer.runtimeconfig.json": {
+  "sync-server/src/bin/Release/net10.0/SyncServer.runtimeconfig.json": {
     "mtime": 1780468419.155012,
     "ast_hash": "a75e8957d89b4d40a6a1079d34e7c9ce",
     "semantic_hash": "a75e8957d89b4d40a6a1079d34e7c9ce"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\SyncServer.staticwebassets.endpoints.json": {
+  "sync-server/src/bin/Release/net10.0/SyncServer.staticwebassets.endpoints.json": {
     "mtime": 1780468419.1000123,
     "ast_hash": "f44ca44dd881261586b84442f2201257",
     "semantic_hash": "f44ca44dd881261586b84442f2201257"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\appsettings.Development.json": {
+  "sync-server/src/bin/Release/net10.0/appsettings.Development.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "a4a451a3989732e980f53e4613de8f7f",
     "semantic_hash": "a4a451a3989732e980f53e4613de8f7f"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\appsettings.json": {
+  "sync-server/src/bin/Release/net10.0/appsettings.json": {
     "mtime": 1780468691.6297796,
     "ast_hash": "175c20f5acdc2786578dc49c7aa7970b",
     "semantic_hash": "175c20f5acdc2786578dc49c7aa7970b"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\bin\\Release\\net10.0\\aws-lambda-tools-defaults.json": {
+  "sync-server/src/bin/Release/net10.0/aws-lambda-tools-defaults.json": {
     "mtime": 1772883158.8462882,
     "ast_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c",
     "semantic_hash": "fe3fa091098892cfe2e3f5c7ffaa2f4c"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": {
+  "sync-server/src/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": {
     "mtime": 1780467970.6928902,
     "ast_hash": "8479efdf06e2d26e053d27ffa6964185",
     "semantic_hash": "8479efdf06e2d26e053d27ffa6964185"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\ApiEndpoints.json": {
+  "sync-server/src/obj/Debug/net10.0/ApiEndpoints.json": {
     "mtime": 1780471014.9323158,
     "ast_hash": "351d750a3581498a7f3b1e1d6e154f7a",
     "semantic_hash": "351d750a3581498a7f3b1e1d6e154f7a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\AppSettingsSchema.json": {
+  "sync-server/src/obj/Debug/net10.0/AppSettingsSchema.json": {
     "mtime": 1780467976.3356423,
     "ast_hash": "36db257740f40747b40c5c5c801ff990",
     "semantic_hash": "36db257740f40747b40c5c5c801ff990"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\CombinedComponentSchema.json": {
+  "sync-server/src/obj/Debug/net10.0/CombinedComponentSchema.json": {
     "mtime": 1773576916.971088,
     "ast_hash": "c6bf4f9e7dfced878c585ec3e5e35b29",
     "semantic_hash": "c6bf4f9e7dfced878c585ec3e5e35b29"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\EndpointInfo\\sync-server.json": {
+  "sync-server/src/obj/Debug/net10.0/EndpointInfo/sync-server.json": {
     "mtime": 1780471015.0224907,
     "ast_hash": "f0086369b61e770684493378e31b70fb",
     "semantic_hash": "f0086369b61e770684493378e31b70fb"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\SyncServer.MvcApplicationPartsAssemblyInfo.cs": {
-    "mtime": 1780471010.5341945,
-    "ast_hash": "8305d75e4d1eab1c8fc9dd41b02a5658",
-    "semantic_hash": "8305d75e4d1eab1c8fc9dd41b02a5658"
+  "sync-server/src/obj/Debug/net10.0/SyncServer.MvcApplicationPartsAssemblyInfo.cs": {
+    "mtime": 1782454230.3012335,
+    "ast_hash": "5463144521d470907c4bda32e1454692",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\rjsmcshtml.dswa.cache.json": {
-    "mtime": 1780471012.5979278,
-    "ast_hash": "520625b27ed42abce914b3fea54be2da",
-    "semantic_hash": "520625b27ed42abce914b3fea54be2da"
+  "sync-server/src/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json": {
+    "mtime": 1782454233.0780742,
+    "ast_hash": "4479cb81b1863c7bdae99bc70c92b854",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\rjsmrazor.dswa.cache.json": {
-    "mtime": 1780471012.5969284,
-    "ast_hash": "afbcc1d916a5b4a8c4c51568ce6869b7",
-    "semantic_hash": "afbcc1d916a5b4a8c4c51568ce6869b7"
+  "sync-server/src/obj/Debug/net10.0/rjsmrazor.dswa.cache.json": {
+    "mtime": 1782454233.0770702,
+    "ast_hash": "9a68010930c151e9b4a9b7297aa8522f",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\rpswa.dswa.cache.json": {
-    "mtime": 1780471010.412455,
-    "ast_hash": "446ce8fa09f1f41266ffc57f4061a64f",
-    "semantic_hash": "446ce8fa09f1f41266ffc57f4061a64f"
+  "sync-server/src/obj/Debug/net10.0/rpswa.dswa.cache.json": {
+    "mtime": 1782454230.064149,
+    "ast_hash": "ada7332348fba3647d89af2b10ff8dc9",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\staticwebassets.build.endpoints.json": {
+  "sync-server/src/obj/Debug/net10.0/staticwebassets.build.endpoints.json": {
     "mtime": 1777227249.6399024,
     "ast_hash": "f44ca44dd881261586b84442f2201257",
     "semantic_hash": "f44ca44dd881261586b84442f2201257"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\staticwebassets.build.json": {
+  "sync-server/src/obj/Debug/net10.0/staticwebassets.build.json": {
     "mtime": 1777227249.6379032,
     "ast_hash": "f6681b215b70d1a8abd5a9e1a372e048",
     "semantic_hash": "f6681b215b70d1a8abd5a9e1a372e048"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\sync-server.AssemblyInfo.cs": {
-    "mtime": 1780467970.7698917,
-    "ast_hash": "1a7287530511949cc172995ec6926ca7",
-    "semantic_hash": "1a7287530511949cc172995ec6926ca7"
+  "sync-server/src/obj/Debug/net10.0/sync-server.AssemblyInfo.cs": {
+    "mtime": 1782454230.130237,
+    "ast_hash": "7e4fc09491d26a8bb60abe95fe690341",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\sync-server.GlobalUsings.g.cs": {
+  "sync-server/src/obj/Debug/net10.0/sync-server.GlobalUsings.g.cs": {
     "mtime": 1773576913.7210748,
     "ast_hash": "5b3fdaae7b59d230d7d136eab049a98a",
     "semantic_hash": "5b3fdaae7b59d230d7d136eab049a98a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\sync-server.sourcelink.json": {
-    "mtime": 1780471010.5589867,
-    "ast_hash": "2d20db6b06bb60c3fa9beec89609a01e",
-    "semantic_hash": "2d20db6b06bb60c3fa9beec89609a01e"
+  "sync-server/src/obj/Debug/net10.0/sync-server.sourcelink.json": {
+    "mtime": 1782454230.340442,
+    "ast_hash": "bca0b1e0e8deb799f0fad0a89f7585dc",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": {
+  "sync-server/src/obj/Release/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": {
     "mtime": 1780468416.3426354,
     "ast_hash": "8479efdf06e2d26e053d27ffa6964185",
     "semantic_hash": "8479efdf06e2d26e053d27ffa6964185"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\SyncServer.MvcApplicationPartsAssemblyInfo.cs": {
+  "sync-server/src/obj/Release/net10.0/SyncServer.MvcApplicationPartsAssemblyInfo.cs": {
     "mtime": 1780468416.4714115,
     "ast_hash": "5463144521d470907c4bda32e1454692",
     "semantic_hash": "5463144521d470907c4bda32e1454692"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\rjsmcshtml.dswa.cache.json": {
+  "sync-server/src/obj/Release/net10.0/rjsmcshtml.dswa.cache.json": {
     "mtime": 1780468725.2507842,
     "ast_hash": "c99b400a7bb7f45d79cdec3a078f2f78",
     "semantic_hash": "c99b400a7bb7f45d79cdec3a078f2f78"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\rjsmrazor.dswa.cache.json": {
+  "sync-server/src/obj/Release/net10.0/rjsmrazor.dswa.cache.json": {
     "mtime": 1780468725.2497845,
     "ast_hash": "e6dcfa3a843a7d266ec4c2e531d48b7a",
     "semantic_hash": "e6dcfa3a843a7d266ec4c2e531d48b7a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\rpswa.dswa.cache.json": {
+  "sync-server/src/obj/Release/net10.0/rpswa.dswa.cache.json": {
     "mtime": 1780468724.8545485,
     "ast_hash": "09e5a30638868d3191d3ac6d103be52a",
     "semantic_hash": "09e5a30638868d3191d3ac6d103be52a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\staticwebassets.build.endpoints.json": {
+  "sync-server/src/obj/Release/net10.0/staticwebassets.build.endpoints.json": {
     "mtime": 1780468419.1000123,
     "ast_hash": "f44ca44dd881261586b84442f2201257",
     "semantic_hash": "f44ca44dd881261586b84442f2201257"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\staticwebassets.build.json": {
+  "sync-server/src/obj/Release/net10.0/staticwebassets.build.json": {
     "mtime": 1780468419.096012,
     "ast_hash": "f6681b215b70d1a8abd5a9e1a372e048",
     "semantic_hash": "f6681b215b70d1a8abd5a9e1a372e048"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\sync-server.AssemblyInfo.cs": {
+  "sync-server/src/obj/Release/net10.0/sync-server.AssemblyInfo.cs": {
     "mtime": 1780468416.3834121,
     "ast_hash": "56984142bb29f18a76ab338429ffaf9e",
     "semantic_hash": "56984142bb29f18a76ab338429ffaf9e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\sync-server.GlobalUsings.g.cs": {
+  "sync-server/src/obj/Release/net10.0/sync-server.GlobalUsings.g.cs": {
     "mtime": 1780468416.2425475,
     "ast_hash": "5b3fdaae7b59d230d7d136eab049a98a",
     "semantic_hash": "5b3fdaae7b59d230d7d136eab049a98a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\sync-server.sourcelink.json": {
+  "sync-server/src/obj/Release/net10.0/sync-server.sourcelink.json": {
     "mtime": 1780468416.4894142,
     "ast_hash": "2d20db6b06bb60c3fa9beec89609a01e",
     "semantic_hash": "2d20db6b06bb60c3fa9beec89609a01e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\project.assets.json": {
-    "mtime": 1780467975.2440355,
-    "ast_hash": "8694e1edbc5c78de78d23419c2fad7bd",
-    "semantic_hash": "8694e1edbc5c78de78d23419c2fad7bd"
+  "sync-server/src/obj/project.assets.json": {
+    "mtime": 1782453743.0102146,
+    "ast_hash": "80f984acd297de47d47f6ca7355f60d1",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\sync-server.csproj.nuget.dgspec.json": {
-    "mtime": 1780467975.2470315,
-    "ast_hash": "06b0c9affdda84da671e8ff00659d31a",
-    "semantic_hash": "06b0c9affdda84da671e8ff00659d31a"
+  "sync-server/src/obj/sync-server.csproj.nuget.dgspec.json": {
+    "mtime": 1782453743.0147257,
+    "ast_hash": "1f1d9fc3b1ca7407d6f66257b1c0ea94",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\sync-server.csproj": {
-    "mtime": 1772883158.8462882,
-    "ast_hash": "8c1459f3d405916ff756edd476cb8780",
-    "semantic_hash": "8c1459f3d405916ff756edd476cb8780"
+  "sync-server/src/sync-server.csproj": {
+    "mtime": 1782453743.0072153,
+    "ast_hash": "6aa3caf08c099396d854b3bf335c04e1",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\sync-server.sln": {
+  "sync-server/sync-server.sln": {
     "mtime": 1772883158.8472884,
     "ast_hash": "ddeb2d36b1e27a89a3ce3672f12bdf88",
     "semantic_hash": "ddeb2d36b1e27a89a3ce3672f12bdf88"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\.github\\copilot-instructions.md": {
+  ".github/copilot-instructions.md": {
     "mtime": 1781671766.5862753,
     "ast_hash": "2b23503628bf2ec71d067a85ca8948ab",
     "semantic_hash": "2b23503628bf2ec71d067a85ca8948ab"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\README.md": {
-    "mtime": 1778603038.4412258,
-    "ast_hash": "435a8734d7c9753e77d1948cdd6a55ce",
-    "semantic_hash": "435a8734d7c9753e77d1948cdd6a55ce"
+  "README.md": {
+    "mtime": 1782454665.5527017,
+    "ast_hash": "f11e655d13c05983d3d85d774fc6d1fd",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\README.md": {
+  "android-client/README.md": {
     "mtime": 1778603051.285253,
     "ast_hash": "aec76f8f8879af130ce85683ec6afb2b",
     "semantic_hash": "aec76f8f8879af130ce85683ec6afb2b"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\README.md": {
-    "mtime": 1778603079.5201578,
-    "ast_hash": "d6607255783fd2c4ab2231fd1d08a3d8",
-    "semantic_hash": "d6607255783fd2c4ab2231fd1d08a3d8"
+  "sync-server/README.md": {
+    "mtime": 1782454611.5068917,
+    "ast_hash": "e43397837e561cd5bf848bfffcc9e37d",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\staticwebassets.references.upToDateCheck.txt": {
+  "sync-server/src/obj/Debug/net10.0/staticwebassets.references.upToDateCheck.txt": {
     "mtime": 1773577109.3625257,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\staticwebassets.removed.txt": {
+  "sync-server/src/obj/Debug/net10.0/staticwebassets.removed.txt": {
     "mtime": 1773576914.162876,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Debug\\net10.0\\sync-server.csproj.FileListAbsolute.txt": {
-    "mtime": 1778601789.4182756,
-    "ast_hash": "2a73f2ec9eb15089f7038db241d2af86",
-    "semantic_hash": "2a73f2ec9eb15089f7038db241d2af86"
+  "sync-server/src/obj/Debug/net10.0/sync-server.csproj.FileListAbsolute.txt": {
+    "mtime": 1782454233.1760404,
+    "ast_hash": "cfcdce1dcbb26595927975287f46d5c5",
+    "semantic_hash": ""
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\sync-server\\src\\obj\\Release\\net10.0\\sync-server.csproj.FileListAbsolute.txt": {
+  "sync-server/src/obj/Release/net10.0/sync-server.csproj.FileListAbsolute.txt": {
     "mtime": 1780468419.1620116,
     "ast_hash": "965485946a64686769e7f3c46902981a",
     "semantic_hash": "965485946a64686769e7f3c46902981a"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-hdpi\\ic_launcher.webp": {
+  "android-client/app/src/res/mipmap-hdpi/ic_launcher.webp": {
     "mtime": 1772883158.7941737,
     "ast_hash": "39d9bb21eb48f128a71c3f01ad3cd427",
     "semantic_hash": "39d9bb21eb48f128a71c3f01ad3cd427"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-hdpi\\ic_launcher_round.webp": {
+  "android-client/app/src/res/mipmap-hdpi/ic_launcher_round.webp": {
     "mtime": 1772883158.7941737,
     "ast_hash": "70d6f58af3c76ee221c829b1ce9daa04",
     "semantic_hash": "70d6f58af3c76ee221c829b1ce9daa04"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-mdpi\\ic_launcher.webp": {
+  "android-client/app/src/res/mipmap-mdpi/ic_launcher.webp": {
     "mtime": 1772883158.7941737,
     "ast_hash": "d2acce71c7b46e5e9540d23a9f7b2166",
     "semantic_hash": "d2acce71c7b46e5e9540d23a9f7b2166"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-mdpi\\ic_launcher_round.webp": {
+  "android-client/app/src/res/mipmap-mdpi/ic_launcher_round.webp": {
     "mtime": 1772883158.7951736,
     "ast_hash": "6376acb48f96a855ee95c113cd7fd616",
     "semantic_hash": "6376acb48f96a855ee95c113cd7fd616"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xhdpi\\ic_launcher.webp": {
+  "android-client/app/src/res/mipmap-xhdpi/ic_launcher.webp": {
     "mtime": 1772883158.7951736,
     "ast_hash": "bd087d80b70bec05a43c745f29dc3ffc",
     "semantic_hash": "bd087d80b70bec05a43c745f29dc3ffc"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xhdpi\\ic_launcher_round.webp": {
+  "android-client/app/src/res/mipmap-xhdpi/ic_launcher_round.webp": {
     "mtime": 1772883158.7951736,
     "ast_hash": "7479edd56ab712609f030054bffd7263",
     "semantic_hash": "7479edd56ab712609f030054bffd7263"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xxhdpi\\ic_launcher.webp": {
+  "android-client/app/src/res/mipmap-xxhdpi/ic_launcher.webp": {
     "mtime": 1772883158.7951736,
     "ast_hash": "ea180e8d1a2e8300cc998b987266b736",
     "semantic_hash": "ea180e8d1a2e8300cc998b987266b736"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xxhdpi\\ic_launcher_round.webp": {
+  "android-client/app/src/res/mipmap-xxhdpi/ic_launcher_round.webp": {
     "mtime": 1772883158.7951736,
     "ast_hash": "947842742b29eeda80ee0805e1600366",
     "semantic_hash": "947842742b29eeda80ee0805e1600366"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xxxhdpi\\ic_launcher.webp": {
+  "android-client/app/src/res/mipmap-xxxhdpi/ic_launcher.webp": {
     "mtime": 1772883158.7961736,
     "ast_hash": "54ab624970c86c2146e76b93f27586f7",
     "semantic_hash": "54ab624970c86c2146e76b93f27586f7"
   },
-  "C:\\Users\\soura\\Documents\\Hikari\\android-client\\app\\src\\res\\mipmap-xxxhdpi\\ic_launcher_round.webp": {
+  "android-client/app/src/res/mipmap-xxxhdpi/ic_launcher_round.webp": {
     "mtime": 1772883158.7961736,
     "ast_hash": "9ee591be72fb336861a8044086054daa",
     "semantic_hash": "9ee591be72fb336861a8044086054daa"
+  },
+  "sync-server/src/Content/Repositories/MongoContentRepository.cs": {
+    "mtime": 1782454006.7538037,
+    "ast_hash": "2dee311dbf26ae36d0963b0ddd84a226",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Identity/Repositories/MongoRefreshTokenRepository.cs": {
+    "mtime": 1782454063.892022,
+    "ast_hash": "2fc66741c6f4bba3501fdf3743e1fa9e",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Identity/Repositories/MongoUserRepository.cs": {
+    "mtime": 1782454023.821074,
+    "ast_hash": "045ea8244eddb4f44f2b94ba57b369ca",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Identity/Security/PasswordHasher.cs": {
+    "mtime": 1782453973.243147,
+    "ast_hash": "d245808842aebc69b3e25a00e4727f53",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Identity/Security/RefreshTokenHasher.cs": {
+    "mtime": 1782454034.8256536,
+    "ast_hash": "26c723c535389be711616c5844c42f0e",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Infrastructure/MinioBlobStorageProvider.cs": {
+    "mtime": 1782453882.8094194,
+    "ast_hash": "1ddce211737bd2f1f1d07849ca1f9165",
+    "semantic_hash": ""
+  },
+  "sync-server/src/Infrastructure/Mongo/MongoMappings.cs": {
+    "mtime": 1782453917.206693,
+    "ast_hash": "457af6371cbefe5604642b03b2e6ad8b",
+    "semantic_hash": ""
+  },
+  "LICENSE.txt": {
+    "mtime": 1782453039.266725,
+    "ast_hash": "d99704562442ac422b34e7368e441d0f",
+    "semantic_hash": ""
+  },
+  "sync-server/docker-compose.yml": {
+    "mtime": 1782454323.456401,
+    "ast_hash": "c8a070ecbd28c63b3faee070cd4267bb",
+    "semantic_hash": ""
   }
 }

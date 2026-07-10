@@ -1,7 +1,6 @@
 using Amazon.DynamoDBv2.DataModel;
 using SyncServer.Identity.Models;
-using System.Security.Cryptography;
-using System.Text;
+using SyncServer.Identity.Security;
 
 namespace SyncServer.Identity.Repositories
 {
@@ -73,15 +72,6 @@ namespace SyncServer.Identity.Repositories
             }
         }
 
-        private static string HashToken(string token)
-        {
-            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-            // Base64-url (DynamoDB hash key allows base64 standard chars too, but
-            // url-safe avoids any ambiguity in logs and config).
-            return Convert.ToBase64String(bytes)
-                .Replace('+', '-')
-                .Replace('/', '_')
-                .TrimEnd('=');
-        }
+        private static string HashToken(string token) => RefreshTokenHasher.Hash(token);
     }
 }

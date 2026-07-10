@@ -6,6 +6,14 @@ namespace SyncServer.Configuration
     /// </summary>
     public class ObjectStorageSettings
     {
+        /// <summary>
+        /// Selects the blob storage implementation. Supported values (case-insensitive):
+        ///   "S3"    — <c>S3BlobStorageProvider</c> (AWS S3 and any S3-compatible API, incl. R2/MinIO).
+        ///   "Minio" — <c>MinioBlobStorageProvider</c> (native MinIO SDK).
+        /// Defaults to "S3" so existing deployments keep working unchanged.
+        /// </summary>
+        public string Provider { get; set; } = "S3";
+
         public string BucketName { get; set; } = string.Empty;
         public string Region { get; set; } = string.Empty;
         public string AccessKey { get; set; } = string.Empty;
@@ -13,14 +21,39 @@ namespace SyncServer.Configuration
 
         /// <summary>
         /// Custom S3-compatible endpoint URL. Leave empty for standard AWS S3.
-        /// Set to "https://&lt;account-id&gt;.r2.cloudflarestorage.com" for Cloudflare R2.
+        /// Set to "https://&lt;account-id&gt;.r2.cloudflarestorage.com" for Cloudflare R2,
+        /// or "http://minio:9000" for a MinIO server.
         /// </summary>
         public string ServiceUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional public-facing endpoint used <em>only</em> when signing presigned URLs.
+        /// Presigned URLs embed the signing host, so when the server reaches the object
+        /// store over an internal hostname (e.g. <c>http://minio:9000</c> inside Docker)
+        /// but clients must reach it over a different one (e.g. <c>http://localhost:9000</c>
+        /// or a LAN IP), set this to the client-reachable URL. When empty, presigning
+        /// falls back to <see cref="ServiceUrl"/>. Currently honoured by the MinIO provider.
+        /// </summary>
+        public string PublicServiceUrl { get; set; } = string.Empty;
 
         /// <summary>
         /// Force path-style addressing (required by R2, MinIO).
         /// </summary>
         public bool ForcePathStyle { get; set; }
+    }
+
+    /// <summary>
+    /// Selects which database backend persists metadata (users, refresh tokens, content items).
+    /// Storage of binaries is configured independently via <see cref="ObjectStorageSettings"/>.
+    /// </summary>
+    public class DatabaseSettings
+    {
+        /// <summary>
+        /// Supported values (case-insensitive):
+        ///   "DynamoDb" — AWS DynamoDB-backed repositories (default; unchanged behaviour).
+        ///   "MongoDb"  — MongoDB-backed repositories.
+        /// </summary>
+        public string Provider { get; set; } = "DynamoDb";
     }
 
     /// <summary>
@@ -32,6 +65,20 @@ namespace SyncServer.Configuration
         public string Region { get; set; } = string.Empty;
         public string AccessKey { get; set; } = string.Empty;
         public string SecretKey { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// MongoDB settings. Used when <see cref="DatabaseSettings.Provider"/> is "MongoDb".
+    /// Collection names mirror the DynamoDB table names ("Users", "RefreshTokens", and each
+    /// plugin's <c>TableName</c>) so the two backends are schema-compatible.
+    /// </summary>
+    public class MongoDbSettings
+    {
+        /// <summary>Standard MongoDB connection string, e.g. "mongodb://user:pass@mongo:27017".</summary>
+        public string ConnectionString { get; set; } = string.Empty;
+
+        /// <summary>Database name that holds the Hikari collections.</summary>
+        public string DatabaseName { get; set; } = "hikari";
     }
 
     public class JwtSettings
