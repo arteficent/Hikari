@@ -25,6 +25,9 @@ public class MongoContentRepository : IContentRepository
     private static FilterDefinition<ContentItem> ById(Guid id) =>
         Builders<ContentItem>.Filter.Eq(x => x.Id, id);
 
+    private static string SanitizeForLog(string? value) =>
+        string.IsNullOrEmpty(value) ? string.Empty : value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
     public async Task<bool> CreateAsync(ContentItem item, string tableName)
     {
         try
@@ -33,12 +36,12 @@ public class MongoContentRepository : IContentRepository
             item.CreatedAt = DateTime.UtcNow;
             item.LastModified = DateTime.UtcNow;
             await Collection(tableName).InsertOneAsync(item);
-            _logger.LogInformation("Created content item '{Title}' (Id: {Id}) in collection {Collection}.", item.Title, item.Id, tableName);
+            _logger.LogInformation("Created content item '{Title}' (Id: {Id}) in collection {Collection}.", SanitizeForLog(item.Title), item.Id, SanitizeForLog(tableName));
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create content item '{Title}' in collection {Collection}.", item.Title, tableName);
+            _logger.LogError(ex, "Failed to create content item '{Title}' in collection {Collection}.", SanitizeForLog(item.Title), SanitizeForLog(tableName));
             return false;
         }
     }
@@ -67,12 +70,12 @@ public class MongoContentRepository : IContentRepository
             item.LastModified = DateTime.UtcNow;
             // Upsert to match the DynamoDB SaveAsync (put) semantics.
             await Collection(tableName).ReplaceOneAsync(ById(item.Id), item, new ReplaceOptions { IsUpsert = true });
-            _logger.LogInformation("Updated content item '{Title}' (Id: {Id}) in collection {Collection}.", item.Title, item.Id, tableName);
+            _logger.LogInformation("Updated content item '{Title}' (Id: {Id}) in collection {Collection}.", SanitizeForLog(item.Title), item.Id, SanitizeForLog(tableName));
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update content item '{Title}' (Id: {Id}) in collection {Collection}.", item.Title, item.Id, tableName);
+            _logger.LogError(ex, "Failed to update content item '{Title}' (Id: {Id}) in collection {Collection}.", SanitizeForLog(item.Title), item.Id, SanitizeForLog(tableName));
             return false;
         }
     }
@@ -85,7 +88,7 @@ public class MongoContentRepository : IContentRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get content item (Id: {Id}) from collection {Collection}.", id, tableName);
+            _logger.LogError(ex, "Failed to get content item (Id: {Id}) from collection {Collection}.", id, SanitizeForLog(tableName));
             return null;
         }
     }
@@ -104,7 +107,7 @@ public class MongoContentRepository : IContentRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to read content items from collection {Collection}.", tableName);
+            _logger.LogError(ex, "Failed to read content items from collection {Collection}.", SanitizeForLog(tableName));
             return new List<ContentItem>();
         }
     }
