@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using SyncServer.Identity.Models;
 using SyncServer.Identity.Security;
+using System.Text.RegularExpressions;
 
 namespace SyncServer.Identity.Repositories
 {
@@ -17,6 +18,15 @@ namespace SyncServer.Identity.Repositories
         private readonly IMongoCollection<User> _users;
         private readonly ILogger<MongoUserRepository> _logger;
         private static int _indexEnsured;
+        private static readonly Regex LogLineBreaksRegex = new Regex(@"\r\n?|\n|\u2028|\u2029", RegexOptions.Compiled);
+
+        private static string SanitizeForLog(string? value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            return LogLineBreaksRegex.Replace(value, string.Empty);
+        }
 
         public MongoUserRepository(IMongoDatabase database, ILogger<MongoUserRepository> logger)
         {
@@ -63,7 +73,7 @@ namespace SyncServer.Identity.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load user {UserId}", id);
+                _logger.LogError(ex, "Failed to load user {UserId}", SanitizeForLog(id));
                 return null;
             }
         }
@@ -79,7 +89,7 @@ namespace SyncServer.Identity.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to query user by username {Username}", username);
+                _logger.LogError(ex, "Failed to query user by username {Username}", SanitizeForLog(username));
                 return null;
             }
         }
@@ -107,7 +117,7 @@ namespace SyncServer.Identity.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update user {UserId}", user.Id);
+                _logger.LogError(ex, "Failed to update user {UserId}", SanitizeForLog(user.Id));
                 return false;
             }
         }
@@ -121,7 +131,7 @@ namespace SyncServer.Identity.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to delete user {UserId}", id);
+                _logger.LogError(ex, "Failed to delete user {UserId}", SanitizeForLog(id));
                 return false;
             }
         }
