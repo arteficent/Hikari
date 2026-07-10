@@ -94,6 +94,12 @@ namespace SyncServer.Identity.Repositories
             }
         }
 
+        private static string SanitizeForLog(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+        }
+
         public async Task<IList<User>> ScanAllAsync()
         {
             try
