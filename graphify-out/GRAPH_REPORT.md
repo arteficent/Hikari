@@ -1,675 +1,599 @@
-# Graph Report - Hikari  (2026-06-26)
+# Graph Report - .  (2026-08-09)
 
 ## Corpus Check
-- 133 files · ~61,780 words
+- 5 files · ~73,095 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1547 nodes · 2272 edges · 140 communities (134 shown, 6 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 51 edges (avg confidence: 0.82)
-- Token cost: 0 input · 0 output
-
-## Graph Freshness
-- Built from commit: `265dd75e`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
+- 1953 nodes · 3476 edges · 121 communities (111 shown, 10 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 121 edges (avg confidence: 0.81)
+- Token cost: 61,000 input · 4,200 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Android API Client|Android API Client]]
-- [[_COMMUNITY_Server Content Plugins|Server Content Plugins]]
-- [[_COMMUNITY_Manga Plugin (Client)|Manga Plugin (Client)]]
-- [[_COMMUNITY_Auth & Admin Controllers|Auth & Admin Controllers]]
-- [[_COMMUNITY_Book Plugin (Client)|Book Plugin (Client)]]
-- [[_COMMUNITY_Video Plugin (Client)|Video Plugin (Client)]]
-- [[_COMMUNITY_Audio Plugin (Client)|Audio Plugin (Client)]]
-- [[_COMMUNITY_Image Plugin (Client)|Image Plugin (Client)]]
-- [[_COMMUNITY_Architecture Overview (Docs)|Architecture Overview (Docs)]]
-- [[_COMMUNITY_Swagger Schema Filters|Swagger Schema Filters]]
-- [[_COMMUNITY_NLog Filter Schema|NLog Filter Schema]]
-- [[_COMMUNITY_Content Controller (API)|Content Controller (API)]]
-- [[_COMMUNITY_Client ContentPlugin Base|Client ContentPlugin Base]]
-- [[_COMMUNITY_Kestrel Certificate Schema|Kestrel Certificate Schema]]
-- [[_COMMUNITY_User Controller (API)|User Controller (API)]]
-- [[_COMMUNITY_Serilog Config Schema|Serilog Config Schema]]
-- [[_COMMUNITY_PWA  Service Worker Schema|PWA / Service Worker Schema]]
-- [[_COMMUNITY_Content Repository (DynamoDB)|Content Repository (DynamoDB)]]
-- [[_COMMUNITY_User Repository (DynamoDB)|User Repository (DynamoDB)]]
-- [[_COMMUNITY_File Metadata Stripper|File Metadata Stripper]]
-- [[_COMMUNITY_App Settings Schema Root|App Settings Schema Root]]
-- [[_COMMUNITY_MainActivity & App Bootstrap|MainActivity & App Bootstrap]]
-- [[_COMMUNITY_Celestial Surface Animation|Celestial Surface Animation]]
-- [[_COMMUNITY_IContentPlugin Contract (Server)|IContentPlugin Contract (Server)]]
-- [[_COMMUNITY_Plugin Registry (Server)|Plugin Registry (Server)]]
-- [[_COMMUNITY_Manga Plugin (Server)|Manga Plugin (Server)]]
-- [[_COMMUNITY_Video Plugin (Server)|Video Plugin (Server)]]
-- [[_COMMUNITY_Video Metadata Rewriter|Video Metadata Rewriter]]
-- [[_COMMUNITY_Current User Middleware|Current User Middleware]]
-- [[_COMMUNITY_Refresh Token Repository|Refresh Token Repository]]
-- [[_COMMUNITY_Elmah.Io Logging Schema|Elmah.Io Logging Schema]]
-- [[_COMMUNITY_CDN Config Schema|CDN Config Schema]]
-- [[_COMMUNITY_Kestrel Endpoints Schema|Kestrel Endpoints Schema]]
-- [[_COMMUNITY_IUserRepository Contract|IUserRepository Contract]]
-- [[_COMMUNITY_Audio Metadata Rewriter|Audio Metadata Rewriter]]
-- [[_COMMUNITY_Sync Preferences Repository|Sync Preferences Repository]]
-- [[_COMMUNITY_Content Sync Service|Content Sync Service]]
-- [[_COMMUNITY_Sync Server Build & Deps|Sync Server Build & Deps]]
-- [[_COMMUNITY_S3 Blob Storage Provider|S3 Blob Storage Provider]]
-- [[_COMMUNITY_Logging Config Schema|Logging Config Schema]]
-- [[_COMMUNITY_Log Level Schema|Log Level Schema]]
-- [[_COMMUNITY_Web Optimizer Schema|Web Optimizer Schema]]
-- [[_COMMUNITY_Audio Metadata Extractor|Audio Metadata Extractor]]
-- [[_COMMUNITY_Auth & Roles (Concepts)|Auth & Roles (Concepts)]]
-- [[_COMMUNITY_Kestrel Certificates Schema|Kestrel Certificates Schema]]
-- [[_COMMUNITY_SSL Protocols Schema|SSL Protocols Schema]]
-- [[_COMMUNITY_Static Assets Schema|Static Assets Schema]]
-- [[_COMMUNITY_Plugin Registry (Client)|Plugin Registry (Client)]]
-- [[_COMMUNITY_Content Hub Screen|Content Hub Screen]]
-- [[_COMMUNITY_Content Item Card UI|Content Item Card UI]]
-- [[_COMMUNITY_Content List Screen|Content List Screen]]
-- [[_COMMUNITY_Paper Surface & Profile UI|Paper Surface & Profile UI]]
-- [[_COMMUNITY_IBlobStorageProvider Contract|IBlobStorageProvider Contract]]
-- [[_COMMUNITY_Kestrel TLSSNI Schema|Kestrel TLS/SNI Schema]]
-- [[_COMMUNITY_Serilog Min-Level Schema|Serilog Min-Level Schema]]
-- [[_COMMUNITY_NLog Internal Logging Schema|NLog Internal Logging Schema]]
-- [[_COMMUNITY_Content DTOs (Client)|Content DTOs (Client)]]
-- [[_COMMUNITY_JWT Decoder (Client)|JWT Decoder (Client)]]
-- [[_COMMUNITY_NLog Targets Schema|NLog Targets Schema]]
-- [[_COMMUNITY_Console Logger Schema|Console Logger Schema]]
-- [[_COMMUNITY_NLog Variables Schema|NLog Variables Schema]]
-- [[_COMMUNITY_IRefreshTokenRepository Contract|IRefreshTokenRepository Contract]]
-- [[_COMMUNITY_Upload Screen|Upload Screen]]
-- [[_COMMUNITY_User List Screen|User List Screen]]
-- [[_COMMUNITY_Auth DTOs (Server)|Auth DTOs (Server)]]
-- [[_COMMUNITY_NLog Method Call Schema|NLog Method Call Schema]]
-- [[_COMMUNITY_Serilog Filter Schema|Serilog Filter Schema]]
-- [[_COMMUNITY_Serilog Filter Switches Schema|Serilog Filter Switches Schema]]
-- [[_COMMUNITY_Settings Repository (Client)|Settings Repository (Client)]]
-- [[_COMMUNITY_Create User Screen|Create User Screen]]
-- [[_COMMUNITY_Login Screen|Login Screen]]
-- [[_COMMUNITY_Server Configuration Settings|Server Configuration Settings]]
-- [[_COMMUNITY_NLog Args Schema|NLog Args Schema]]
-- [[_COMMUNITY_Serilog Using Schema|Serilog Using Schema]]
-- [[_COMMUNITY_Serilog Properties Schema|Serilog Properties Schema]]
-- [[_COMMUNITY_Auth Repository (Client)|Auth Repository (Client)]]
-- [[_COMMUNITY_Content Picker Screen|Content Picker Screen]]
-- [[_COMMUNITY_App Theme System|App Theme System]]
-- [[_COMMUNITY_Content DTOs (Server)|Content DTOs (Server)]]
-- [[_COMMUNITY_Graphify Tooling Notes|Graphify Tooling Notes]]
-- [[_COMMUNITY_NLog Assembly Schema|NLog Assembly Schema]]
-- [[_COMMUNITY_NLog Method Reference Schema|NLog Method Reference Schema]]
-- [[_COMMUNITY_NLog Rules Schema|NLog Rules Schema]]
-- [[_COMMUNITY_NLog Target Wrapper Schema|NLog Target Wrapper Schema]]
-- [[_COMMUNITY_Client Certificate Mode Schema|Client Certificate Mode Schema]]
-- [[_COMMUNITY_Logging Level Switch Schema|Logging Level Switch Schema]]
-- [[_COMMUNITY_NLog Root Schema|NLog Root Schema]]
-- [[_COMMUNITY_Serilog Log Level Enum|Serilog Log Level Enum]]
-- [[_COMMUNITY_Serilog Threshold Schema|Serilog Threshold Schema]]
-- [[_COMMUNITY_Formatter Options Schema|Formatter Options Schema]]
-- [[_COMMUNITY_NLog Global Threshold Schema|NLog Global Threshold Schema]]
-- [[_COMMUNITY_NLog Internal Log Level Schema|NLog Internal Log Level Schema]]
-- [[_COMMUNITY_Serilog Minimum Level Schema|Serilog Minimum Level Schema]]
-- [[_COMMUNITY_Serilog Override Schema|Serilog Override Schema]]
-- [[_COMMUNITY_Serilog WriteTo Schema|Serilog WriteTo Schema]]
-- [[_COMMUNITY_Current User Service|Current User Service]]
-- [[_COMMUNITY_Serilog AuditTo Schema|Serilog AuditTo Schema]]
-- [[_COMMUNITY_NLog AutoReload Schema|NLog AutoReload Schema]]
-- [[_COMMUNITY_NLog AutoShutdown Schema|NLog AutoShutdown Schema]]
-- [[_COMMUNITY_Connection Strings Schema|Connection Strings Schema]]
-- [[_COMMUNITY_Serilog Destructure Schema|Serilog Destructure Schema]]
-- [[_COMMUNITY_Serilog Enrich Schema|Serilog Enrich Schema]]
-- [[_COMMUNITY_Elmah.Io Heartbeat Schema|Elmah.Io Heartbeat Schema]]
-- [[_COMMUNITY_NLog Internal Console Schema|NLog Internal Console Schema]]
-- [[_COMMUNITY_Elmah.Io LogId Schema|Elmah.Io LogId Schema]]
-- [[_COMMUNITY_JSON Schema Root|JSON Schema Root]]
-- [[_COMMUNITY_NLog Config Exceptions Schema|NLog Config Exceptions Schema]]
-- [[_COMMUNITY_NLog Throw Exceptions Schema|NLog Throw Exceptions Schema]]
-- [[_COMMUNITY_Hikari Theming (Concepts)|Hikari Theming (Concepts)]]
-- [[_COMMUNITY_App Launcher Icons|App Launcher Icons]]
-- [[_COMMUNITY_Refresh Token Model|Refresh Token Model]]
-- [[_COMMUNITY_User Model|User Model]]
-- [[_COMMUNITY_ICurrentUserService Contract|ICurrentUserService Contract]]
-- [[_COMMUNITY_ContentItem Model|ContentItem Model]]
-- [[_COMMUNITY_Role Model|Role Model]]
-- [[_COMMUNITY_Community 130|Community 130]]
-- [[_COMMUNITY_Community 131|Community 131]]
-- [[_COMMUNITY_Community 132|Community 132]]
-- [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
-- [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
+- [[_COMMUNITY_Windows ApiClient & HTTP|Windows ApiClient & HTTP]]
+- [[_COMMUNITY_Windows Content Plugin Base|Windows Content Plugin Base]]
+- [[_COMMUNITY_Windows Preference Repositories|Windows Preference Repositories]]
+- [[_COMMUNITY_Server Content API & Mongo Repo|Server Content API & Mongo Repo]]
+- [[_COMMUNITY_Android Manga Plugin|Android Manga Plugin]]
+- [[_COMMUNITY_Android Book Plugin|Android Book Plugin]]
+- [[_COMMUNITY_Android Video Plugin|Android Video Plugin]]
+- [[_COMMUNITY_Android Image Plugin|Android Image Plugin]]
+- [[_COMMUNITY_Android Audio Plugin|Android Audio Plugin]]
+- [[_COMMUNITY_Android Content Plugin Contract|Android Content Plugin Contract]]
+- [[_COMMUNITY_Windows Upload Page|Windows Upload Page]]
+- [[_COMMUNITY_Server Auth & Admin Controllers|Server Auth & Admin Controllers]]
+- [[_COMMUNITY_Server Mongo User Repository|Server Mongo User Repository]]
+- [[_COMMUNITY_Server Swagger Schema Filters|Server Swagger Schema Filters]]
+- [[_COMMUNITY_Windows Page Base & User List|Windows Page Base & User List]]
+- [[_COMMUNITY_Windows Content List Page|Windows Content List Page]]
+- [[_COMMUNITY_Server Mongo Refresh Tokens|Server Mongo Refresh Tokens]]
+- [[_COMMUNITY_Server Content Plugin Registry|Server Content Plugin Registry]]
+- [[_COMMUNITY_Server Blob Storage Providers|Server Blob Storage Providers]]
+- [[_COMMUNITY_Server User Controller|Server User Controller]]
+- [[_COMMUNITY_Windows Content Sync Service|Windows Content Sync Service]]
+- [[_COMMUNITY_Windows Content Item ViewModel|Windows Content Item ViewModel]]
+- [[_COMMUNITY_Windows IContentPlugin Contract|Windows IContentPlugin Contract]]
+- [[_COMMUNITY_Windows Shared Styles & Shell|Windows Shared Styles & Shell]]
+- [[_COMMUNITY_Windows Content List Markup|Windows Content List Markup]]
+- [[_COMMUNITY_Windows Upload Page Markup|Windows Upload Page Markup]]
+- [[_COMMUNITY_Windows App Resource Dictionary|Windows App Resource Dictionary]]
+- [[_COMMUNITY_Server Content Repository|Server Content Repository]]
+- [[_COMMUNITY_Windows Picker Page|Windows Picker Page]]
+- [[_COMMUNITY_Windows Dynamic Form|Windows Dynamic Form]]
+- [[_COMMUNITY_Windows Archive Tool (EPUBCBZ)|Windows Archive Tool (EPUB/CBZ)]]
+- [[_COMMUNITY_Windows Create User Page|Windows Create User Page]]
+- [[_COMMUNITY_Windows Login Page|Windows Login Page]]
+- [[_COMMUNITY_Windows Main Window Shell|Windows Main Window Shell]]
+- [[_COMMUNITY_Windows Content Item Template|Windows Content Item Template]]
+- [[_COMMUNITY_Android Content List Screen|Android Content List Screen]]
+- [[_COMMUNITY_Windows Tag Tool|Windows Tag Tool]]
+- [[_COMMUNITY_Windows Profile Page|Windows Profile Page]]
+- [[_COMMUNITY_Android Content Sync Service|Android Content Sync Service]]
+- [[_COMMUNITY_Server README Overview|Server README Overview]]
+- [[_COMMUNITY_Android File Metadata Stripper|Android File Metadata Stripper]]
+- [[_COMMUNITY_Android README Overview|Android README Overview]]
+- [[_COMMUNITY_Server Book Plugin|Server Book Plugin]]
+- [[_COMMUNITY_Windows Server Page|Windows Server Page]]
+- [[_COMMUNITY_Android JWT Decoder|Android JWT Decoder]]
+- [[_COMMUNITY_Android MainActivity & Permissions|Android MainActivity & Permissions]]
+- [[_COMMUNITY_Android Celestial Surface|Android Celestial Surface]]
+- [[_COMMUNITY_Android Sync Engine Docs|Android Sync Engine Docs]]
+- [[_COMMUNITY_Server Project & Dependencies|Server Project & Dependencies]]
+- [[_COMMUNITY_Windows Theme Manager|Windows Theme Manager]]
+- [[_COMMUNITY_Server IContentPlugin Contract|Server IContentPlugin Contract]]
+- [[_COMMUNITY_Root README Overview|Root README Overview]]
+- [[_COMMUNITY_Server Audio Plugin|Server Audio Plugin]]
+- [[_COMMUNITY_Server Image Plugin|Server Image Plugin]]
+- [[_COMMUNITY_Server Manga Plugin|Server Manga Plugin]]
+- [[_COMMUNITY_Server Video Plugin|Server Video Plugin]]
+- [[_COMMUNITY_Android Video Metadata Rewriter|Android Video Metadata Rewriter]]
+- [[_COMMUNITY_Server Auth & Roles Docs|Server Auth & Roles Docs]]
+- [[_COMMUNITY_Server Current User Middleware|Server Current User Middleware]]
+- [[_COMMUNITY_Server User Repository Contract|Server User Repository Contract]]
+- [[_COMMUNITY_Android Audio Metadata Rewriter|Android Audio Metadata Rewriter]]
+- [[_COMMUNITY_Android Picker & Composition Root|Android Picker & Composition Root]]
+- [[_COMMUNITY_Android Content DTOs|Android Content DTOs]]
+- [[_COMMUNITY_Windows Media File Tools|Windows Media File Tools]]
+- [[_COMMUNITY_Server Mongo Class Maps|Server Mongo Class Maps]]
+- [[_COMMUNITY_Android Audio Metadata Extractor|Android Audio Metadata Extractor]]
+- [[_COMMUNITY_Android Content Hub Screen|Android Content Hub Screen]]
+- [[_COMMUNITY_Android Paper Surface & Profile|Android Paper Surface & Profile]]
+- [[_COMMUNITY_Android Client Docs Map|Android Client Docs Map]]
+- [[_COMMUNITY_Android Plugin Engine Docs|Android Plugin Engine Docs]]
+- [[_COMMUNITY_Android API Client Flow Docs|Android API Client Flow Docs]]
+- [[_COMMUNITY_Windows Dialogs|Windows Dialogs]]
+- [[_COMMUNITY_Server Blob Storage Contract|Server Blob Storage Contract]]
+- [[_COMMUNITY_Windows Library Access|Windows Library Access]]
+- [[_COMMUNITY_Windows App Log|Windows App Log]]
+- [[_COMMUNITY_Server API Reference Docs|Server API Reference Docs]]
+- [[_COMMUNITY_Android Content Item Card|Android Content Item Card]]
+- [[_COMMUNITY_Android Cover Art Docs|Android Cover Art Docs]]
+- [[_COMMUNITY_Server App Settings|Server App Settings]]
+- [[_COMMUNITY_Server Refresh Token Contract|Server Refresh Token Contract]]
+- [[_COMMUNITY_Android Upload Screen|Android Upload Screen]]
+- [[_COMMUNITY_Android User List Screen|Android User List Screen]]
+- [[_COMMUNITY_Server Auth DTOs|Server Auth DTOs]]
+- [[_COMMUNITY_Windows Project & Dependencies|Windows Project & Dependencies]]
+- [[_COMMUNITY_Sync Server Docker Compose|Sync Server Docker Compose]]
+- [[_COMMUNITY_Android Server Domain Screen|Android Server Domain Screen]]
+- [[_COMMUNITY_Android Create User Screen|Android Create User Screen]]
+- [[_COMMUNITY_Android Login Screen|Android Login Screen]]
+- [[_COMMUNITY_Windows Form Field Model|Windows Form Field Model]]
+- [[_COMMUNITY_Graphify Instructions|Graphify Instructions]]
+- [[_COMMUNITY_Server Pluggable Backends Docs|Server Pluggable Backends Docs]]
+- [[_COMMUNITY_Windows User Row Template|Windows User Row Template]]
+- [[_COMMUNITY_Android Theme|Android Theme]]
+- [[_COMMUNITY_Root Architecture Docs|Root Architecture Docs]]
+- [[_COMMUNITY_Windows Path Sanitizer|Windows Path Sanitizer]]
+- [[_COMMUNITY_Server Content DTOs|Server Content DTOs]]
+- [[_COMMUNITY_Server Password Hasher|Server Password Hasher]]
+- [[_COMMUNITY_Server Configuration Docs|Server Configuration Docs]]
+- [[_COMMUNITY_Windows Icon Generator|Windows Icon Generator]]
+- [[_COMMUNITY_Windows Batch Delete|Windows Batch Delete]]
+- [[_COMMUNITY_Windows Filter Help Panel|Windows Filter Help Panel]]
+- [[_COMMUNITY_Windows App Icon Art|Windows App Icon Art]]
+- [[_COMMUNITY_Server Current User Service|Server Current User Service]]
+- [[_COMMUNITY_Server Refresh Token Hasher|Server Refresh Token Hasher]]
+- [[_COMMUNITY_Android Theming Docs|Android Theming Docs]]
+- [[_COMMUNITY_Android Launcher Icons|Android Launcher Icons]]
+- [[_COMMUNITY_Server Refresh Token Record|Server Refresh Token Record]]
+- [[_COMMUNITY_Server User Model|Server User Model]]
+- [[_COMMUNITY_Server Current User Interface|Server Current User Interface]]
+- [[_COMMUNITY_Root Theming Docs|Root Theming Docs]]
+- [[_COMMUNITY_Server Content Item Model|Server Content Item Model]]
+- [[_COMMUNITY_Server Role Model|Server Role Model]]
+- [[_COMMUNITY_Android Metadata Parsing Docs|Android Metadata Parsing Docs]]
+- [[_COMMUNITY_Windows Library Access Docs|Windows Library Access Docs]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `MangaPlugin` - 28 edges
-2. `BookPlugin` - 26 edges
-3. `AudioPlugin` - 25 edges
-4. `ImagePlugin` - 23 edges
-5. `VideoPlugin` - 23 edges
-6. `ApiClient` - 23 edges
-7. `ContentPlugin` - 22 edges
-8. `String` - 22 edges
-9. `Hikari Sync Server` - 21 edges
-10. `ContentController` - 20 edges
+1. `ApiClient` - 59 edges
+2. `ContentListPage` - 43 edges
+3. `ContentPlugin` - 39 edges
+4. `ContentListPage view` - 36 edges
+5. `ContentPluginBase` - 35 edges
+6. `MangaPlugin` - 35 edges
+7. `UploadPage view` - 34 edges
+8. `BookPlugin` - 32 edges
+9. `AudioPlugin` - 29 edges
+10. `ImagePlugin` - 29 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Upload flow` --semantically_similar_to--> `Presigned URLs`  [INFERRED] [semantically similar]
   sync-server/README.md → README.md
-- `IContentPlugin` --semantically_similar_to--> `ContentPlugin`  [INFERRED] [semantically similar]
-  sync-server/README.md → README.md
-- `HikariTheme` --semantically_similar_to--> `Hikari themes`  [INFERRED] [semantically similar]
-  android-client/README.md → README.md
-- `✦ Hikari ✦` --references--> `Hikari Android Client`  [EXTRACTED]
-  README.md → android-client/README.md
-- `✦ Hikari ✦` --references--> `Hikari Sync Server`  [EXTRACTED]
-  README.md → sync-server/README.md
+- `ContentPlugin` --references--> `ContentPlugin`  [EXTRACTED]
+  README.md → android-client/app/src/content/ContentPlugin.kt
+- `ContentPlugin` --references--> `extractCoverArt`  [EXTRACTED]
+  README.md → android-client/app/src/content/ContentPlugin.kt
+- `ContentPlugin` --references--> `extractFileMetadata`  [EXTRACTED]
+  README.md → android-client/app/src/content/ContentPlugin.kt
+- `ContentPlugin` --references--> `ItemCard`  [EXTRACTED]
+  README.md → android-client/app/src/content/ContentPlugin.kt
 
 ## Import Cycles
 - None detected.
 
 ## Hyperedges (group relationships)
-- **End-to-end upload flow** — android_client_readme_contentplugin, sync_server_readme_content_endpoints, sync_server_readme_upload_flow, sync_server_readme_s3_compatible_object_store, sync_server_readme_dynamodb_metadata [EXTRACTED 1.00]
-- **Cross-platform plugin contract** — readme_contentplugin, readme_icontentplugin, android_client_readme_contentplugin, sync_server_readme_icontentplugin, readme_built_in_content_types [EXTRACTED 1.00]
-- **Authentication and authorization flow** — sync_server_readme_jwt_bearer_auth, sync_server_readme_refresh_tokens, sync_server_readme_role_hierarchy, sync_server_readme_bootstrap_root, android_client_readme_roles_admin_ui [EXTRACTED 1.00]
+- **Plugin Driven Content Flow** — content_contentplugin_contentplugin, sync_contentsyncservice_contentsyncservice, screens_contentlistscreen_contentlistscreen, screens_contentitemcard_contentitemcard, android_client_readme_plugin_based_content_engine [EXTRACTED 1.00]
+- **Selection And Local Sync State Separation** — screens_contentlistscreen_contentlistscreen, screens_contentitemcard_contentitemcard, sync_contentsyncservice_sync, android_client_readme_selection_vs_local_state, android_client_readme_shared_sync_index [EXTRACTED 1.00]
+- **Streaming Download Pipeline** — sync_contentsyncservice_downloaditembyid, content_contentplugin_savelocally, android_client_readme_direct_to_storage_transfers, android_client_readme_sync_engine [EXTRACTED 1.00]
 
-## Communities (140 total, 6 thin omitted)
+## Communities (121 total, 10 thin omitted)
 
-### Community 0 - "Android API Client"
-Cohesion: 0.09
-Nodes (27): ByteArray, ContentItem, ContentUploadCompleteRequest, ContentUploadInitRequest, Int, List, LoginRequest, Map (+19 more)
+### Community 0 - "Windows ApiClient & HTTP"
+Cohesion: 0.05
+Nodes (60): ByteArray, ContentItem, ContentUploadCompleteRequest, ContentUploadInitRequest, Int, List, LoginRequest, Map (+52 more)
 
-### Community 1 - "Server Content Plugins"
-Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, AudioPlugin
-
-### Community 2 - "Manga Plugin (Client)"
-Cohesion: 0.14
-Nodes (13): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+5 more)
-
-### Community 3 - "Auth & Admin Controllers"
-Cohesion: 0.15
-Nodes (14): BootstrapAdminSettings, AuthController, SyncServer.Identity.Controllers, JwtSettings, RefreshRequest, HttpPost, IActionResult, ILogger (+6 more)
-
-### Community 4 - "Book Plugin (Client)"
-Cohesion: 0.14
-Nodes (13): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+5 more)
-
-### Community 5 - "Video Plugin (Client)"
-Cohesion: 0.15
-Nodes (13): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+5 more)
-
-### Community 6 - "Audio Plugin (Client)"
-Cohesion: 0.16
-Nodes (12): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+4 more)
-
-### Community 7 - "Image Plugin (Client)"
-Cohesion: 0.13
-Nodes (14): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+6 more)
-
-### Community 8 - "Architecture Overview (Docs)"
-Cohesion: 0.12
-Nodes (19): ApiClient, Direct-to-storage transfers, External storage permissions, SyncPreferencesRepository, ContentSyncService, Hikari Android client, Object storage, Offline-first sync (+11 more)
-
-### Community 9 - "Swagger Schema Filters"
-Cohesion: 0.06
-Nodes (21): CreateContentDeleteRequestSchemaFilter, CreateContentItemSchemaFilter, CreateContentUploadCompleteRequestSchemaFilter, CreateContentUploadInitRequestSchemaFilter, CreateLoginRequestSchemaFilter, SyncServer.Identity.Filters, CreateUserRequestSchemaFilter, SyncServer.Identity.Filters (+13 more)
-
-### Community 10 - "NLog Filter Schema"
-Cohesion: 0.06
-Nodes (33): default, description, type, default, description, enum, type, oneOf (+25 more)
-
-### Community 11 - "Content Controller (API)"
-Cohesion: 0.08
-Nodes (30): ContentDeleteRequest, ControllerBase, AdminController, SyncServer.Identity.Controllers, ContentController, IContentPluginRegistry, Role, Authorize (+22 more)
-
-### Community 12 - "Client ContentPlugin Base"
-Cohesion: 0.16
-Nodes (13): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+5 more)
-
-### Community 13 - "Kestrel Certificate Schema"
+### Community 1 - "Windows Content Plugin Base"
 Cohesion: 0.07
-Nodes (30): default, description, type, description, properties, title, type, certificate (+22 more)
+Nodes (15): ContentPluginBase, CancellationToken, ContentItem, Dictionary, IEnumerable, IReadOnlyDictionary, IReadOnlyList, KeyValuePair (+7 more)
 
-### Community 14 - "User Controller (API)"
-Cohesion: 0.17
-Nodes (16): ChangePasswordRequest, SyncServer.Identity.Controllers, UserController, CreateUserRequest, Authorize, HttpDelete, HttpGet, HttpPost (+8 more)
+### Community 2 - "Windows Preference Repositories"
+Cohesion: 0.05
+Nodes (27): Flow, String, Flow, String, Boolean, Flow, Map, Set (+19 more)
 
-### Community 15 - "Serilog Config Schema"
-Cohesion: 0.15
-Nodes (13): allOf, description, title, allOf, description, title, ^AuditTo:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$, ^Destructure:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$ (+5 more)
-
-### Community 16 - "PWA / Service Worker Schema"
+### Community 3 - "Server Content API & Mongo Repo"
 Cohesion: 0.08
-Nodes (26): default, description, type, pwa, default, description, type, cacheId (+18 more)
+Nodes (31): ContentDeleteRequest, ContentController, Guid, IContentPluginRegistry, IContentRepository, IMongoDatabase, MongoContentRepository, Authorize (+23 more)
 
-### Community 17 - "Content Repository (DynamoDB)"
-Cohesion: 0.21
-Nodes (10): DynamoDBOperationConfig, ContentRepository, IContentRepository, ContentItem, Func, Guid, IDynamoDBContext, IList (+2 more)
+### Community 4 - "Android Manga Plugin"
+Cohesion: 0.12
+Nodes (20): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+12 more)
 
-### Community 18 - "User Repository (DynamoDB)"
+### Community 5 - "Android Book Plugin"
+Cohesion: 0.12
+Nodes (20): Boolean, ByteArray, ContentItem, Context, File, java, List, Map (+12 more)
+
+### Community 6 - "Android Video Plugin"
+Cohesion: 0.11
+Nodes (21): String, Boolean, ByteArray, ContentItem, Context, File, List, Map (+13 more)
+
+### Community 7 - "Android Image Plugin"
+Cohesion: 0.12
+Nodes (19): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+11 more)
+
+### Community 8 - "Android Audio Plugin"
+Cohesion: 0.13
+Nodes (19): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+11 more)
+
+### Community 9 - "Android Content Plugin Contract"
+Cohesion: 0.15
+Nodes (20): Boolean, ByteArray, ContentItem, Context, File, List, Map, MutableMap (+12 more)
+
+### Community 10 - "Windows Upload Page"
+Cohesion: 0.09
+Nodes (19): StorageFile, PickCoverButton, PickFileButton, SubmitButton, UndoCoverButton, UploadPage, bool, ContentItem (+11 more)
+
+### Community 11 - "Server Auth & Admin Controllers"
+Cohesion: 0.08
+Nodes (25): BootstrapAdminSettings, ControllerBase, AdminController, SyncServer.Identity.Controllers, AuthController, SyncServer.Identity.Controllers, JwtSettings, RefreshRequest (+17 more)
+
+### Community 12 - "Server Mongo User Repository"
 Cohesion: 0.10
 Nodes (17): IUserRepository, MongoUserRepository, SyncServer.Identity.Repositories, SyncServer.Identity.Repositories, UserRepository, IList, ILogger, IMongoCollection (+9 more)
 
-### Community 19 - "File Metadata Stripper"
-Cohesion: 0.41
-Nodes (6): ByteArray, Context, Map, String, Uri, FileMetadataStripper
+### Community 13 - "Server Swagger Schema Filters"
+Cohesion: 0.06
+Nodes (21): CreateContentDeleteRequestSchemaFilter, CreateContentItemSchemaFilter, CreateContentUploadCompleteRequestSchemaFilter, CreateContentUploadInitRequestSchemaFilter, CreateLoginRequestSchemaFilter, SyncServer.Identity.Filters, CreateUserRequestSchemaFilter, SyncServer.Identity.Filters (+13 more)
 
-### Community 20 - "App Settings Schema Root"
+### Community 14 - "Windows Page Base & User List"
 Cohesion: 0.11
-Nodes (17): description, type, definitions, allowedHosts, ElmahIo, NLog, protocols, required (+9 more)
+Nodes (15): Page, HikariPage, LoadingRing, UserListPage view, UserListPage, UserRowViewModel, Exception, InfoBarSeverity (+7 more)
 
-### Community 21 - "MainActivity & App Bootstrap"
-Cohesion: 0.26
-Nodes (8): ApiClient, Boolean, SyncPreferencesRepository, AuthRepository, Bundle, ComponentActivity, SettingsRepository, MainActivity
+### Community 15 - "Windows Content List Page"
+Cohesion: 0.10
+Nodes (15): NextButton, PrevButton, RefreshButton, ServerFilterPanel, SyncButton, ContentListPage, bool, ContentSyncService (+7 more)
 
-### Community 22 - "Celestial Surface Animation"
-Cohesion: 0.29
-Nodes (12): Boolean, List, Modifier, Float, Random, buildBodyDefinitions(), CelestialBody, CelestialShape (+4 more)
-
-### Community 23 - "IContentPlugin Contract (Server)"
-Cohesion: 0.20
-Nodes (7): IContentPlugin, Stream, ContentItem, Dictionary, Func, IDictionary, Task
-
-### Community 24 - "Plugin Registry (Server)"
-Cohesion: 0.22
-Nodes (7): IReadOnlyCollection, IServiceCollection, ContentPluginRegistry, ContentPluginServiceExtensions, IContentPluginRegistry, Dictionary, IContentPlugin
-
-### Community 25 - "Manga Plugin (Server)"
-Cohesion: 0.33
-Nodes (3): IContentPlugin, Dictionary, MangaPlugin
-
-### Community 26 - "Video Plugin (Server)"
-Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, VideoPlugin
-
-### Community 27 - "Video Metadata Rewriter"
-Cohesion: 0.27
-Nodes (8): ByteArray, Context, File, Map, String, Uri, Container, VideoMetadataRewriter
-
-### Community 28 - "Current User Middleware"
-Cohesion: 0.19
-Nodes (9): HttpContext, CurrentUserExtensions, CurrentUserMiddleware, SyncServer.Identity.Middlewares, RequestDelegate, ICurrentUserService, IUserRepository, Task (+1 more)
-
-### Community 29 - "Refresh Token Repository"
+### Community 16 - "Server Mongo Refresh Tokens"
 Cohesion: 0.10
 Nodes (18): IRefreshTokenRepository, MongoRefreshTokenRepository, SyncServer.Identity.Repositories, RefreshTokenRepository, SyncServer.Identity.Repositories, DateTime, FilterDefinition, ILogger (+10 more)
 
-### Community 30 - "Elmah.Io Logging Schema"
+### Community 17 - "Server Content Plugin Registry"
+Cohesion: 0.10
+Nodes (16): ContentPlugin, Set, String, Collection, ContentPluginRegistry, IReadOnlyCollection, IServiceCollection, ContentPluginRegistry (+8 more)
+
+### Community 18 - "Server Blob Storage Providers"
+Cohesion: 0.10
+Nodes (15): BlobMetadata, IAmazonS3, IBlobStorageProvider, IMinioClient, MinioBlobStorageProvider, S3BlobStorageProvider, BlobMetadata, string (+7 more)
+
+### Community 19 - "Server User Controller"
+Cohesion: 0.17
+Nodes (16): ChangePasswordRequest, SyncServer.Identity.Controllers, UserController, CreateUserRequest, Authorize, HttpDelete, HttpGet, HttpPost (+8 more)
+
+### Community 20 - "Windows Content Sync Service"
+Cohesion: 0.14
+Nodes (17): Deleted, Failed, IProgress, SyncProgress, SyncResult, ApiClient, CancellationToken, ContentItem (+9 more)
+
+### Community 21 - "Windows Content Item ViewModel"
+Cohesion: 0.10
+Nodes (13): DetailRow, ObservableBase, ImageSource, INotifyPropertyChanged, ContentItemViewModel, ImageTools, T, bool (+5 more)
+
+### Community 22 - "Windows IContentPlugin Contract"
+Cohesion: 0.13
+Nodes (8): IContentPlugin, CancellationToken, ContentItem, Dictionary, IReadOnlyDictionary, IReadOnlyList, Stream, Task
+
+### Community 23 - "Windows Shared Styles & Shell"
+Cohesion: 0.10
+Nodes (23): HikariBackgroundBrush, HikariCaptionStyle, HikariHeadlineStyle, HikariPrimaryBrush, RootFrame, RootGrid, ToastBar, MainWindow markup surface (+15 more)
+
+### Community 24 - "Windows Content List Markup"
+Cohesion: 0.08
+Nodes (19): NumberBox, NumberBoxValueChangedEventArgs, TextChangedEventArgs, DeleteLabel, EmptyState, EmptyText, FilterBox, LoadingRing (+11 more)
+
+### Community 25 - "Windows Upload Page Markup"
+Cohesion: 0.09
+Nodes (23): FilterForm, StatusBar, CoverPanel, CoverPreview, CoverStatusLabel, CoverWarningLabel, DescriptionBox, EditHintLabel (+15 more)
+
+### Community 26 - "Windows App Resource Dictionary"
+Cohesion: 0.11
+Nodes (20): Application, HikariAccentBrush, HikariAccentGradient, HikariBodyStyle, HikariBorderBrush, HikariCardRadius, HikariContainerBrush, HikariCornerRadius (+12 more)
+
+### Community 27 - "Server Content Repository"
+Cohesion: 0.21
+Nodes (10): DynamoDBOperationConfig, ContentRepository, IContentRepository, ContentItem, Func, Guid, IDynamoDBContext, IList (+2 more)
+
+### Community 28 - "Windows Picker Page"
+Cohesion: 0.13
+Nodes (13): ItemClickEventArgs, AccountLabel, IContentPlugin DisplayName binding, IContentPlugin Glyph binding, IContentPlugin Tagline binding, LibraryLabel, Plugin card data template, PluginGrid (+5 more)
+
+### Community 29 - "Windows Dynamic Form"
+Cohesion: 0.18
+Nodes (9): CalendarDatePicker, ComboBox, DynamicForm, StackPanel, TextBox, Dictionary, FormField, IReadOnlyDictionary (+1 more)
+
+### Community 30 - "Windows Archive Tool (EPUB/CBZ)"
+Cohesion: 0.17
+Nodes (9): ArchiveTool, IReadOnlyDictionary, string, XDocument, XElement, XName, XNamespace, ZipArchive (+1 more)
+
+### Community 31 - "Windows Create User Page"
+Cohesion: 0.12
+Nodes (15): AdminRadio, BusyRing, CreateButton, CreateIcon, PasswordBox, RolePanel, StatusBar, UsernameBox (+7 more)
+
+### Community 32 - "Windows Login Page"
+Cohesion: 0.14
+Nodes (14): BusyRing, DomainLabel, ErrorBar, PasswordBox, SignInButton, SignInIcon, UsernameBox, LoginPage view (+6 more)
+
+### Community 33 - "Windows Main Window Shell"
+Cohesion: 0.13
+Nodes (10): DllImport, MainWindow, IntPtr, Type, Window, bool, HikariTheme, InfoBarSeverity (+2 more)
+
+### Community 34 - "Windows Content Item Template"
+Cohesion: 0.14
+Nodes (14): Content item data template, ContentItemViewModel Cover binding, ContentItemViewModel DetailsVisibility binding, ContentItemViewModel Glyph binding, ContentItemViewModel IsMarked two-way binding, ContentItemViewModel ManageVisibility binding, ContentItemViewModel Secondary binding, ContentItemViewModel SyncTooltip binding (+6 more)
+
+### Community 35 - "Android Content List Screen"
+Cohesion: 0.11
+Nodes (18): AnimatedVisibilityScope, ApiClient, Boolean, ContentPlugin, ContentSyncService, SharedTransitionScope, String, SyncPreferencesRepository (+10 more)
+
+### Community 36 - "Windows Tag Tool"
 Cohesion: 0.22
-Nodes (11): IContentRepository, IMongoDatabase, MongoContentRepository, ContentItem, FilterDefinition, Func, Guid, IList (+3 more)
+Nodes (5): IDictionary, TagTool, Tag, Dictionary, IReadOnlyDictionary
 
-### Community 31 - "CDN Config Schema"
+### Community 37 - "Windows Profile Page"
 Cohesion: 0.15
-Nodes (13): description, properties, title, type, cdn, default, description, type (+5 more)
+Nodes (10): CreateUserButton, ManageUsersButton, SaveButton, ProfilePage, bool, InfoBarSeverity, NavigationEventArgs, RoutedEventArgs (+2 more)
 
-### Community 32 - "Kestrel Endpoints Schema"
-Cohesion: 0.15
-Nodes (13): kestrel, description, title, type, description, title, type, description (+5 more)
+### Community 38 - "Android Content Sync Service"
+Cohesion: 0.26
+Nodes (8): Boolean, ContentItem, List, Set, String, ContentSyncService, Pair, ContentSyncService
 
-### Community 33 - "IUserRepository Contract"
-Cohesion: 0.28
-Nodes (5): IUserRepository, SyncServer.Identity.Repositories, IList, Task, User
+### Community 39 - "Server README Overview"
+Cohesion: 0.12
+Nodes (16): DynamoDB, Hikari Android client, JWT auth, Object storage, Presigned URLs, Adding a New Content Plugin, Allowed MIME types (excerpt), ASP.NET Core on .NET 10 (+8 more)
 
-### Community 34 - "Audio Metadata Rewriter"
-Cohesion: 0.30
-Nodes (7): ByteArray, Context, Map, org, String, Uri, AudioMetadataRewriter
+### Community 40 - "Android File Metadata Stripper"
+Cohesion: 0.41
+Nodes (6): ByteArray, Context, Map, String, Uri, FileMetadataStripper
 
-### Community 35 - "Sync Preferences Repository"
-Cohesion: 0.29
-Nodes (6): Boolean, Flow, Map, Set, String, SyncPreferencesRepository
+### Community 41 - "Android README Overview"
+Cohesion: 0.13
+Nodes (14): Adding a New Plugin, Building & Installing, First-Run Flow, Highlights, Hikari Android Client, Permissions, Project Layout, Screens & Navigation (+6 more)
 
-### Community 36 - "Content Sync Service"
-Cohesion: 0.35
-Nodes (5): ContentItem, List, String, Pair, ContentSyncService
+### Community 42 - "Server Book Plugin"
+Cohesion: 0.18
+Nodes (7): IContentPlugin, ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, BookPlugin
 
-### Community 37 - "Sync Server Build & Deps"
+### Community 43 - "Windows Server Page"
+Cohesion: 0.19
+Nodes (7): LibraryButton, ServerPage, bool, KeyRoutedEventArgs, Regex, RoutedEventArgs, Task
+
+### Community 44 - "Android JWT Decoder"
+Cohesion: 0.22
+Nodes (9): Boolean, List, String, Claims, JsonElement, JSONObject, Claims, JwtDecoder (+1 more)
+
+### Community 45 - "Android MainActivity & Permissions"
+Cohesion: 0.23
+Nodes (10): ApiClient, AuthRepository, Boolean, SettingsRepository, SyncPreferencesRepository, AuthRepository, Bundle, ComponentActivity (+2 more)
+
+### Community 46 - "Android Celestial Surface"
+Cohesion: 0.27
+Nodes (13): Boolean, List, Modifier, Float, Random, buildBodyDefinitions(), CelestialBody, CelestialShape (+5 more)
+
+### Community 47 - "Android Sync Engine Docs"
+Cohesion: 0.23
+Nodes (14): Direct-to-storage transfers, Selection vs. local state, Shared sync index, Streaming partial-file save, Sync Engine, displayName, getLocalItems, ContentPlugin.saveLocally (+6 more)
+
+### Community 48 - "Server Project & Dependencies"
 Cohesion: 0.14
 Nodes (11): net10.0, AWSSDK.DynamoDBv2 (4.0.14), AWSSDK.Extensions.NETCore.Setup (4.0.3.22), AWSSDK.S3 (4.0.18.6), Microsoft.AspNetCore.Authentication.JwtBearer (10.0.3), Minio (7.0.0), MongoDB.Driver (3.9.0), Swashbuckle.AspNetCore (10.1.2) (+3 more)
 
-### Community 38 - "S3 Blob Storage Provider"
-Cohesion: 0.10
-Nodes (13): IAmazonS3, IBlobStorageProvider, IMinioClient, MinioBlobStorageProvider, S3BlobStorageProvider, BlobMetadata, string, Task (+5 more)
+### Community 49 - "Windows Theme Manager"
+Cohesion: 0.26
+Nodes (8): Color, FromName(), Rgb(), ThemeManager, WithAlpha(), Dictionary, HikariTheme, string
 
-### Community 39 - "Logging Config Schema"
-Cohesion: 0.21
-Nodes (12): description, required, title, type, additionalProperties, logging, additionalProperties, additionalProperties (+4 more)
-
-### Community 40 - "Log Level Schema"
-Cohesion: 0.05
-Nodes (45): description, pattern, type, description, type, properties, properties, properties (+37 more)
-
-### Community 41 - "Web Optimizer Schema"
-Cohesion: 0.17
-Nodes (12): webOptimizer, description, type, default, description, type, enableCaching, enableTagHelperBundling (+4 more)
-
-### Community 42 - "Audio Metadata Extractor"
-Cohesion: 0.27
-Nodes (7): Context, Map, org, String, Uri, FieldKey, AudioMetadataExtractor
-
-### Community 43 - "Auth & Roles (Concepts)"
+### Community 50 - "Server IContentPlugin Contract"
 Cohesion: 0.20
-Nodes (11): DataStore Preferences, JwtDecoder, Roles & Admin UI, Role hierarchy, AdminController, AuthController, Bootstrap root, JWT bearer auth (+3 more)
+Nodes (7): IContentPlugin, Stream, ContentItem, Dictionary, Func, IDictionary, Task
 
-### Community 44 - "Kestrel Certificates Schema"
-Cohesion: 0.18
-Nodes (11): $ref, additionalProperties, description, title, type, logLevel, additionalProperties, description (+3 more)
+### Community 51 - "Root README Overview"
+Cohesion: 0.14
+Nodes (13): MIT License, 1. Spin up the server, 2. Build & install the Android app, ✦ A typical upload, end-to-end, ✦ Adding a content type, ✦ Architecture at a glance, ✦ Hikari ✦, ✦ Quickstart (+5 more)
 
-### Community 45 - "SSL Protocols Schema"
-Cohesion: 0.10
-Nodes (22): sslProtocols, default, description, items, type, description, items, type (+14 more)
-
-### Community 46 - "Static Assets Schema"
+### Community 52 - "Server Audio Plugin"
 Cohesion: 0.20
-Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, BookPlugin
+Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, AudioPlugin
 
-### Community 47 - "Plugin Registry (Client)"
-Cohesion: 0.27
-Nodes (5): ContentPlugin, Set, String, Collection, ContentPluginRegistry
-
-### Community 48 - "Content Hub Screen"
-Cohesion: 0.20
-Nodes (9): AnimatedVisibilityScope, ApiClient, Boolean, ContentPlugin, ContentSyncService, SharedTransitionScope, String, SyncPreferencesRepository (+1 more)
-
-### Community 49 - "Content Item Card UI"
-Cohesion: 0.27
-Nodes (9): Boolean, ContentItem, ContentPlugin, String, Unit, Long, ContentItemCard(), DetailRow() (+1 more)
-
-### Community 50 - "Content List Screen"
-Cohesion: 0.20
-Nodes (9): AnimatedVisibilityScope, ApiClient, Boolean, ContentPlugin, ContentSyncService, SharedTransitionScope, String, SyncPreferencesRepository (+1 more)
-
-### Community 51 - "Paper Surface & Profile UI"
-Cohesion: 0.22
-Nodes (8): AnimatedVisibilityScope, ApiClient, SharedTransitionScope, String, Modifier, ProfileOverlay(), PaperSurface(), PaperSurfacePreview()
-
-### Community 52 - "IBlobStorageProvider Contract"
-Cohesion: 0.24
-Nodes (5): BlobMetadata, IBlobStorageProvider, BlobMetadata, Task, TimeSpan
-
-### Community 53 - "Kestrel TLS/SNI Schema"
-Cohesion: 0.24
-Nodes (10): properties, $ref, properties, Certificate, ClientCertificateMode, Protocols, Sni, SslProtocols (+2 more)
-
-### Community 54 - "Serilog Min-Level Schema"
-Cohesion: 0.20
-Nodes (10): $ref, $ref, DetailedMinimumLevel, additionalProperties, description, properties, title, type (+2 more)
-
-### Community 55 - "NLog Internal Logging Schema"
-Cohesion: 0.20
-Nodes (10): description, type, default, description, type, properties, internalLogFile, internalLogToConsole (+2 more)
-
-### Community 56 - "Content DTOs (Client)"
-Cohesion: 0.20
-Nodes (9): ContentDeleteRequest, ContentDeleteResponse, ContentDownloadResponse, ContentItem, ContentUploadCompleteRequest, ContentUploadCompleteResponse, ContentUploadInitRequest, ContentUploadInitResponse (+1 more)
-
-### Community 57 - "JWT Decoder (Client)"
-Cohesion: 0.33
-Nodes (6): Boolean, List, String, JSONObject, Claims, JwtDecoder
-
-### Community 58 - "NLog Targets Schema"
-Cohesion: 0.22
-Nodes (9): description, type, async, targets, default, description, properties, title (+1 more)
-
-### Community 59 - "Console Logger Schema"
+### Community 53 - "Server Image Plugin"
 Cohesion: 0.20
 Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, ImagePlugin
 
-### Community 60 - "NLog Variables Schema"
-Cohesion: 0.22
-Nodes (9): .*, variables, pattern, type, description, patternProperties, propertyNames, title (+1 more)
+### Community 54 - "Server Manga Plugin"
+Cohesion: 0.20
+Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, MangaPlugin
 
-### Community 61 - "IRefreshTokenRepository Contract"
+### Community 55 - "Server Video Plugin"
+Cohesion: 0.20
+Nodes (6): ContentItem, DateTimeOffset, Dictionary, Func, IDictionary, VideoPlugin
+
+### Community 56 - "Android Video Metadata Rewriter"
+Cohesion: 0.27
+Nodes (8): ByteArray, Context, File, Map, String, Uri, Container, VideoMetadataRewriter
+
+### Community 57 - "Server Auth & Roles Docs"
+Cohesion: 0.15
+Nodes (13): Android roles and admin UI, DataStore Preferences, JwtDecoder, Roles & Admin UI, Role hierarchy, AdminController, AuthController, Bootstrap root (+5 more)
+
+### Community 58 - "Server Current User Middleware"
+Cohesion: 0.19
+Nodes (9): HttpContext, CurrentUserExtensions, CurrentUserMiddleware, SyncServer.Identity.Middlewares, RequestDelegate, ICurrentUserService, IUserRepository, Task (+1 more)
+
+### Community 59 - "Server User Repository Contract"
 Cohesion: 0.28
-Nodes (5): IRefreshTokenRepository, SyncServer.Identity.Repositories, DateTime, RefreshTokenRecord, Task
+Nodes (5): IUserRepository, SyncServer.Identity.Repositories, IList, Task, User
 
-### Community 62 - "Upload Screen"
-Cohesion: 0.25
-Nodes (7): AnimatedVisibilityScope, ApiClient, ContentItem, ContentPlugin, SharedTransitionScope, String, UploadScreen()
+### Community 60 - "Android Audio Metadata Rewriter"
+Cohesion: 0.30
+Nodes (7): ByteArray, Context, Map, org, String, Uri, AudioMetadataRewriter
 
-### Community 63 - "User List Screen"
-Cohesion: 0.29
-Nodes (7): AnimatedVisibilityScope, ApiClient, SharedTransitionScope, String, UserProfile, UserListScreen(), UserRow()
+### Community 61 - "Android Picker & Composition Root"
+Cohesion: 0.17
+Nodes (8): AnimatedVisibilityScope, SharedTransitionScope, ContentPluginRegistry, AppServices, HikariTheme, ContentPickerScreen(), ContentSyncService, IContentPlugin
 
-### Community 64 - "Auth DTOs (Server)"
-Cohesion: 0.25
-Nodes (7): ChangePasswordRequest, CreateUserRequest, LoginRequest, RefreshRequest, SyncServer.Identity.Dtos, UpdateUsernameRequest, UpdateUserRequest
+### Community 62 - "Android Content DTOs"
+Cohesion: 0.17
+Nodes (9): ContentDeleteRequest, ContentDeleteResponse, ContentDownloadResponse, ContentItem, ContentUploadCompleteRequest, ContentUploadCompleteResponse, ContentUploadInitRequest, ContentUploadInitResponse (+1 more)
 
-### Community 65 - "NLog Method Call Schema"
-Cohesion: 0.25
-Nodes (8): additionalProperties, required, type, ComplexMethodCallReference, MethodCallReferenceItem, oneOf, type, definitions
+### Community 63 - "Windows Media File Tools"
+Cohesion: 0.26
+Nodes (5): MediaFileTools, Action, CancellationToken, Stream, Task
 
-### Community 66 - "Serilog Filter Schema"
-Cohesion: 0.22
-Nodes (9): allOf, description, title, allOf, description, title, AuditTo, Filter (+1 more)
-
-### Community 67 - "Serilog Filter Switches Schema"
+### Community 64 - "Server Mongo Class Maps"
 Cohesion: 0.18
-Nodes (11): additionalProperties, patternProperties, type, additionalProperties, patternProperties, type, ^(?\u003CSerilogLevelSwitcherName\u003E\\${0,1}[A-Za-z]\u002B[A-Za-z0-9]*)$, FilterSwitches (+3 more)
+Nodes (8): Action, bool, BsonClassMap, MongoMappings, object, Action, bool, T
 
-### Community 68 - "Settings Repository (Client)"
-Cohesion: 0.38
-Nodes (3): Flow, String, SettingsRepository
+### Community 65 - "Android Audio Metadata Extractor"
+Cohesion: 0.27
+Nodes (7): Context, Map, org, String, Uri, FieldKey, AudioMetadataExtractor
 
-### Community 69 - "Create User Screen"
+### Community 66 - "Android Content Hub Screen"
+Cohesion: 0.20
+Nodes (9): AnimatedVisibilityScope, ApiClient, Boolean, ContentPlugin, ContentSyncService, SharedTransitionScope, String, SyncPreferencesRepository (+1 more)
+
+### Community 67 - "Android Paper Surface & Profile"
+Cohesion: 0.22
+Nodes (8): AnimatedVisibilityScope, ApiClient, SharedTransitionScope, String, Modifier, ProfileOverlay(), PaperSurface(), PaperSurfacePreview()
+
+### Community 68 - "Android Client Docs Map"
+Cohesion: 0.20
+Nodes (10): ApiClient, Content screens, ContentPluginRegistry, External storage permissions, MainActivity, SharedTransitionLayout, SyncPreferencesRepository, ContentSyncService (+2 more)
+
+### Community 69 - "Android Plugin Engine Docs"
+Cohesion: 0.24
+Nodes (10): Cover-art extraction, Metadata-aware uploads, Plugin-based content engine, extractFileMetadata, ItemCard, rewriteFileMetadata, ImagePlugin.extractFileMetadata, VideoPlugin.extractFileMetadata (+2 more)
+
+### Community 70 - "Android API Client Flow Docs"
+Cohesion: 0.20
+Nodes (10): deleteLocally, ApiClient.deleteItems, ApiClient.downloadContentItem, ApiClient.executeAuthed, ApiClient.getContentItems, ApiClient.refreshToken, ApiClient.tryRefresh, ContentSyncService.deleteItems (+2 more)
+
+### Community 71 - "Windows Dialogs"
+Cohesion: 0.31
+Nodes (6): ContentDialog, Dialogs, ContentDialogResult, SemaphoreSlim, Task, XamlRoot
+
+### Community 72 - "Server Blob Storage Contract"
+Cohesion: 0.24
+Nodes (5): BlobMetadata, IBlobStorageProvider, BlobMetadata, Task, TimeSpan
+
+### Community 73 - "Windows Library Access"
+Cohesion: 0.40
+Nodes (4): MainWindow, LibraryAccess, ContentDialogResult, Task
+
+### Community 74 - "Windows App Log"
 Cohesion: 0.29
-Nodes (6): AnimatedVisibilityScope, ApiClient, Boolean, SharedTransitionScope, String, CreateUserScreen()
+Nodes (4): AppLog, Exception, Lock, string
 
-### Community 70 - "Login Screen"
-Cohesion: 0.33
-Nodes (6): AnimatedVisibilityScope, Modifier, SharedTransitionScope, String, LoginScreen(), LoginScreenPreview()
+### Community 75 - "Server API Reference Docs"
+Cohesion: 0.20
+Nodes (10): Admin — `/Admin` *(role: Root)*, API Reference, Authentication — `/Auth` *(anonymous)*, Content API, Content — `/content/{contentType}`, ContentRepository, DynamoDb config, DynamoDB metadata (+2 more)
 
-### Community 71 - "Server Configuration Settings"
+### Community 76 - "Android Content Item Card"
+Cohesion: 0.31
+Nodes (8): Boolean, ContentItem, ContentPlugin, String, Unit, ContentItemCard(), DetailRow(), formatFileSize()
+
+### Community 77 - "Android Cover Art Docs"
+Cohesion: 0.22
+Nodes (9): Cover-art everywhere, extractCoverArt, ContentPlugin.getLocalFile, localBaseDir, ContentPlugin.localFileFor, AudioPlugin.extractCoverArt, BookPlugin.extractEpubCoverImage, MangaPlugin.extractCbzCover (+1 more)
+
+### Community 78 - "Server App Settings"
 Cohesion: 0.22
 Nodes (8): BootstrapAdminSettings, DatabaseSettings, DynamoDbSettings, HostingSettings, JwtSettings, MongoDbSettings, ObjectStorageSettings, SyncServer.Configuration
 
-### Community 72 - "NLog Args Schema"
+### Community 79 - "Server Refresh Token Contract"
+Cohesion: 0.28
+Nodes (5): IRefreshTokenRepository, SyncServer.Identity.Repositories, DateTime, RefreshTokenRecord, Task
+
+### Community 80 - "Android Upload Screen"
+Cohesion: 0.25
+Nodes (7): AnimatedVisibilityScope, ApiClient, ContentItem, ContentPlugin, SharedTransitionScope, String, UploadScreen()
+
+### Community 81 - "Android User List Screen"
 Cohesion: 0.29
-Nodes (7): additionalProperties, patternProperties, type, properties, $ref, Args, Name
+Nodes (7): AnimatedVisibilityScope, ApiClient, SharedTransitionScope, String, UserProfile, UserListScreen(), UserRow()
 
-### Community 73 - "Serilog Using Schema"
-Cohesion: 0.29
-Nodes (7): $ref, Using, description, items, title, type, uniqueItems
+### Community 82 - "Server Auth DTOs"
+Cohesion: 0.25
+Nodes (7): ChangePasswordRequest, CreateUserRequest, LoginRequest, RefreshRequest, SyncServer.Identity.Dtos, UpdateUsernameRequest, UpdateUserRequest
 
-### Community 74 - "Serilog Properties Schema"
-Cohesion: 0.29
-Nodes (7): description, Properties, title, type, properties, description, type
+### Community 83 - "Windows Project & Dependencies"
+Cohesion: 0.25
+Nodes (7): net10.0-windows10.0.19041.0, Hikari.WindowsClient, Microsoft.Windows.SDK.BuildTools (10.0.26100.7175), Microsoft.WindowsAppSDK (2.3.1), System.Security.Cryptography.ProtectedData (10.0.0), TagLibSharp (2.3.0), Microsoft.NET.Sdk
 
-### Community 75 - "Auth Repository (Client)"
-Cohesion: 0.40
-Nodes (3): Flow, String, AuthRepository
+### Community 84 - "Sync Server Docker Compose"
+Cohesion: 0.32
+Nodes (8): createbuckets service, minio service, minio-data volume, mongo service, mongo-data volume, sync-server service, MongoDB on SMB warning, SMB/CIFS-backed MinIO storage
 
-### Community 76 - "Content Picker Screen"
+### Community 85 - "Android Server Domain Screen"
 Cohesion: 0.33
-Nodes (5): AnimatedVisibilityScope, SharedTransitionScope, ContentPluginRegistry, HikariTheme, ContentPickerScreen()
+Nodes (6): AnimatedVisibilityScope, Modifier, SharedTransitionScope, Modifier, ServerDomainScreen(), ServerDomainScreenPreview()
 
-### Community 77 - "App Theme System"
-Cohesion: 0.48
-Nodes (6): Boolean, ColorScheme, CelestialSurfaceLightPreview(), AndroidclientTheme(), HikariTheme, resolveScheme()
+### Community 86 - "Android Create User Screen"
+Cohesion: 0.29
+Nodes (6): AnimatedVisibilityScope, ApiClient, Boolean, SharedTransitionScope, String, CreateUserScreen()
 
-### Community 78 - "Content DTOs (Server)"
+### Community 87 - "Android Login Screen"
 Cohesion: 0.33
-Nodes (5): ContentDeleteRequest, ContentDownloadUrlResponse, ContentUploadCompleteRequest, ContentUploadInitRequest, ContentUploadInitResponse
+Nodes (6): AnimatedVisibilityScope, Modifier, SharedTransitionScope, String, LoginScreen(), LoginScreenPreview()
 
-### Community 79 - "Graphify Tooling Notes"
+### Community 88 - "Windows Form Field Model"
+Cohesion: 0.38
+Nodes (6): Date(), Dropdown(), Text(), FormOption, FormField, IReadOnlyList
+
+### Community 89 - "Graphify Instructions"
 Cohesion: 0.29
 Nodes (6): GRAPH_REPORT, graphify, graphify explain, graphify path, graphify query, graphify wiki index
 
-### Community 80 - "NLog Assembly Schema"
-Cohesion: 0.33
-Nodes (6): description, minLength, pattern, title, type, AssemblyReference
-
-### Community 81 - "NLog Method Reference Schema"
-Cohesion: 0.33
-Nodes (6): MethodCallReference, minItems, minLength, pattern, type, uniqueItems
-
-### Community 82 - "NLog Rules Schema"
-Cohesion: 0.33
-Nodes (6): NLogRulesItem, default, description, required, title, type
-
-### Community 83 - "NLog Target Wrapper Schema"
-Cohesion: 0.33
-Nodes (6): targetDefaultWrapper, default, description, required, title, type
-
-### Community 84 - "Client Certificate Mode Schema"
-Cohesion: 0.40
-Nodes (5): default, description, enum, type, clientCertificateMode
-
-### Community 85 - "Logging Level Switch Schema"
-Cohesion: 0.40
-Nodes (5): LoggingLevelSwitch, description, pattern, title, type
-
-### Community 86 - "NLog Root Schema"
-Cohesion: 0.14
-Nodes (13): DynamoDB, JWT auth, Adding a New Content Plugin, Allowed MIME types (excerpt), ASP.NET Core on .NET 10, Built-in Content Plugins, Highlights, Hikari Sync Server (+5 more)
-
-### Community 87 - "Serilog Log Level Enum"
-Cohesion: 0.40
-Nodes (5): SerilogLogEventLevel, description, enum, title, type
-
-### Community 88 - "Serilog Threshold Schema"
-Cohesion: 0.40
-Nodes (5): SerilogLogLevelThreshold, anyOf, description, title, type
-
-### Community 89 - "Formatter Options Schema"
-Cohesion: 0.15
-Nodes (12): Adding a New Plugin, Building & Installing, Content Plugins, First-Run Flow, Highlights, Hikari Android Client, Permissions, Project Layout (+4 more)
-
-### Community 90 - "NLog Global Threshold Schema"
-Cohesion: 0.40
-Nodes (5): default, description, enum, type, globalThreshold
-
-### Community 91 - "NLog Internal Log Level Schema"
-Cohesion: 0.40
-Nodes (5): default, description, enum, type, internalLogLevel
-
-### Community 92 - "Serilog Minimum Level Schema"
-Cohesion: 0.40
-Nodes (5): description, oneOf, title, type, MinimumLevel
-
-### Community 93 - "Serilog Override Schema"
-Cohesion: 0.40
-Nodes (5): additionalProperties, description, title, type, Override
-
-### Community 94 - "Serilog WriteTo Schema"
-Cohesion: 0.40
-Nodes (5): writeTo, allOf, description, title, type
-
-### Community 95 - "Current User Service"
-Cohesion: 0.50
-Nodes (3): ICurrentUserService, CurrentUserService, SyncServer.Identity.Services
-
-### Community 96 - "Serilog AuditTo Schema"
-Cohesion: 0.17
-Nodes (11): 1. Spin up the server, 2. Build & install the Android app, ✦ A typical upload, end-to-end, ✦ Adding a content type, ✦ Architecture at a glance, ✦ Hikari ✦, ✦ Quickstart, ✦ Repository layout (+3 more)
-
-### Community 97 - "NLog AutoReload Schema"
-Cohesion: 0.50
-Nodes (4): default, description, type, autoReload
-
-### Community 98 - "NLog AutoShutdown Schema"
-Cohesion: 0.50
-Nodes (4): default, description, type, autoShutdown
-
-### Community 99 - "Connection Strings Schema"
-Cohesion: 0.50
-Nodes (4): description, title, type, connectionStrings
-
-### Community 100 - "Serilog Destructure Schema"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, Destructure
-
-### Community 101 - "Serilog Enrich Schema"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, Enrich
-
-### Community 102 - "Elmah.Io Heartbeat Schema"
-Cohesion: 0.22
-Nodes (6): Action, bool, BsonClassMap, MongoMappings, object, T
-
-### Community 103 - "NLog Internal Console Schema"
+### Community 90 - "Server Pluggable Backends Docs"
 Cohesion: 0.29
-Nodes (8): Content screens, ContentPluginRegistry, Cover-art extraction, MainActivity, SharedTransitionLayout, ✦ Built-in content types, ContentPlugin, IContentPlugin
+Nodes (7): Pluggable storage tiers, IBlobStorageProvider, Metadata repositories, ObjectStorage config, Server pluggable backends, S3-compatible object store, S3BlobStorageProvider
 
-### Community 104 - "Elmah.Io LogId Schema"
+### Community 91 - "Windows User Row Template"
+Cohesion: 0.29
+Nodes (7): User row data template, UserRowViewModel ActionsVisibility binding, UserRowViewModel AdminBrush binding, UserRowViewModel AdminToggleTooltip binding, UserRowViewModel RolesDisplay binding, UserRowViewModel Username binding, UsersList
+
+### Community 92 - "Android Theme"
+Cohesion: 0.60
+Nodes (5): Boolean, ColorScheme, AndroidclientTheme(), HikariTheme, resolveScheme()
+
+### Community 93 - "Root Architecture Docs"
+Cohesion: 0.53
+Nodes (6): Android ContentPlugin, Android ContentSyncService, ContentPlugin contract, Offline-first sync, Windows ContentSyncService, Windows IContentPlugin
+
+### Community 94 - "Windows Path Sanitizer"
 Cohesion: 0.40
-Nodes (5): AnimatedVisibilityScope, Modifier, SharedTransitionScope, ServerDomainScreen(), ServerDomainScreenPreview()
+Nodes (3): PathSanitizer, HashSet, int
 
-### Community 105 - "JSON Schema Root"
-Cohesion: 0.50
-Nodes (4): $schema, description, title, type
-
-### Community 106 - "NLog Config Exceptions Schema"
-Cohesion: 0.50
-Nodes (4): throwConfigExceptions, default, description, type
-
-### Community 107 - "NLog Throw Exceptions Schema"
-Cohesion: 0.50
-Nodes (4): throwExceptions, default, description, type
-
-### Community 108 - "Hikari Theming (Concepts)"
-Cohesion: 0.67
-Nodes (3): CelestialSurface, HikariTheme, Hikari themes
-
-### Community 109 - "App Launcher Icons"
-Cohesion: 1.00
-Nodes (3): App Launcher Icon (square/adaptive), App Launcher Icon (round), Default Android Studio Launcher Branding
-
-### Community 130 - "Community 130"
+### Community 95 - "Server Content DTOs"
 Cohesion: 0.33
-Nodes (4): ContentItem, DateTimeOffset, Func, IDictionary
+Nodes (5): ContentDeleteRequest, ContentDownloadUrlResponse, ContentUploadCompleteRequest, ContentUploadInitRequest, ContentUploadInitResponse
 
-### Community 131 - "Community 131"
+### Community 96 - "Server Password Hasher"
 Cohesion: 0.33
 Nodes (3): PasswordHasher, SyncServer.Identity.Security, int
 
-### Community 132 - "Community 132"
+### Community 97 - "Server Configuration Docs"
 Cohesion: 0.33
 Nodes (6): Choosing providers, Configuration, Environment variables, Mix-and-match example: DynamoDB on AWS + binaries on Cloudflare R2, Sections, Self-hosted example: MongoDB + MinIO
 
-### Community 133 - "Community 133"
+### Community 98 - "Windows Icon Generator"
+Cohesion: 0.60
+Nodes (4): build(), load_font(), main(), Generate the Hikari Windows client icon.  Draws the 光 ("hikari" — light) glyph
+
+### Community 99 - "Windows Batch Delete"
 Cohesion: 0.40
-Nodes (5): Serilog, additionalProperties, description, title, type
+Nodes (3): ContentItemViewModel, DeleteButton, IReadOnlyList
 
-### Community 134 - "Community 134"
-Cohesion: 0.40
-Nodes (5): Admin — `/Admin` *(role: Root)*, API Reference, Authentication — `/Auth` *(anonymous)*, Content — `/content/{contentType}`, Users — `/User`
+### Community 101 - "Windows App Icon Art"
+Cohesion: 0.83
+Nodes (4): Hikari Application Icon, Purple And Gold Icon Branding, Stylized Light Glyph, Hikari Windows Client App Icon
 
-### Community 135 - "Community 135"
+### Community 102 - "Server Current User Service"
 Cohesion: 0.50
-Nodes (4): logLevelThreshold, description, enum, type
+Nodes (3): ICurrentUserService, CurrentUserService, SyncServer.Identity.Services
 
-### Community 136 - "Community 136"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, ^Enrich:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$
+### Community 104 - "Android Theming Docs"
+Cohesion: 0.67
+Nodes (3): Android Hikari themes, Shared-element navigation, ThemeManager
 
-### Community 137 - "Community 137"
-Cohesion: 0.50
-Nodes (4): allOf, description, title, ^Filter:((?\u003CEnvironmentVariableName\u003E[a-zA-Z_]\\w*)|(?\u003CArrayIndex\u003E\\d*))$
-
-### Community 138 - "Community 138"
-Cohesion: 0.50
-Nodes (4): default, description, type, internalLogToConsoleError
+### Community 105 - "Android Launcher Icons"
+Cohesion: 1.00
+Nodes (3): App Launcher Icon (square/adaptive), App Launcher Icon (round), Default Android Studio Launcher Branding
 
 ## Knowledge Gaps
-- **654 isolated node(s):** `Boolean`, `Bundle`, `Modifier`, `SharedTransitionScope`, `AnimatedVisibilityScope` (+649 more)
+- **617 isolated node(s):** `Boolean`, `Bundle`, `Modifier`, `SharedTransitionScope`, `AnimatedVisibilityScope` (+612 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `definitions` connect `App Settings Schema Root` to `Kestrel Endpoints Schema`, `Connection Strings Schema`, `Community 133`, `Logging Config Schema`, `Community 135`, `Web Optimizer Schema`, `Kestrel Certificates Schema`, `Kestrel Certificate Schema`, `SSL Protocols Schema`, `PWA / Service Worker Schema`, `NLog Rules Schema`, `Client Certificate Mode Schema`, `CDN Config Schema`?**
+- **Why does `ContentPlugin` connect `Android Content Plugin Contract` to `Android Content List Screen`, `Android Manga Plugin`, `Android Book Plugin`, `Android Plugin Engine Docs`, `Android Image Plugin`, `Android Audio Plugin`, `Android README Overview`, `Android Video Plugin`, `Android Content Sync Service`, `Android Content Item Card`, `Android API Client Flow Docs`, `Android Sync Engine Docs`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Why does `ContentItemCard()` connect `Android Content Item Card` to `Android Paper Surface & Profile`, `Android Content List Screen`, `Android Content Plugin Contract`, `Android Cover Art Docs`, `Android Sync Engine Docs`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `Serilog` connect `Community 133` to `NLog Method Call Schema`, `Serilog Filter Schema`, `App Settings Schema Root`, `Serilog Config Schema`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
-- **Why does `PaperSurface()` connect `Paper Surface & Profile UI` to `Manga Plugin (Client)`, `Book Plugin (Client)`, `Video Plugin (Client)`, `Audio Plugin (Client)`, `Image Plugin (Client)`, `Create User Screen`, `Login Screen`, `Elmah.Io LogId Schema`, `Content Picker Screen`, `Content Item Card UI`, `Content List Screen`, `Upload Screen`, `User List Screen`?**
-  _High betweenness centrality (0.027) - this node is a cross-community bridge._
+- **Why does `formatFileSize()` connect `Android Content Item Card` to `Windows ApiClient & HTTP`?**
+  _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **What connects `Boolean`, `Bundle`, `Modifier` to the rest of the system?**
-  _654 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Android API Client` be split into smaller, more focused modules?**
-  _Cohesion score 0.09276018099547512 - nodes in this community are weakly interconnected._
-- **Should `Manga Plugin (Client)` be split into smaller, more focused modules?**
-  _Cohesion score 0.14366998577524892 - nodes in this community are weakly interconnected._
-- **Should `Auth & Admin Controllers` be split into smaller, more focused modules?**
-  _Cohesion score 0.1471861471861472 - nodes in this community are weakly interconnected._
+  _622 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Windows ApiClient & HTTP` be split into smaller, more focused modules?**
+  _Cohesion score 0.051574212893553226 - nodes in this community are weakly interconnected._
+- **Should `Windows Content Plugin Base` be split into smaller, more focused modules?**
+  _Cohesion score 0.07127882599580712 - nodes in this community are weakly interconnected._
+- **Should `Windows Preference Repositories` be split into smaller, more focused modules?**
+  _Cohesion score 0.05279034690799397 - nodes in this community are weakly interconnected._

@@ -2,6 +2,8 @@
 
 Jetpack Compose Android app for syncing your media library with a [Hikari Sync Server](../sync-server/README.md). Browse and upload audio, video, books, manga, and images; sync the ones you care about to the device for fully offline playback / reading.
 
+> Prefer a desktop? The [Windows client](../windows-client/README.md) is a feature-parity WinUI 3 sibling with the same plugin contract and the same on-disk layout.
+
 > Material 3 · animated celestial backdrop · shared-element transitions · embedded cover-art rendering — straight from the file's own metadata.
 
 ---
@@ -107,26 +109,62 @@ All plugins store synced files under `Environment.getExternalStorageDirectory()/
 Each plugin implements:
 
 - `ContentType`, `DisplayName`, `LocalDirectory`, `RequiredPermissions`, `SupportedMimeTypes`, `UploadMimeFilter`
-- `SaveLocally / DeleteLocally / GetLocalItems / DisplayName(item) / MimeType(item)` — local FS operations
+- `SaveLocally / DeleteLocally / GetLocalItems / DisplayName(item) / MimeType(item)` — local FS operations.
+  `DisplayName(item)` is the storage-root-relative path and **must** start with `"{contentType}/"`; the sync index is
+  shared across plugins and that prefix is what marks an entry as this plugin's.
 - `FilterPanel(filters)` and `FilterableFields` — Compose UI + searchable field hints for the regex filter
 - `ItemCard(...)` — used as the row composable in `ContentListScreen`
 - `UploadFormFields / ValidateUploadFields / BuildUploadMetadata / ResolveUploadMimeType / SupportsCoverImage` — upload UX
 - `ExtractFileMetadata(uri, fileName)` — pre-fill upload form
 - `RewriteFileMetadata(uri, fileName, title, fields, coverImageUri)` — strip+rewrite tags before upload (audio embeds cover art into ID3/Vorbis)
 - `ExtractCoverArt(item) → ByteArray?` — used by `ContentItemCard` (rendered with Coil)
-- `GetLocalFile(item) → File?` — resolve the synced file path
+- `LocalBaseDir() / LocalFileFor(item) / GetLocalFile(item) → File?` — resolve the synced file path
+
+`saveLocally` is defined once on the interface and takes a *writer* (`suspend (OutputStream) -> Boolean`)
+rather than a `ByteArray`, so a payload is never held in memory. It writes to a `.part` file and only
+renames it into place once the writer reports success, which means a failed or interrupted download can
+never leave a truncated file behind.
 
 ---
 
 ## Sync Engine
 
-[`ContentSyncService`](app/src/core/sync/ContentSyncService.kt) is generic — one instance per (plugin, server). It:
+[`ContentSyncService`](app/src/core/sync/ContentSyncService.kt) is generic — one instance per (plugin, server). Every
+entry point runs on `Dispatchers.IO`, so filesystem walks and downloads never touch the UI thread. It:
 
 1. Calls `GET /content/{type}/items?lastModifiedSince=…` for an incremental delta.
 2. For each item the user has marked for sync, calls `GET /content/{type}/download/{id}` to receive a presigned URL.
-3. Streams the binary directly from object storage and hands the bytes to `plugin.saveLocally(...)`.
+3. Pipes the object-storage response **straight into the destination file** via `ApiClient.downloadTo(url, sink)` →
+   `plugin.saveLocally(context, item, writer)`. The body is copied in chunks and is never materialised as a
+   `ByteArray`; buffering a whole item needed roughly twice its size in contiguous heap and crashed the app with
+   `OutOfMemoryError` on large tracks and videos.
 4. Maintains a `Map<itemId, displayName>` in `SyncPreferencesRepository`; deletions on the server, or unticked items locally, trigger a local file removal.
 5. `deleteItems(...)` calls `DELETE /content/{type}/delete` and then prunes the local copies.
+
+### Selection vs. local state
+
+These are two independent things and the UI never conflates them:
+
+| State | Stored in | Shown as |
+|---|---|---|
+| **Selected** — user intent, drives the batch actions | `syncIds` (`Set<itemId>`) | the row's tick box |
+| **On device** — a payload actually exists in local storage | `syncIndex` (`Map<itemId, displayName>`) | the row's cloud icon |
+
+Only `ContentSyncService` writes `syncIndex`, and only after a file has landed on disk. Ticking a row therefore
+shows a muted *queued* cloud (`CloudQueue`), never `CloudDone` — a selected-but-not-downloaded item can never be
+mistaken for a synced one. Unticking a synced row keeps `CloudDone` until the next sync actually removes the file.
+
+**Sync (n)** in the action row is the batch action, sitting next to **Delete (n)**. It is deliberately always
+enabled: pressing it reconciles local storage with the current selection, so unticking an item and syncing removes
+it locally even when nothing is left ticked. It reports live progress (`Syncing 2/5`) via the `onProgress` callback
+on `sync(...)`, and the per-row cloud toggles are locked out while it runs. The per-row cloud icon remains a
+single-item sync/unsync shortcut.
+
+`syncIndex` is shared by every content type, so reconciliation only touches entries this plugin owns — identified by
+the `"{contentType}/"` prefix that every `displayName` carries. Without that guard an audio sync would drop a book's
+index entry and orphan its file. Items that fail to download are left out of the sync index (so the next sync retries
+them) and the failure is surfaced instead of reporting "sync complete"; entries whose file has vanished from disk are
+dropped so the cloud icon can't claim a payload the device doesn't have.
 
 The end result: every synced file lives at `/sdcard/Hikari/{contentType}/{...metadata path...}/{title}.{ext}` — the **same hierarchy** as the server's S3 key, so any other media app (music players, e-readers, image gallery) can pick the files up natively.
 
@@ -185,7 +223,7 @@ sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 1. **Connect to Server** — enter the sync server's domain (e.g. `hikari.example.com:59709`).
 2. **Login** — username + password (the username is any unique string the operator chose; for a fresh server the bootstrap default is `root` / `Root123!`). JWT + refresh token are stored in DataStore.
 3. **Pick a content type** — opens the corresponding hub.
-4. **Hub** — browse/filter the server library, tap items to mark for sync, hit **Sync** to download. Tap the floating cloud-up button to open the upload flow.
+4. **Hub** — browse/filter the server library, tick items to select them, then hit **Sync (n)** to download the selection (and drop anything you unticked). The per-row cloud icon syncs or removes that single item. Tap the floating cloud-up button to open the upload flow.
 5. **Upload** — pick a file, the plugin pre-fills the metadata form from the file's own tags. Optionally embed a new cover image (audio). Submit; the client does `upload-init` → direct PUT → `upload-complete`.
 
 ---

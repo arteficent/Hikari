@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Hikari.WindowsClient</RootNamespace>
+    <AssemblyName>Hikari.WindowsClient</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Unpackaged (framework-dependent) deployment: a plain .exe, no MSIX required.
+         Needs the Windows App Runtime installed; see windows-client/README.md. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- WinUI requires a concrete RID; default to whatever this SDK targets. -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</RuntimeIdentifier>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <ApplicationIcon>Assets\Hikari.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Hikari.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Hikari.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\make_icon.py" />
+  </ItemGroup>
+
+</Project>

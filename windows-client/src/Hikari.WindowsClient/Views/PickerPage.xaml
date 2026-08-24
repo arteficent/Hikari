@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views:HikariPage
+    x:Class="Hikari.WindowsClient.Views.PickerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:content="using:Hikari.WindowsClient.Content"
+    xmlns:views="using:Hikari.WindowsClient.Views"
+    Background="{StaticResource HikariBackgroundBrush}">
+
+    <Grid Padding="24,16,24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <Grid Grid.Row="0">
+            <Button Click="OnProfileClicked" HorizontalAlignment="Left" ToolTipService.ToolTip="Your account">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="{StaticResource HikariPrimaryBrush}" />
+                    <TextBlock x:Name="AccountLabel" Text="Account" />
+                </StackPanel>
+            </Button>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Click="OnLibraryClicked" ToolTipService.ToolTip="Change library folder">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8B7;" FontSize="16" Foreground="{StaticResource HikariPrimaryBrush}" />
+                        <TextBlock x:Name="LibraryLabel" MaxWidth="320" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Button>
+                <Button Click="OnSignOutClicked" ToolTipService.ToolTip="Sign out">
+                    <FontIcon Glyph="&#xF3B1;" FontSize="16" Foreground="{StaticResource HikariPrimaryBrush}" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="2" Margin="0,12,0,8">
+            <TextBlock Text="Hikari" FontSize="40" FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       Foreground="{StaticResource HikariPrimaryBrush}" />
+            <TextBlock Text="Choose what to explore" HorizontalAlignment="Center"
+                       Style="{StaticResource HikariCaptionStyle}" />
+        </StackPanel>
+
+        <!-- Plugin cards -->
+        <GridView x:Name="PluginGrid"
+                  Grid.Row="2"
+                  HorizontalAlignment="Center"
+                  SelectionMode="None"
+                  IsItemClickEnabled="True"
+                  ItemClick="OnPluginClicked">
+            <GridView.ItemTemplate>
+                <DataTemplate x:DataType="content:IContentPlugin">
+                    <Border Style="{StaticResource PaperSurfaceStyle}"
+                            Width="190" Height="190" Margin="6" Padding="16">
+                        <StackPanel VerticalAlignment="Center" Spacing="8">
+                            <FontIcon Glyph="{x:Bind Glyph}" FontSize="42"
+                                      Foreground="{StaticResource HikariPrimaryBrush}" />
+                            <TextBlock Text="{x:Bind DisplayName}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       Style="{StaticResource HikariTitleStyle}" />
+                            <TextBlock Text="{x:Bind Tagline}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource HikariCaptionStyle}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+        </GridView>
+
+        <!-- Theme picker -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <TextBlock Text="Theme" VerticalAlignment="Center" Style="{StaticResource HikariCaptionStyle}" Margin="0,0,4,0" />
+            <StackPanel x:Name="ThemeButtons" Orientation="Horizontal" Spacing="8" />
+        </StackPanel>
+    </Grid>
+</views:HikariPage>

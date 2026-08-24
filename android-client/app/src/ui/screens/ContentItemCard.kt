@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
@@ -55,6 +56,14 @@ import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * @param isSelected item is ticked for a batch operation (sync / delete). Selection alone
+ *                   never implies the payload is on the device.
+ * @param isSynced   the payload is actually present in local storage.
+ * @param isPendingSync item is ticked but not downloaded yet — rendered as a distinct
+ *                   "queued" cloud so selection is never mistaken for a completed sync.
+ * @param syncBusy   a batch sync is running; the per-item sync toggle is locked out.
+ */
 @Composable
 fun ContentItemCard(
     item: ContentItem,
@@ -62,6 +71,8 @@ fun ContentItemCard(
     isSelected: Boolean,
     onToggle: () -> Unit,
     isSynced: Boolean = false,
+    isPendingSync: Boolean = false,
+    syncBusy: Boolean = false,
     onSyncToggle: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
@@ -149,12 +160,30 @@ fun ContentItemCard(
                         }
 
                         if (onSyncToggle != null) {
-                            IconButton(onClick = onSyncToggle, modifier = Modifier.size(36.dp)) {
+                            val cloudIcon = when {
+                                isSynced -> Icons.Filled.CloudDone
+                                isPendingSync -> Icons.Filled.CloudQueue
+                                else -> Icons.Filled.CloudOff
+                            }
+                            val cloudDescription = when {
+                                isSynced -> "On this device — tap to remove"
+                                isPendingSync -> "Selected, not downloaded yet — tap to sync now"
+                                else -> "Not synced — tap to sync now"
+                            }
+                            val cloudTint = when {
+                                isSynced -> MaterialTheme.colorScheme.primary
+                                isPendingSync -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            IconButton(
+                                onClick = onSyncToggle,
+                                enabled = !syncBusy,
+                                modifier = Modifier.size(36.dp)
+                            ) {
                                 Icon(
-                                    imageVector = if (isSynced) Icons.Filled.CloudDone else Icons.Filled.CloudOff,
-                                    contentDescription = if (isSynced) "Synced" else "Not synced",
-                                    tint = if (isSynced) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                    imageVector = cloudIcon,
+                                    contentDescription = cloudDescription,
+                                    tint = if (syncBusy) cloudTint.copy(alpha = 0.45f) else cloudTint
                                 )
                             }
                         }

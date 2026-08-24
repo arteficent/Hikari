@@ -1,0 +1,18 @@
+# Build artefacts and generated output that should never enter the knowledge graph.
+# Without this, .NET build output (windows-client/**/obj/*.json, sync-server/**/obj)
+# gets indexed and floods the graph with hundreds of generated-schema nodes.
+
+bin/
+obj/
+.vs/
+AppPackages/
+BundleArtifacts/
+
+# Android / Gradle
+.gradle/
+.kotlin/
+local.properties
+
+# Python
+__pycache__/
+*.pyc

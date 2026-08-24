@@ -1,0 +1,43 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+publish/
+artifacts/
+*.binlog
+
+# NuGet
+*.nupkg
+project.lock.json
+project.assets.json
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# WinUI / MSIX packaging
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.msix
+*.msixbundle
+*.pfx
+*.cer
+
+# Local run artefacts
+*.log
+.smoke-shot.png
+
+# Python bytecode from Assets/make_icon.py
+__pycache__/
+*.pyc

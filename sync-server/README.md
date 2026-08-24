@@ -447,7 +447,7 @@ For a zero-setup local backend, use the bundled [Docker Compose stack](#quick-st
 3. Provision storage for `TableName`: on DynamoDB create a table named exactly `TableName`; on MongoDB the collection is created automatically on first write (no action needed).
 4. Done — `/content/{your-content-type}/...` is live, including upload-init, upload-complete, items, download, edit, delete, and Swagger schemas.
 
-The [Android client](../android-client/README.md) follows the same contract, so adding the matching `ContentPlugin` Kotlin class registers the new type end-to-end.
+The [Android client](../android-client/README.md) and the [Windows client](../windows-client/README.md) follow the same contract, so adding the matching `ContentPlugin` (Kotlin) / `IContentPlugin` (C#) class on each registers the new type end-to-end.
 
 ---
 
