@@ -216,6 +216,19 @@ Windows: `gradlew.bat`. Fast feedback loop: `./gradlew compileDebugKotlin`.
 sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 ```
 
+### Release builds
+
+`versionName` / `versionCode` are injected, defaulting to `1.0` / `1` when nothing is passed:
+
+```bash
+./gradlew assembleRelease -PhikariVersionName=1.2.3 -PhikariVersionCode=10203
+```
+
+Release signing activates only when `HIKARI_KEYSTORE_PATH` points at an existing keystore; the build otherwise
+produces `app-release-unsigned.apk`. Set `HIKARI_KEYSTORE_PATH`, `HIKARI_KEYSTORE_PASSWORD`, `HIKARI_KEY_ALIAS` and
+`HIKARI_KEY_PASSWORD` to get a signed `app-release.apk`. CI wires the same variables from repository secrets — see
+[Releases & CI](../README.md#-releases--ci).
+
 ---
 
 ## First-Run Flow

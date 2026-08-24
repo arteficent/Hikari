@@ -4,6 +4,23 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Version is injected by CI from the release tag (-PhikariVersionName=1.2.3).
+// A local build with no properties keeps the defaults below. An explicitly
+// supplied but unusable value fails the build rather than silently shipping 1.
+val hikariVersionName = (findProperty("hikariVersionName") as String?)
+    ?.takeIf { it.isNotBlank() } ?: "1.0"
+val hikariVersionCode = (findProperty("hikariVersionCode") as String?)
+    ?.takeIf { it.isNotBlank() }
+    ?.let { raw ->
+        raw.toIntOrNull()?.takeIf { it in 1..2_100_000_000 }
+            ?: error("hikariVersionCode must be an integer in 1..2100000000, got \"$raw\"")
+    } ?: 1
+
+// Release signing is opt-in: the workflow exports these only when the keystore
+// secrets exist, so an unsigned build stays possible without extra config.
+val keystorePath: String? = System.getenv("HIKARI_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+val keystoreFile = keystorePath?.let(::file)?.takeIf { it.exists() }
+
 android {
     namespace = "com.example.android_client"
     compileSdk {
@@ -16,8 +33,19 @@ android {
         applicationId = "com.example.android_client"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = hikariVersionCode
+        versionName = hikariVersionName
+    }
+
+    signingConfigs {
+        if (keystoreFile != null) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = System.getenv("HIKARI_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("HIKARI_KEY_ALIAS")
+                keyPassword = System.getenv("HIKARI_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -31,6 +59,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Left unsigned when no keystore is supplied; the APK is then still
+            // installable via `adb install` but not distributable through stores.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {

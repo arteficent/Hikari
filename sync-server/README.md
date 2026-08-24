@@ -453,6 +453,9 @@ The [Android client](../android-client/README.md) and the [Windows client](../wi
 
 ## Notes
 
-- The `Dockerfile` builds the runtime image used by [`docker-compose.yml`](docker-compose.yml); `aws-lambda-tools-defaults.json` is scaffolding only.
+- The `Dockerfile` builds the runtime image used by [`docker-compose.yml`](docker-compose.yml); `aws-lambda-tools-defaults.json` is scaffolding only. Published images are pushed to [`arteficent/hikari-sync-server`](https://hub.docker.com/r/arteficent/hikari-sync-server) by CI on every push to `main` — see [Releases & CI](../README.md#-releases--ci). Build it by hand with:
+  ```bash
+  docker build -t hikari-sync-server -f sync-server/Dockerfile sync-server
+  ```
 - **DynamoDB provider:** the server expects two tables to exist: `Users` (PK `Id`, GSI `username-index` on `Username`) and `RefreshTokens` (PK `TokenHash`, with `ExpiresAtEpoch` configured as the TTL attribute). Content tables (one per plugin `TableName`) must also exist.
 - **MongoDB provider:** collections are created on first write. The server ensures a unique `username-index` on `Users.Username` and a TTL index on `RefreshTokens.ExpiresAt` automatically at startup — no manual provisioning required.
