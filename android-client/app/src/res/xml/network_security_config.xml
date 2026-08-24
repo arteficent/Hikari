@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Release/default network policy: HTTPS only, validated against the system CAs.
+
+    Do NOT add a <domain-config> here. Ktor's CIO engine validates the chain through
+    the two-argument X509TrustManager.checkServerTrusted(chain, authType), and Android's
+    RootTrustManager refuses that overload as soon as the applied config carries any
+    per-domain entry, failing every TLS handshake with:
+
+        Domain specific configurations require that hostname aware
+        checkServerTrusted(X509Certificate[], String, String) is used
+
+    Debug builds overlay their own copy of this file (src/debug/res) to allow cleartext
+    to the emulator loopback hosts.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>

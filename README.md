@@ -211,6 +211,9 @@ succeeds, publishing `hikari-<version>-unsigned.apk` instead:
 | `ANDROID_KEY_ALIAS` | key alias inside the keystore |
 | `ANDROID_KEY_PASSWORD` | key password |
 
+Without them CI publishes `hikari-<version>-unsigned.apk`. Local builds are unaffected by this: off-CI the release
+variant falls back to the debug key so it stays installable from Android Studio.
+
 The same variables work locally, so a signed build is reproducible off-CI:
 
 ```bash

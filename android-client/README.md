@@ -193,7 +193,32 @@ Declared in [AndroidManifest.xml](app/src/main/AndroidManifest.xml):
 - `READ_EXTERNAL_STORAGE` (≤ API 32), `WRITE_EXTERNAL_STORAGE` (≤ API 29)
 - `MANAGE_EXTERNAL_STORAGE` — required to read/write `/sdcard/Hikari/...` so synced files are accessible to other apps
 
-The app sets `requestLegacyExternalStorage="true"` and ships a `network_security_config` that conditionally trusts self-signed certificates only in debug builds (gated by `BuildConfig.INSECURE_TLS`).
+The app sets `requestLegacyExternalStorage="true"`.
+
+### TLS and the network security config
+
+Debug builds accept any certificate — `BuildConfig.INSECURE_TLS` installs a permissive trust manager so a
+self-signed development server works. Release builds validate against the system CAs.
+
+The two variants therefore ship **different** `network_security_config.xml` files, and this split is load-bearing:
+
+| Variant | File | Contents |
+|---|---|---|
+| release | [`app/src/res/xml`](app/src/res/xml/network_security_config.xml) | base-config only — HTTPS, system CAs |
+| debug | [`app/src/debug/res/xml`](app/src/debug/res/xml/network_security_config.xml) | adds cleartext + user CAs for `10.0.2.2` / `localhost` / `127.0.0.1` |
+
+**Never add a `<domain-config>` to the release file.** Ktor's CIO engine validates the chain with the two-argument
+`X509TrustManager.checkServerTrusted(chain, authType)`, and Android's `RootTrustManager` refuses that overload as soon
+as the applied config contains any per-domain entry — every HTTPS request then dies with:
+
+```
+Domain specific configurations require that hostname aware
+checkServerTrusted(X509Certificate[], String, String) is used
+```
+
+Debug builds hide the problem because their permissive trust manager never reaches the platform one, so this breaks
+release builds only. CIO still verifies the hostname against the certificate itself (it sets `serverName` from the
+request host), so dropping the per-domain entry costs no security.
 
 ---
 
@@ -224,10 +249,17 @@ sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 ./gradlew assembleRelease -PhikariVersionName=1.2.3 -PhikariVersionCode=10203
 ```
 
-Release signing activates only when `HIKARI_KEYSTORE_PATH` points at an existing keystore; the build otherwise
-produces `app-release-unsigned.apk`. Set `HIKARI_KEYSTORE_PATH`, `HIKARI_KEYSTORE_PASSWORD`, `HIKARI_KEY_ALIAS` and
-`HIKARI_KEY_PASSWORD` to get a signed `app-release.apk`. CI wires the same variables from repository secrets — see
-[Releases & CI](../README.md#-releases--ci).
+Release signing activates only when `HIKARI_KEYSTORE_PATH` points at an existing keystore. Set `HIKARI_KEYSTORE_PATH`,
+`HIKARI_KEYSTORE_PASSWORD`, `HIKARI_KEY_ALIAS` and `HIKARI_KEY_PASSWORD` to sign with your release key. Without them a
+local build falls back to the debug key, so the release variant stays installable from Android Studio and `adb`; on CI
+(`CI=true`) it is left unsigned instead of being signed with a throwaway runner key. CI wires the same variables from
+repository secrets — see [Releases & CI](../README.md#-releases--ci).
+
+Switching a device between a debug-key and a release-key build is a signature change, so uninstall first:
+
+```bash
+adb uninstall com.example.android_client
+```
 
 ---
 
