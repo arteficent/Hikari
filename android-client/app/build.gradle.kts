@@ -21,6 +21,12 @@ val hikariVersionCode = (findProperty("hikariVersionCode") as String?)
 val keystorePath: String? = System.getenv("HIKARI_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
 val keystoreFile = keystorePath?.let(::file)?.takeIf { it.exists() }
 
+// CI publishes a deliberately unsigned APK when no keystore is configured. Locally
+// that would leave the release variant uninstallable (Android Studio and adb both
+// reject an APK with no certificate), so unsigned builds off-CI fall back to the
+// debug key instead.
+val isCiBuild = System.getenv("CI")?.equals("true", ignoreCase = true) == true
+
 android {
     namespace = "com.example.android_client"
     compileSdk {
@@ -59,9 +65,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Left unsigned when no keystore is supplied; the APK is then still
-            // installable via `adb install` but not distributable through stores.
+            // Signed with the release keystore when one is supplied. Off-CI the debug
+            // key stands in so the variant can actually be installed; on CI the APK is
+            // left unsigned rather than being signed with a throwaway runner key.
             signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug").takeUnless { isCiBuild }
         }
     }
     compileOptions {
