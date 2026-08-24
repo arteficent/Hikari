@@ -1,0 +1,8 @@
+C:\Users\soura\Documents\Hikari\android-client\app\build.gradle.kts
+C:\Users\soura\Documents\Hikari\sync-server\src\Content\Repositories\MongoContentRepository.cs
+C:\Users\soura\Documents\Hikari\sync-server\src\Identity\Repositories\MongoUserRepository.cs
+C:\Users\soura\Documents\Hikari\.github\workflows\android-release.yml
+C:\Users\soura\Documents\Hikari\.github\workflows\sync-server-image.yml
+C:\Users\soura\Documents\Hikari\README.md
+C:\Users\soura\Documents\Hikari\android-client\README.md
+C:\Users\soura\Documents\Hikari\sync-server\README.md

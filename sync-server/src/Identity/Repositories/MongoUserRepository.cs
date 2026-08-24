@@ -43,18 +43,6 @@ namespace SyncServer.Identity.Repositories
             try
             {
                 var model = new CreateIndexModel<User>(
-        private static string SanitizeForLog(string? value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value
-                .Replace("\r\n", " ", StringComparison.Ordinal)
-                .Replace("\n", " ", StringComparison.Ordinal)
-                .Replace("\r", " ", StringComparison.Ordinal)
-                .Replace("\u2028", " ", StringComparison.Ordinal)
-                .Replace("\u2029", " ", StringComparison.Ordinal)
-                .Trim();
-        }
-
                     Builders<User>.IndexKeys.Ascending(u => u.Username),
                     new CreateIndexOptions { Unique = true, Name = "username-index" });
                 _users.Indexes.CreateOne(model);
@@ -76,7 +64,7 @@ namespace SyncServer.Identity.Repositories
 
             await _users.InsertOneAsync(user);
             return user;
-                _logger.LogError(ex, "Failed to load user {UserId}", SanitizeForLog(id));
+        }
 
         public async Task<User?> GetByIdAsync(string id)
         {
@@ -92,7 +80,7 @@ namespace SyncServer.Identity.Repositories
         }
 
         public async Task<User?> GetByUsernameAsync(string username)
-                _logger.LogError(ex, "Failed to query user by username {Username}", SanitizeForLog(username));
+        {
             if (string.IsNullOrWhiteSpace(username))
                 return null;
 
@@ -105,12 +93,6 @@ namespace SyncServer.Identity.Repositories
                 _logger.LogError(ex, "Failed to query user by username {Username}", SanitizeForLog(username));
                 return null;
             }
-        }
-
-        private static string SanitizeForLog(string? value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
         }
 
         public async Task<IList<User>> ScanAllAsync()
@@ -134,7 +116,7 @@ namespace SyncServer.Identity.Repositories
                 await _users.ReplaceOneAsync(Builders<User>.Filter.Eq(u => u.Id, user.Id), user, new ReplaceOptions { IsUpsert = true });
                 return true;
             }
-                _logger.LogError(ex, "Failed to delete user {UserId}", SanitizeForLog(id));
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update user {UserId}", SanitizeForLog(user.Id));
                 return false;

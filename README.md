@@ -1,8 +1,5 @@
 # ✦ Hikari ✦
 
-> *"Hikari" — 光 — light.*
-> Your media library, lit up wherever you are.
-
 Hikari is a self-hosted, plugin-driven media sync platform. One small backend, an Android client, a Windows client, and **any** kind of content — music, films, books, manga, photos — flows through the same tidy pipeline: pick a file, the app reads its tags, the server validates and stores it, every device that wants it pulls it back down for fully offline enjoyment.
 
 No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your library.
@@ -178,10 +175,74 @@ Hikari's plugin contract is identical everywhere — same `contentType` string, 
 ```
 Hikari/
 ├── README.md            ← you are here
+├── .github/workflows/   CI — Android release + sync-server image
 ├── sync-server/         ASP.NET Core API      (see sync-server/README.md)
 ├── android-client/      Compose Android app   (see android-client/README.md)
 └── windows-client/      WinUI 3 desktop app   (see windows-client/README.md)
 ```
+
+---
+
+## ✦ Releases & CI
+
+Two workflows in [`.github/workflows/`](.github/workflows) do the shipping.
+
+### Android APK → GitHub Release
+
+[`android-release.yml`](.github/workflows/android-release.yml) runs on a version tag and attaches the APK to a
+GitHub Release. It can also be run manually from the Actions tab.
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The tag drives the app version: `versionName` becomes `1.2.3` and `versionCode` becomes
+`major×10000 + minor×100 + patch` (so `1.2.3` → `10203`), which keeps it strictly increasing across releases.
+Tags may carry a pre-release suffix — `v1.2.3-beta1` builds fine and marks the GitHub Release as a pre-release.
+
+Signing is **opt-in**. Set these repository secrets to get a signed APK; leave them unset and the workflow still
+succeeds, publishing `hikari-<version>-unsigned.apk` instead:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | the keystore, base64-encoded — `base64 -w0 release.jks` |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+| `ANDROID_KEY_ALIAS` | key alias inside the keystore |
+| `ANDROID_KEY_PASSWORD` | key password |
+
+The same variables work locally, so a signed build is reproducible off-CI:
+
+```bash
+cd android-client
+HIKARI_KEYSTORE_PATH=/path/release.jks HIKARI_KEYSTORE_PASSWORD=… \
+HIKARI_KEY_ALIAS=… HIKARI_KEY_PASSWORD=… \
+./gradlew assembleRelease -PhikariVersionName=1.2.3 -PhikariVersionCode=10203
+```
+To generate keystore and convert it to base64
+```bash
+C:\Program Files\Java\jdk-25.0.2\bin>keytool.exe -genkeypair -v -keystore C:\Users\soura\Downloads\release.jks -alias your-alias -keyalg RSA -keysize 2048 -validity 99999 -storepass your-store-pass -keypass your-key-pass -dname "CN=Android Client, OU=Release, O=Hikari, L=NewDelhi, ST=Delhi, C=IN"
+```
+```powershell
+PS C:\Program Files\Java\jdk-25.0.2\bin> [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\admin\Downloads\release.jks")) | Set-Content C:\Users\admin\Downloads\release.txt
+```
+
+### Sync server → Docker Hub
+
+[`sync-server-image.yml`](.github/workflows/sync-server-image.yml) builds [`sync-server/Dockerfile`](sync-server/Dockerfile)
+and pushes to [`arteficent/hikari-sync-server`](https://hub.docker.com/r/arteficent/hikari-sync-server) on every push
+to `main`, on version tags, and on manual dispatch.
+
+| Trigger | Tags pushed |
+|---|---|
+| push to `main` | `latest`, `sha-<short-sha>` |
+| push tag `v1.2.3` | `1.2.3`, `1.2` |
+| manual dispatch | whatever tag you type |
+
+Requires two repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token with
+**Read/Write** scope).
+
+Pushing a single `v*` tag therefore cuts the client release and the matching server image together.
 
 ---
 
@@ -196,6 +257,7 @@ Hikari/
 - ✅ One-command self-hosted backend — `docker compose up` (MongoDB + MinIO + server) in [`sync-server/`](sync-server/README.md#quick-start-with-docker-compose-mongodb--minio)
 - ✅ JWT auth with refresh tokens, role-based authorization (`Root` / `Admin` / `User`)
 - ✅ Refresh tokens persisted (SHA-256 hashed) with TTL auto-eviction (DynamoDB TTL / MongoDB TTL index)
+- ✅ CI — tagged Android releases and Docker Hub images built on every push to `main`
 - 🚧 iOS client — same plugin contract, different paint job
 
 ---
