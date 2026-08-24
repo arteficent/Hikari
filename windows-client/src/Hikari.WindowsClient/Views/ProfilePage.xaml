@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views:HikariPage
+    x:Class="Hikari.WindowsClient.Views.ProfilePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:Hikari.WindowsClient.Views"
+    Background="{StaticResource HikariBackgroundBrush}">
+
+    <Grid Padding="24">
+        <Border Style="{StaticResource PaperSurfaceStyle}"
+                MaxWidth="520" Padding="28"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Click="OnBackClicked" ToolTipService.ToolTip="Back">
+                        <FontIcon Glyph="&#xE72B;" FontSize="15" Foreground="{StaticResource HikariPrimaryBrush}" />
+                    </Button>
+                    <TextBlock Text="Your account" VerticalAlignment="Center"
+                               Style="{StaticResource HikariHeadlineStyle}" />
+                </StackPanel>
+
+                <ProgressRing x:Name="LoadingRing" IsActive="True" Width="30" Height="30"
+                              HorizontalAlignment="Center"
+                              Foreground="{StaticResource HikariPrimaryBrush}" />
+
+                <StackPanel x:Name="FormPanel" Spacing="12" Visibility="Collapsed">
+                    <TextBlock x:Name="RolesLabel" Style="{StaticResource HikariCaptionStyle}" />
+                    <TextBox x:Name="UsernameBox" Header="Username" />
+                    <PasswordBox x:Name="PasswordBox" Header="New password (leave blank to keep)" />
+
+                    <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="False" />
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="ManageUsersButton" Grid.Column="0" Click="OnManageUsersClicked"
+                                HorizontalAlignment="Left" Visibility="Collapsed"
+                                ToolTipService.ToolTip="Manage users">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE716;" FontSize="15" Foreground="{StaticResource HikariPrimaryBrush}" />
+                                <TextBlock Text="Users" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="SaveButton" Grid.Column="1" Click="OnSaveClicked"
+                                Style="{StaticResource AccentButtonStyle}" MinWidth="140">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ProgressRing x:Name="SaveRing" IsActive="False" Visibility="Collapsed" Width="15" Height="15" />
+                                <FontIcon x:Name="SaveIcon" Glyph="&#xE74E;" FontSize="15" />
+                                <TextBlock Text="Save" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="CreateUserButton" Grid.Column="2" Click="OnCreateUserClicked"
+                                HorizontalAlignment="Right" Visibility="Collapsed"
+                                ToolTipService.ToolTip="Create user">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8FA;" FontSize="15" Foreground="{StaticResource HikariPrimaryBrush}" />
+                                <TextBlock Text="New" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</views:HikariPage>

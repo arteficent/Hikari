@@ -88,16 +88,6 @@ class MangaPlugin : ContentPlugin {
         return "manga/$author/$series/$volume/$title.$ext"
     }
 
-    override suspend fun saveLocally(context: Context, item: ContentItem, binary: ByteArray) {
-        val relativePath = localRelativePath(item)
-        Log.d(TAG, "saveLocally: $relativePath (${binary.size} bytes)")
-        try {
-            val file = File(baseDir(context), relativePath)
-            file.parentFile?.mkdirs()
-            file.writeBytes(binary)
-        } catch (e: Exception) { Log.e(TAG, "Error saving $relativePath", e) }
-    }
-
     override fun deleteLocally(context: Context, displayName: String): Boolean {
         return try {
             val file = File(baseDir(context), displayName)

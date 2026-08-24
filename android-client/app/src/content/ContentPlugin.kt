@@ -3,9 +3,13 @@ package com.example.android_client.content
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.util.Log
 import androidx.compose.runtime.Composable
 import com.example.android_client.core.network.ContentItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.OutputStream
 
 /**
  * Contract for a client-side content plugin.
@@ -14,15 +18,71 @@ import java.io.File
  */
 interface ContentPlugin {
 
+    companion object {
+        const val LOG_TAG = "ContentPlugin"
+    }
+
     val contentType: String
     val displayName: String
     val localDirectory: String
     val requiredPermissions: List<String>
     val supportedMimeTypes: Set<String>
 
-    suspend fun saveLocally(context: Context, item: ContentItem, binary: ByteArray)
+    /**
+     * Stream binary content into local storage.
+     *
+     * The payload is written to a temporary `.part` file and only promoted to its
+     * final location once [writeBody] reports success, so an interrupted download
+     * never leaves a truncated file behind. Nothing is held in memory, which is
+     * what allows multi-hundred-megabyte items to sync without exhausting the heap.
+     *
+     * @param writeBody writes the payload to the supplied sink and returns true
+     *                  when the whole payload was written.
+     * @return true when the item is fully written to its final location.
+     */
+    suspend fun saveLocally(
+        context: Context,
+        item: ContentItem,
+        writeBody: suspend (OutputStream) -> Boolean
+    ): Boolean = withContext(Dispatchers.IO) {
+        val target = localFileFor(context, item)
+        val partial = File(target.parentFile, "${target.name}.part")
+        try {
+            target.parentFile?.mkdirs()
+            partial.delete()
+            val complete = partial.outputStream().use { sink -> writeBody(sink) }
+            if (!complete) {
+                partial.delete()
+                return@withContext false
+            }
+            if (target.exists() && !target.delete()) {
+                Log.e(LOG_TAG, "saveLocally: could not replace ${target.absolutePath}")
+                partial.delete()
+                return@withContext false
+            }
+            if (!partial.renameTo(target)) {
+                Log.e(LOG_TAG, "saveLocally: could not move ${partial.name} into place")
+                partial.delete()
+                return@withContext false
+            }
+            Log.d(LOG_TAG, "saveLocally: wrote ${target.absolutePath} (${target.length()} bytes)")
+            true
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "saveLocally: error saving ${target.absolutePath}", e)
+            partial.delete()
+            false
+        }
+    }
+
     fun deleteLocally(context: Context, displayName: String): Boolean
     fun getLocalItems(context: Context): List<String>
+
+    /**
+     * Local name for an item, relative to the plugin's storage root.
+     *
+     * Must start with "$contentType/". The sync index is shared by every plugin, and that
+     * prefix is what tells the sync service which entries it owns.
+     */
     fun displayName(item: ContentItem): String
     fun mimeType(item: ContentItem): String
 
@@ -108,11 +168,19 @@ interface ContentPlugin {
      */
     fun extractCoverArtFromFile(context: Context, uri: Uri, fileName: String): ByteArray? = null
 
-    /** Resolve the local file for a synced content item, or null if not present. */
+    /** Root directory that holds every locally synced item. */
     @Suppress("DEPRECATION")
-    fun getLocalFile(context: Context, item: ContentItem): File? {
-        val base = File(Environment.getExternalStorageDirectory(), "Hikari")
-        val file = File(base, displayName(item))
-        return if (file.exists()) file else null
+    fun localBaseDir(context: Context): File {
+        val dir = File(Environment.getExternalStorageDirectory(), "Hikari")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
     }
+
+    /** Destination file for [item], whether or not it already exists on disk. */
+    fun localFileFor(context: Context, item: ContentItem): File =
+        File(localBaseDir(context), displayName(item))
+
+    /** Resolve the local file for a synced content item, or null if not present. */
+    fun getLocalFile(context: Context, item: ContentItem): File? =
+        localFileFor(context, item).takeIf { it.exists() }
 }

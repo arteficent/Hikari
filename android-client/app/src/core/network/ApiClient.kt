@@ -13,19 +13,23 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
+import io.ktor.client.request.prepareGet
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.jvm.javaio.copyTo
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import java.io.OutputStream
 
 /**
  * Thrown when the user's session can no longer be recovered (refresh token is
@@ -236,15 +240,27 @@ class ApiClient(private val authRepository: AuthRepository) {
     }
 
     /**
-     * Download raw bytes from a presigned URL (S3 direct download).
+     * Stream a download (pre-signed object storage URL) straight into [sink].
+     *
+     * The body is copied in fixed-size chunks and is never materialised as a
+     * single ByteArray. Buffering the whole response needed roughly twice the
+     * file size in contiguous heap, which crashed the app with an
+     * OutOfMemoryError on anything larger than a few tens of megabytes.
+     *
+     * @return the number of bytes written, or null if the request failed.
      */
-    suspend fun downloadBytes(downloadUrl: String): ByteArray? {
-        val response = client.get(downloadUrl)
-        if (!response.status.isSuccess()) {
-            Log.e(TAG, "downloadBytes failed: ${response.status}")
-            return null
+    suspend fun downloadTo(downloadUrl: String, sink: OutputStream): Long? {
+        return client.prepareGet(downloadUrl).execute { response ->
+            if (!response.status.isSuccess()) {
+                Log.e(TAG, "downloadTo failed: ${response.status}")
+                null
+            } else {
+                val written = response.bodyAsChannel().copyTo(sink)
+                sink.flush()
+                Log.d(TAG, "downloadTo streamed $written bytes")
+                written
+            }
         }
-        return response.body()
     }
 
     /**

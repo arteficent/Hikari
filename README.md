@@ -3,7 +3,7 @@
 > *"Hikari" — 光 — light.*
 > Your media library, lit up wherever you are.
 
-Hikari is a self-hosted, plugin-driven media sync platform. One small backend, one Android client, and **any** kind of content — music, films, books, manga, photos — flows through the same tidy pipeline: pick a file, the app reads its tags, the server validates and stores it, every device that wants it pulls it back down for fully offline enjoyment.
+Hikari is a self-hosted, plugin-driven media sync platform. One small backend, an Android client, a Windows client, and **any** kind of content — music, films, books, manga, photos — flows through the same tidy pipeline: pick a file, the app reads its tags, the server validates and stores it, every device that wants it pulls it back down for fully offline enjoyment.
 
 No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your library.
 
@@ -12,57 +12,70 @@ No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your 
 ## ✨ Why Hikari?
 
 - **Bring your own cloud — or none at all.** Metadata in **DynamoDB on AWS or self-hosted MongoDB**. Binaries on Cloudflare R2 — or AWS S3, MinIO, DigitalOcean Spaces, anything S3-compatible. Database and object store are configured **independently**, so you can pair the cheapest object store with the most convenient metadata store, or run the whole thing on your own hardware with **MongoDB + MinIO** via one `docker compose up`.
-- **Offline-first, by design.** The server is for *sync*, not playback. Synced files land in `/sdcard/Hikari/...` mirroring the server's storage layout, so your existing music players, e-readers, and gallery apps Just See Them.
-- **One contract, many media types.** A `ContentPlugin` interface — implemented identically on the server (C#) and the client (Kotlin) — owns everything specific to a content type. Drop in a new plugin pair → a new endpoint, a new tab, a new sync flow. No core code touched.
-- **Cover art straight from the file.** ID3v2 frames, EPUB OPFs, CBZ first pages, MP4 thumbnails — extracted on-device, rendered with Coil, no separate metadata API.
-- **Pretty.** Three Material 3 themes (Wisteria · GoldenLeaf · Sakura) over an animated celestial backdrop, with shared-element transitions stitching the whole app together.
+- **Offline-first, by design.** The server is for *sync*, not playback. Synced files land in `/sdcard/Hikari/...` on Android and `%USERPROFILE%\Hikari\...` on Windows, mirroring the server's storage layout, so your existing music players, e-readers, and gallery apps Just See Them.
+- **One contract, many media types.** A `ContentPlugin` interface — implemented identically on the server (C#), the Android client (Kotlin), and the Windows client (C#) — owns everything specific to a content type. Drop in a new plugin → a new endpoint, a new tab, a new sync flow. No core code touched.
+- **Cover art straight from the file.** ID3v2 frames, EPUB OPFs, CBZ first pages, MP4 thumbnails — extracted on-device (JAudioTagger on Android, TagLib# on Windows), no separate metadata API.
+- **Pretty.** Material 3 themes over an animated celestial backdrop on Android; a washi-paper WinUI 3 shell with four palettes on Windows — and it overrides the OS accent colour so the app always looks like Hikari.
 
 ---
 
 ## ✦ Architecture at a glance
 
 ```
-   ┌──────────────────────────┐                ┌────────────────────────────┐
-   │  Hikari Android client   │                │    Hikari Sync Server      │
-   │  (Kotlin · Compose)      │                │   (ASP.NET Core / .NET 10) │
-   │                          │  HTTPS + JWT   │                            │
-   │  • ContentPlugin (x5)    │ ◀────────────▶ │  • IContentPlugin (x5)     │
-   │  • ContentSyncService    │   metadata     │  • ContentRepository       │
-   │  • Local FS              │   only         │  • Auth / Users / Admin    │
-   └────────────┬─────────────┘                └───────┬─────────┬──────────┘
-                │                                      │         │
-                │   presigned PUT / GET                │         │
-                │ (binaries flow direct, never via     │         │
-                │  the server)                         │         │
-                ▼                                      ▼         ▼
-        ┌─────────────────┐                 ┌──────────────┐  ┌───────────┐
-        │ Object storage  │                 │  DynamoDB /  │  │   JWT     │
-        │ S3 / R2 / MinIO │                 │  MongoDB     │  │  signing  │
-        │ / Spaces        │                 │  (metadata)  │  │           │
-        └─────────────────┘                 └──────────────┘  └───────────┘
+   ┌──────────────────────────┐          ┌──────────────────────────┐
+   │   Hikari Android client  │          │   Hikari Windows client  │
+   │   Kotlin · Compose       │          │   C# · WinUI 3 · .NET 10 │
+   │   • ContentPlugin   ×5   │          │   • IContentPlugin  ×5   │
+   │   • ContentSyncService   │          │   • ContentSyncService   │
+   │   • /sdcard/Hikari/…     │          │   • %USERPROFILE%\Hikari │
+   └────┬────────────────┬────┘          └────┬────────────────┬────┘
+        │                │  HTTPS + JWT       │                │
+        │                │  (metadata only)   │                │
+        │                └─────────┬──────────┘                │
+        │                          ▼                           │
+        │          ┌────────────────────────────────┐          │
+        │          │      Hikari Sync Server        │          │
+        │          │     ASP.NET Core · .NET 10     │          │
+        │          │   • IContentPlugin  ×5         │          │
+        │          │   • ContentRepository          │          │
+        │          │   • Auth / Users / Admin       │          │
+        │          └──────┬───────────────────┬─────┘          │
+        │                 ▼                   ▼                │
+        │        ┌────────────────┐   ┌───────────────┐        │
+        │        │  DynamoDB  or  │   │  JWT signing  │        │
+        │        │  MongoDB       │   │  + refresh    │        │
+        │        │  (metadata)    │   │  tokens       │        │
+        │        └────────────────┘   └───────────────┘        │
+        │                                                      │
+        │    presigned PUT / GET — the bytes flow direct,      │
+        │    never through the sync server                     │
+        │        ┌───────────────────────────────────┐         │
+        └───────▶│  Object storage                   │◀────────┘
+                 │  S3 / R2 / MinIO / Spaces         │
+                 └───────────────────────────────────┘
 ```
 
-Two long-running processes, three storage tiers, zero coupling between binaries and metadata. The metadata database (DynamoDB or MongoDB) and object store (S3-compatible or MinIO) are each pluggable and chosen by config. The Android app talks REST + JWT to the server; the **bytes** flow directly between device and object storage via short-lived presigned URLs.
+Three long-running pieces, three storage tiers, zero coupling between binaries and metadata. The metadata database (DynamoDB or MongoDB) and object store (S3-compatible or MinIO) are each pluggable and chosen by config. The clients talk REST + JWT to the server; the **bytes** flow directly between device and object storage via short-lived presigned URLs.
 
 ---
 
-## ✦ The two halves
+## ✦ The three parts
 
-| | [`sync-server/`](sync-server/README.md) | [`android-client/`](android-client/README.md) |
-|---|---|---|
-| Stack | ASP.NET Core · .NET 10 · AWSSDK v4 | Kotlin 2.0.21 · Compose · Ktor 3 · Coil 3 |
-| Owns | Auth, metadata DB, storage paths, presigned URLs | UI, local sync, metadata extraction, cover art |
-| Plugins | `IContentPlugin` (C#) | `ContentPlugin` (Kotlin) |
-| State | DynamoDB *or* MongoDB + S3-compatible *or* MinIO bucket | DataStore + `/sdcard/Hikari/...` |
+| | [`sync-server/`](sync-server/README.md) | [`android-client/`](android-client/README.md) | [`windows-client/`](windows-client/README.md) |
+|---|---|---|---|
+| Stack | ASP.NET Core · .NET 10 · AWSSDK v4 | Kotlin 2.0.21 · Compose · Ktor 3 · Coil 3 | C# · WinUI 3 · Windows App SDK 2.3 · .NET 10 |
+| Owns | Auth, metadata DB, storage paths, presigned URLs | UI, local sync, metadata extraction, cover art | UI, local sync, metadata extraction, cover art |
+| Plugins | `IContentPlugin` (C#) | `ContentPlugin` (Kotlin) | `IContentPlugin` (C#) |
+| State | DynamoDB *or* MongoDB + S3-compatible *or* MinIO bucket | DataStore + `/sdcard/Hikari/...` | JSON + DPAPI in `%LOCALAPPDATA%\Hikari` + `%USERPROFILE%\Hikari\...` |
 
-Each half ships with full setup, configuration, and API docs in its own README.
+Each part ships with full setup, configuration, and API docs in its own README.
 
 ---
 
 ## ✦ A typical upload, end-to-end
 
 ```
- 1. User picks an .mp3 in the Android app.
+ 1. User picks an .mp3 in the Android or Windows app.
  2. AudioPlugin (client) reads ID3 tags  → pre-fills the upload form.
  3. User tweaks tags, optionally embeds a new cover image.
  4. Client → POST /content/audio/upload-init        (server validates, replies with presigned PUT)
@@ -70,7 +83,7 @@ Each half ships with full setup, configuration, and API docs in its own README.
  6. Client → POST /content/audio/upload-complete    (server HEADs the object, persists ContentItem)
  7. Every other Hikari device, on next sync:
       GET /content/audio/items?lastModifiedSince=…
-      GET /content/audio/download/{id}              → presigned GET → save to /sdcard/Hikari/audio/{artist}/{album}/{title}.mp3
+      GET /content/audio/download/{id}              → presigned GET → save to <library>/audio/{artist}/{album}/{title}.mp3
 ```
 
 The same six steps describe a video, a book, a manga volume, or a photo — only the plugin in step 2/4 changes.
@@ -87,7 +100,7 @@ The same six steps describe a video, a book, a manga volume, or a photo — only
 | 📚 **Manga** | CBZ · CBR · PDF · EPUB · ZIP | `Manga` | `manga/{author}/{series}/{volume}/{title}.{ext}` |
 | 🖼 **Image** | JPEG · PNG · WebP · GIF · SVG · TIFF · AVIF · HEIF/HEIC · BMP · RAW | `Image` | `image/{creator}/{collection}/{title}.{ext}` |
 
-Need something else? *Audiobooks? Comics with chapter metadata? Lecture recordings?* Implement one Kotlin class + one C# class, register them, done — see [Adding a content type](#-adding-a-content-type).
+Need something else? *Audiobooks? Comics with chapter metadata? Lecture recordings?* Implement one class per side, register them, done — see [Adding a content type](#-adding-a-content-type).
 
 ---
 
@@ -137,15 +150,26 @@ cd android-client
 Open the app, enter your server's host (e.g. `hikari.example.com:59709`), log in, pick a content type, and start uploading.
 Full reference: [android-client/README.md](android-client/README.md).
 
+### 3. Or run the Windows app
+
+```powershell
+cd windows-client
+dotnet run --project src\Hikari.WindowsClient
+```
+
+Needs the [Windows App Runtime 2.3](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) (the app ships unpackaged). Same flow: enter the server host, log in, pick a content type. Synced files land in `%USERPROFILE%\Hikari` by default — change it from the server screen or the picker.
+Full reference: [windows-client/README.md](windows-client/README.md).
+
 ---
 
 ## ✦ Adding a content type
 
-Hikari's plugin contract is identical on both sides — same `contentType` string, same metadata keys, same storage path layout. To support a new type end-to-end:
+Hikari's plugin contract is identical everywhere — same `contentType` string, same metadata keys, same storage path layout. To support a new type end-to-end:
 
 1. **Server** — implement [`IContentPlugin`](sync-server/src/Content/Contracts/IContentPlugin.cs), register it in [`Program.cs`](sync-server/src/Program.cs), and provision its `TableName` (create the DynamoDB table, or nothing — MongoDB collections are created on first write).
-2. **Client** — implement [`ContentPlugin`](android-client/app/src/content/ContentPlugin.kt), register it in [`MainActivity.onCreate()`](android-client/app/src/MainActivity.kt).
-3. That's it. The new type appears in the Android picker, exposes its own filters and upload form, and rides the same upload / sync / delete pipeline as everything else.
+2. **Android** — implement [`ContentPlugin`](android-client/app/src/content/ContentPlugin.kt), register it in [`MainActivity.onCreate()`](android-client/app/src/MainActivity.kt).
+3. **Windows** — implement [`IContentPlugin`](windows-client/src/Hikari.WindowsClient/Content/IContentPlugin.cs) (inherit `ContentPluginBase`), register it in [`AppServices.BuildRegistry()`](windows-client/src/Hikari.WindowsClient/AppServices.cs).
+4. That's it. The new type appears in each client's picker, exposes its own filters and upload form, and rides the same upload / sync / delete pipeline as everything else.
 
 ---
 
@@ -154,8 +178,9 @@ Hikari's plugin contract is identical on both sides — same `contentType` strin
 ```
 Hikari/
 ├── README.md            ← you are here
-├── sync-server/         ASP.NET Core API  (see sync-server/README.md)
-└── android-client/      Compose Android app (see android-client/README.md).
+├── sync-server/         ASP.NET Core API      (see sync-server/README.md)
+├── android-client/      Compose Android app   (see android-client/README.md)
+└── windows-client/      WinUI 3 desktop app   (see windows-client/README.md)
 ```
 
 ---
@@ -164,6 +189,8 @@ Hikari/
 
 - ✅ Core sync flow — uploads, downloads, deletes, paged listing, server-side filters
 - ✅ Five built-in content types with on-device cover-art extraction
+- ✅ Android client — Compose UI, full plugin parity
+- ✅ Windows client — WinUI 3 on .NET 10, full feature parity with Android
 - ✅ Pluggable storage — S3 / R2 / MinIO (S3-compatible **or** native MinIO SDK) via `ObjectStorage:Provider`
 - ✅ Pluggable database — DynamoDB **or** MongoDB via `Database:Provider`, schema-compatible across both
 - ✅ One-command self-hosted backend — `docker compose up` (MongoDB + MinIO + server) in [`sync-server/`](sync-server/README.md#quick-start-with-docker-compose-mongodb--minio)

@@ -13,8 +13,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -109,6 +113,9 @@ fun ContentListScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<List<ContentItem>>(emptyList()) }
     var isBusy by remember { mutableStateOf(false) }
+
+    // Non-null only while a batch sync is running: completed to total.
+    var syncProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     // ── Storage permission handling ──────────────────────────────────
     var pendingStorageAction by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
@@ -291,9 +298,19 @@ fun ContentListScreen(
         }
 
         // ── Action buttons ──
+        // The tick boxes drive both batch actions: whatever is selected is what
+        // "Sync" downloads and what "Delete" removes from the server.
+        val selectedItems = items.filter { syncIds.contains(it.id) }
+        val syncLabel = syncProgress?.let { (done, total) ->
+            if (total == 0) "Syncing…" else "Syncing $done/$total"
+        } ?: "Sync (${selectedItems.size})"
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             IconButton(onClick = { fetchItems() }) {
                 Icon(
@@ -304,10 +321,55 @@ fun ContentListScreen(
                 )
             }
 
+            // Batch sync — deliberately always enabled. Pressing it reconciles local
+            // storage with the current selection: selected items are downloaded and
+            // deselected ones are removed, so clearing the last local copy is possible
+            // even when nothing is selected.
+            Button(
+                onClick = {
+                    val toSync = selectedItems
+                    ensureStorageAndRun {
+                        isBusy = true
+                        syncProgress = 0 to toSync.size
+                        try {
+                            contentSyncService.sync(toSync) { done, total ->
+                                syncProgress = done to total
+                            }
+                            Toast.makeText(
+                                context,
+                                if (toSync.isEmpty()) "Local ${plugin.displayName} storage cleared"
+                                else "Synced ${toSync.size} ${plugin.displayName} item(s)",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            syncProgress = null
+                            isBusy = false
+                        }
+                    }
+                },
+                enabled = !isBusy
+            ) {
+                if (syncProgress != null) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_cached),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(syncLabel)
+            }
+
             // Batch delete button — only shown to admins/root; plain users can only consume.
             if (canManage) {
-                Spacer(modifier = Modifier.width(8.dp))
-                val selectedItems = items.filter { syncIds.contains(it.id) }
                 Button(
                     onClick = {
                         deleteTarget = selectedItems
@@ -319,44 +381,10 @@ fun ContentListScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Delete (${selectedItems.size})")
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Sync selected items — right-aligned action. Always available so that
-            // pressing it reconciles local storage with the current marked state:
-            // marked items are downloaded and unmarked items are removed locally.
-            IconButton(
-                onClick = {
-                    ensureStorageAndRun {
-                        isBusy = true
-                        try {
-                            val selected = items.filter { syncIds.contains(it.id) }
-                            contentSyncService.sync(selected)
-                            Toast.makeText(context, "${plugin.displayName} sync complete", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            isBusy = false
-                        }
-                    }
-                },
-                enabled = !isBusy
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_cached),
-                    contentDescription = "Sync ${plugin.displayName}",
-                    tint = if (!isBusy) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                    },
-                    modifier = Modifier.size(28.dp)
-                )
             }
         }
 
@@ -386,7 +414,10 @@ fun ContentListScreen(
                 Text(text = "Error: $error")
             }
         } else {
-            LazyColumn {
+            LazyColumn(
+                // Keep the last card clear of the floating upload button.
+                contentPadding = PaddingValues(bottom = if (canManage) 96.dp else 16.dp)
+            ) {
                 items(items) { item ->
                     val isSync = syncIds.contains(item.id)
                     val isSyncedLocally = localSyncedIds.contains(item.id)
@@ -396,14 +427,15 @@ fun ContentListScreen(
                         isSelected = isSync,
                         onToggle = {
                             scope.launch {
-                                val newState = !isSync
-                                syncPreferencesRepository.setSyncEnabled(item.id, newState)
-                                if (newState) {
-                                    syncPreferencesRepository.setSyncEntry(item.id, plugin.displayName(item))
-                                }
+                                // Selection is intent only. The sync index — and therefore the
+                                // per-item cloud icon — is written by ContentSyncService once a
+                                // payload is actually on disk.
+                                syncPreferencesRepository.setSyncEnabled(item.id, !isSync)
                             }
                         },
                         isSynced = isSyncedLocally,
+                        isPendingSync = isSync && !isSyncedLocally,
+                        syncBusy = isBusy,
                         onSyncToggle = {
                             ensureStorageAndRun {
                                 isBusy = true
