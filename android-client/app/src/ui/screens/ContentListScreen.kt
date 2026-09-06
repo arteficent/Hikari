@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,6 +51,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +72,12 @@ import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.theme.PaperSurface
 import kotlinx.coroutines.launch
+
+/** Items pulled per server request while scrolling. Never surfaced to the user. */
+private const val PAGE_SIZE = 25
+
+/** Distance from the end of the list, in items, at which the next page is requested. */
+private const val PREFETCH_THRESHOLD = 5
 
 //Interesting file size
 /**
@@ -97,9 +106,10 @@ fun ContentListScreen(
 
     var regexFilter by remember { mutableStateOf("") }
     var showFilterHelp by remember { mutableStateOf(false) }
-    var page by remember { mutableIntStateOf(1) }
-    var pageSize by remember { mutableIntStateOf(25) }
+    var nextPage by remember { mutableIntStateOf(1) }
     var canNextPage by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -171,22 +181,36 @@ fun ContentListScreen(
         }
     }
 
-    fun fetchItems() {
+    // reset = true restarts from page 1; otherwise the next page is appended.
+    fun loadPage(reset: Boolean) {
+        if (isLoadingMore && !reset) return
         scope.launch {
-            isLoading = true
+            isLoadingMore = true
+            if (reset) isLoading = true
+            val target = if (reset) 1 else nextPage
             try {
                 val serverItems = apiClient.getContentItems(
                     serverDomain = serverDomain,
                     contentType = plugin.contentType,
-                    page = page,
-                    pageSize = pageSize
+                    page = target,
+                    pageSize = PAGE_SIZE
                 )
-                allItems = serverItems
-                canNextPage = serverItems.size >= pageSize
+                allItems = if (reset) {
+                    serverItems
+                } else {
+                    // The server can hand back an item already on screen when rows shift
+                    // between requests; appending it blindly would break LazyColumn keys.
+                    val known = allItems.mapTo(mutableSetOf()) { it.id }
+                    allItems + serverItems.filterNot { known.contains(it.id) }
+                }
+                canNextPage = serverItems.size >= PAGE_SIZE
+                nextPage = target + 1
+                error = null
             } catch (e: Exception) {
                 error = e.message
             } finally {
                 isLoading = false
+                isLoadingMore = false
             }
         }
     }
@@ -216,7 +240,18 @@ fun ContentListScreen(
     }
 
     LaunchedEffect(Unit) {
-        fetchItems()
+        loadPage(reset = true)
+    }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible >= listState.layoutInfo.totalItemsCount - PREFETCH_THRESHOLD
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, canNextPage) {
+        if (shouldLoadMore && canNextPage && !isLoading) loadPage(reset = false)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -233,8 +268,40 @@ fun ContentListScreen(
             Text(
                 text = plugin.displayName,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
             )
+            // Reconciles the per-item synced badge with what is actually on disk before reloading.
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        isBusy = true
+                        try {
+                            val dropped = contentSyncService.refreshLocalState()
+                            if (dropped > 0) {
+                                Toast.makeText(
+                                    context,
+                                    "$dropped item(s) no longer in storage",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Refresh failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isBusy = false
+                        }
+                        loadPage(reset = true)
+                    }
+                },
+                enabled = !isBusy
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_refresh),
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
 
         // ── Regex filter ──
@@ -299,11 +366,11 @@ fun ContentListScreen(
 
         // ── Action buttons ──
         // The tick boxes drive both batch actions: whatever is selected is what
-        // "Sync" downloads and what "Delete" removes from the server.
+        // "Download" fetches and what "Delete" removes from the server.
         val selectedItems = items.filter { syncIds.contains(it.id) }
-        val syncLabel = syncProgress?.let { (done, total) ->
-            if (total == 0) "Syncing…" else "Syncing $done/$total"
-        } ?: "Sync (${selectedItems.size})"
+        val downloadLabel = syncProgress?.let { (done, total) ->
+            if (total == 0) "Downloading…" else "Downloading $done/$total"
+        } ?: "Download (${selectedItems.size})"
 
         Row(
             modifier = Modifier
@@ -312,37 +379,28 @@ fun ContentListScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            IconButton(onClick = { fetchItems() }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_refresh),
-                    contentDescription = "Refresh",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            // Batch sync — deliberately always enabled. Pressing it reconciles local
-            // storage with the current selection: selected items are downloaded and
-            // deselected ones are removed, so clearing the last local copy is possible
-            // even when nothing is selected.
+            // Downloads only what is missing locally — an item already on disk is left as is.
             Button(
                 onClick = {
-                    val toSync = selectedItems
+                    val toDownload = selectedItems
+                    if (toDownload.isEmpty()) {
+                        Toast.makeText(context, "Select items to download", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
                     ensureStorageAndRun {
                         isBusy = true
-                        syncProgress = 0 to toSync.size
+                        syncProgress = 0 to toDownload.size
                         try {
-                            contentSyncService.sync(toSync) { done, total ->
+                            contentSyncService.downloadItems(toDownload) { done, total ->
                                 syncProgress = done to total
                             }
                             Toast.makeText(
                                 context,
-                                if (toSync.isEmpty()) "Local ${plugin.displayName} storage cleared"
-                                else "Synced ${toSync.size} ${plugin.displayName} item(s)",
+                                "Downloaded ${toDownload.size} ${plugin.displayName} item(s)",
                                 Toast.LENGTH_SHORT
                             ).show()
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {
                             syncProgress = null
                             isBusy = false
@@ -359,13 +417,13 @@ fun ContentListScreen(
                     )
                 } else {
                     Icon(
-                        painter = painterResource(R.drawable.ic_cached),
+                        Icons.Filled.Download,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(syncLabel)
+                Text(downloadLabel)
             }
 
             // Batch delete button — only shown to admins/root; plain users can only consume.
@@ -388,22 +446,6 @@ fun ContentListScreen(
             }
         }
 
-        // ── Pagination ──
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { if (page > 1) { page -= 1; fetchItems() } }, enabled = page > 1) { Text("Prev") }
-            Text("Page $page", modifier = Modifier.padding(horizontal = 12.dp))
-            Button(onClick = { if (canNextPage) { page += 1; fetchItems() } }, enabled = canNextPage) { Text("Next") }
-            OutlinedTextField(
-                value = pageSize.toString(),
-                onValueChange = { value ->
-                    val parsed = value.toIntOrNull()
-                    if (parsed != null && parsed in 5..200) { pageSize = parsed; page = 1; fetchItems() }
-                },
-                label = { Text("Page size") },
-                modifier = Modifier.padding(start = 12.dp)
-            )
-        }
-
         // ── Content list ──
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -415,10 +457,11 @@ fun ContentListScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 // Keep the last card clear of the floating upload button.
                 contentPadding = PaddingValues(bottom = if (canManage) 96.dp else 16.dp)
             ) {
-                items(items) { item ->
+                items(items, key = { it.id }) { item -> 
                     val isSync = syncIds.contains(item.id)
                     val isSyncedLocally = localSyncedIds.contains(item.id)
                     ContentItemCard(
@@ -465,6 +508,17 @@ fun ContentListScreen(
                         } else null
                     )
                 }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
             }
 
             // ── Delete confirmation dialog ──
@@ -492,7 +546,7 @@ fun ContentListScreen(
                                             if (failed.isNotEmpty()) append(" Failed: ${failed.joinToString()}")
                                         }
                                         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                        fetchItems()
+                                        loadPage(reset = true)
                                     } catch (e: Exception) {
                                         Toast.makeText(context, "Delete failed: ${e.message}", Toast.LENGTH_SHORT).show()
                                     } finally {

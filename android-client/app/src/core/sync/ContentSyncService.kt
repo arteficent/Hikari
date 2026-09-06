@@ -121,6 +121,66 @@ class ContentSyncService(
     }
 
     /**
+     * Download the selected items that are not already on disk.
+     *
+     * Unlike [sync] this never deletes anything: items already present locally are
+     * left untouched so an existing payload is never re-fetched or replaced.
+     */
+    suspend fun downloadItems(
+        selected: List<ContentItem>,
+        onProgress: (completed: Int, total: Int) -> Unit = { _, _ -> }
+    ) = withContext(Dispatchers.IO) {
+        Log.d(TAG, "downloadItems() called with ${selected.size} selected items")
+        val localItems = plugin.getLocalItems(context).toSet()
+        val syncIndex = syncPreferencesRepository.syncIndex.first()
+        val failed = mutableListOf<String>()
+
+        onProgress(0, selected.size)
+        for ((index, item) in selected.withIndex()) {
+            val recorded = syncIndex[item.id]
+            val alreadyLocal = recorded != null && localItems.contains(recorded)
+            if (alreadyLocal) {
+                Log.d(TAG, "Skipping ${item.title} — already downloaded")
+            } else {
+                val downloaded = downloadItemById(item.id)
+                if (downloaded == null) {
+                    failed += item.title
+                } else {
+                    syncPreferencesRepository.setSyncEntry(item.id, plugin.displayName(downloaded))
+                }
+            }
+            onProgress(index + 1, selected.size)
+        }
+
+        if (failed.isNotEmpty()) {
+            throw IOException("could not download ${failed.size} item(s): ${failed.joinToString()}")
+        }
+    }
+
+    /**
+     * Reconcile the sync index with what is actually on disk for this plugin.
+     *
+     * Files can disappear behind the app's back (file manager, external SD card),
+     * which would otherwise leave the UI claiming a payload the device no longer has.
+     *
+     * @return the number of stale index entries dropped.
+     */
+    suspend fun refreshLocalState(): Int = withContext(Dispatchers.IO) {
+        val localItems = plugin.getLocalItems(context).toSet()
+        val syncIndex = syncPreferencesRepository.syncIndex.first()
+        var dropped = 0
+        for ((id, name) in syncIndex) {
+            if (!ownsLocalEntry(name, localItems)) continue
+            if (!localItems.contains(name)) {
+                Log.w(TAG, "refreshLocalState: dropping stale entry for $id — \"$name\" is not on disk")
+                syncPreferencesRepository.removeSyncEntry(id)
+                dropped++
+            }
+        }
+        dropped
+    }
+
+    /**
      * Sync a single content item by downloading it from the server.
      */
     suspend fun syncItem(item: ContentItem) = withContext(Dispatchers.IO) {
