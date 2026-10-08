@@ -74,6 +74,10 @@ public sealed class ImagePlugin : ContentPluginBase
         ["cameraMake"] = "Camera Make",
     };
 
+    public override IReadOnlyList<ContentSortOption> SortOptions { get; } = ContentSortOption.BaseWith(
+        ContentSortOption.Metadata("creator", "Author Name"),
+        ContentSortOption.Metadata("collection", "Collection"));
+
     public override string SecondaryLine(ContentItem item) =>
         JoinNonBlank(item.Meta("creator"), item.Meta("collection"), item.Meta("keywords"));
 

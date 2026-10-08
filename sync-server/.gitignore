@@ -408,3 +408,6 @@ __pycache__/
 # Docker Compose local environment (may hold secrets) — keep the example tracked.
 .env
 !.env.example
+# Process env files (sync-server.env) hold secrets too.
+*.env
+!*.env.example

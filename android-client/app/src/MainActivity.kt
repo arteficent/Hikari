@@ -72,6 +72,10 @@ import com.example.android_client.ui.theme.AndroidclientTheme
 import com.example.android_client.ui.theme.CelestialSurface
 import com.example.android_client.ui.theme.HikariTheme
 import com.example.android_client.ui.theme.PaperSurface
+import android.util.Log
+import io.ktor.client.plugins.ResponseException
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -136,6 +140,13 @@ class MainActivity : ComponentActivity() {
         requestStoragePermissionIfNeeded()
     }
 
+    override fun onDestroy() {
+        // A fresh client is built in onCreate on every recreation (rotation, theme change),
+        // so the old one's connection pool and threads must be released here.
+        if (::apiClient.isInitialized) apiClient.close()
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsRepository = SettingsRepository(this)
@@ -172,9 +183,14 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val loginResponse = apiClient.refreshToken(currentDomain, currentRefreshToken)
                                 authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
-                            } catch (e: Exception) {
-                                // If refresh fails, clear the invalid tokens to force a login
+                            } catch (e: ResponseException) {
+                                // Rejected by the server: the stored tokens are dead.
                                 authRepository.clearTokens()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // Offline or server down: keep the refresh token for the next launch.
+                                Log.w("MainActivity", "Startup token refresh failed: ${e.message}")
                             } finally {
                                 isRefreshing = false
                             }
@@ -256,6 +272,11 @@ class MainActivity : ComponentActivity() {
                                                 try {
                                                     val loginResponse = apiClient.login(target.domain!!, LoginRequest(username, password))
                                                     authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
+                                                } catch (e: ResponseException) {
+                                                    error = if (e.response.status == HttpStatusCode.Unauthorized) "Invalid username or password"
+                                                    else "Login failed (${e.response.status.value})"
+                                                } catch (e: CancellationException) {
+                                                    throw e
                                                 } catch (e: Exception) {
                                                     error = e.message
                                                 }

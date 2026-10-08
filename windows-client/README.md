@@ -12,7 +12,8 @@ WinUI 3 / Windows App SDK desktop app for syncing your media library with a [Hik
 - **Streaming transfers end-to-end.** Binaries move as `Stream`s, never `byte[]`, so a 40 GB video is never buffered in memory — neither on download (`.part` staging file → atomic rename) nor on upload.
 - **Metadata-aware uploads** — pick a file, the plugin pre-fills the form from the file's own tags (ID3 / Vorbis / FLAC, EPUB Dublin Core, CBZ `ComicInfo.xml`, image EXIF), edit if you like, optionally embed a new cover image, then upload. The server derives its storage key from those tags.
 - **Direct-to-storage transfers** via short-lived presigned URLs; the client talks REST + JWT to the sync server, but the bytes flow straight to/from S3 / R2 / MinIO.
-- **Sync is a reconciliation, not an append.** The Sync button is *always* enabled: pressing it downloads everything currently marked and deletes everything previously synced that is no longer marked — including when you have just unmarked the very last item.
+- **Download never destroys.** Tick items (or **Select All**) and press **Download**: anything already on disk is left untouched, missing items are fetched, and the ticks clear once the batch finishes. **Refresh** re-checks which items are actually on this PC before reloading. The reconciling `SyncAsync` is still available on `ContentSyncService`.
+- **Infinite scroll + per-type sorting.** The list pages in from the server as you scroll; the sort selector offers Date Added / Date Modified / Name plus each plugin's own fields (e.g. Album / Author for audio).
 - **Tokens encrypted at rest** with DPAPI (`DataProtectionScope.CurrentUser`), so the JWT and refresh token are unreadable by other users on the machine.
 - **Configurable library root** (default `%USERPROFILE%\Hikari`) with a write-probe on every launch — the desktop analogue of Android's runtime storage permission.
 - **Four themes** (`Wisteria`, `Sakura`, `Gold`, `Celestial`) applied by mutating shared brushes in place, so every open page repaints instantly without being rebuilt.
@@ -56,12 +57,30 @@ dotnet build                                        # or: dotnet build Hikari.Wi
 dotnet run --project src\Hikari.WindowsClient
 ```
 
-Publish a self-contained folder you can copy to another machine:
+Tests (xUnit; the `Integration` category calls the hosted sync-server):
 
 ```powershell
-dotnet publish src\Hikari.WindowsClient -c Release -r win-x64 `
-  -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
+dotnet test tests\Hikari.WindowsClient.Tests
+dotnet test tests\Hikari.WindowsClient.Tests --filter "Category!=Integration"   # offline
 ```
+
+Publish a standalone, self-contained single `.exe` (no .NET or Windows App Runtime install needed) — the same build the release workflow ships:
+
+```powershell
+dotnet publish src\Hikari.WindowsClient -p:PublishProfile=Standalone -r win-x64   # or win-x86
+```
+
+### Release workflow
+
+[`.github/workflows/windows-release.yml`](../.github/workflows/windows-release.yml) runs on `v*` tags (the same tag as the Android release) or manually. It runs the unit tests, publishes `hikari-windows-<version>-x86.exe` and `-x64.exe` with the `Standalone` profile, Authenticode-signs and timestamps them, and attaches them plus `SHA256SUMS-windows.txt` to the GitHub Release.
+
+Signing is opt-in; without these secrets the exes are published with an `-unsigned` suffix:
+
+| Secret / variable | Purpose |
+|---|---|
+| `WINDOWS_CERT_PFX_BASE64` | base64 of the code-signing `.pfx` — `[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` |
+| `WINDOWS_CERT_PASSWORD` | password of the `.pfx` |
+| `WINDOWS_TIMESTAMP_URL` *(variable, optional)* | RFC 3161 timestamp server; defaults to DigiCert |
 
 The solution is `Hikari.WindowsClient.slnx` (the .NET 10 XML solution format). Visual Studio 2022 17.14+ and Rider both open it; the `dotnet` CLI needs no extra flags.
 
@@ -223,10 +242,10 @@ The client mirrors the server's three-tier role model (`Root` > `Admin` > `User`
 
 ## First-Run Flow
 
-1. **Connect to Server** — enter the sync server's host, e.g. `hikari.example.com:59709` or `192.168.1.10:8080`. `http://`/`https://` prefixes are honoured if you type one; otherwise plain HTTP is used for `localhost`/`127.0.0.1` and HTTPS for everything else. The client probes the server but lets you continue anyway if it can't reach it.
+1. **Connect to Server** — pre-filled with the hosted server `https://hikari-sync-server-982823740583.asia-south2.run.app`; any host such as `hikari.example.com:59709` or `192.168.1.10:8080` works too. `http://`/`https://` prefixes are honoured if you type one; otherwise plain HTTP is used for `localhost`/`127.0.0.1` and HTTPS for everything else. The client probes the server but lets you continue anyway if it can't reach it.
 2. **Login** — username + password. For a fresh server the bootstrap default is `root` / `Root123!`. The JWT and refresh token are DPAPI-encrypted and stored under `%LOCALAPPDATA%\Hikari`.
 3. **Pick a content type** — the picker is populated from the registered plugins.
-4. **Browse** — server-side filters come from the plugin, and a client-side regex box searches title/description plus that plugin's `FilterableFields`. Tick items to mark them, then hit **Sync**.
+4. **Browse** — server-side filters come from the plugin, and a client-side regex box searches title/description plus that plugin's `FilterableFields`. Tick items to select them, then hit **Download**.
 5. **Upload** *(Admin/Root)* — pick a file, the plugin pre-fills the form from its tags, optionally attach a cover image, submit. The client runs `upload-init` → direct `PUT` to storage → `upload-complete`.
 
 ---

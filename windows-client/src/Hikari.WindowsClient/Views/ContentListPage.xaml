@@ -30,7 +30,8 @@
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button x:Name="RefreshButton" Click="OnRefreshClicked" ToolTipService.ToolTip="Refresh">
+                <Button x:Name="RefreshButton" Click="OnRefreshClicked"
+                        ToolTipService.ToolTip="Refresh — re-check which items are on this PC and reload the list">
                     <FontIcon Glyph="&#xE72C;" FontSize="15" Foreground="{StaticResource HikariPrimaryBrush}" />
                 </Button>
 
@@ -48,18 +49,13 @@
                     </StackPanel>
                 </Button>
 
-                <!--
-                    Sync stays enabled no matter what is marked: it reconciles disk with
-                    the marked set, so unmarking the last item and pressing Sync must
-                    still delete it locally.
-                -->
-                <Button x:Name="SyncButton" Click="OnSyncClicked"
+                <Button x:Name="DownloadButton" Click="OnDownloadClicked"
                         Style="{StaticResource AccentButtonStyle}"
-                        ToolTipService.ToolTip="Download marked items and remove unmarked ones from this PC">
+                        ToolTipService.ToolTip="Download the ticked items that aren't on this PC yet">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <ProgressRing x:Name="SyncRing" IsActive="False" Visibility="Collapsed" Width="15" Height="15" />
-                        <FontIcon x:Name="SyncIcon" Glyph="&#xE895;" FontSize="15" />
-                        <TextBlock Text="Sync" />
+                        <FontIcon x:Name="SyncIcon" Glyph="&#xE896;" FontSize="15" />
+                        <TextBlock x:Name="DownloadLabel" Text="Download" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -103,24 +99,27 @@
             </StackPanel>
         </Border>
 
-        <!-- ── Pagination ── -->
+        <!-- ── Sort + selection ── -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <Button x:Name="PrevButton" Click="OnPrevPageClicked" ToolTipService.ToolTip="Previous page">
-                <FontIcon Glyph="&#xE76B;" FontSize="13" />
+            <TextBlock Text="Sort by" VerticalAlignment="Center" Style="{StaticResource HikariCaptionStyle}" />
+            <ComboBox x:Name="SortBox" MinWidth="170" SelectionChanged="OnSortChanged" />
+            <Button x:Name="SelectAllButton" Click="OnSelectAllClicked"
+                    ToolTipService.ToolTip="Tick or untick every item currently shown">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE8B3;" FontSize="15" />
+                    <TextBlock x:Name="SelectAllLabel" Text="Select All" />
+                </StackPanel>
             </Button>
-            <TextBlock x:Name="PageLabel" VerticalAlignment="Center" Style="{StaticResource HikariBodyStyle}" />
-            <Button x:Name="NextButton" Click="OnNextPageClicked" ToolTipService.ToolTip="Next page">
-                <FontIcon Glyph="&#xE76C;" FontSize="13" />
-            </Button>
-            <NumberBox x:Name="PageSizeBox" Value="25" Minimum="5" Maximum="200"
-                       SpinButtonPlacementMode="Compact" Width="128"
-                       ValueChanged="OnPageSizeChanged" />
-            <TextBlock Text="per page" VerticalAlignment="Center" Style="{StaticResource HikariCaptionStyle}" />
         </StackPanel>
 
         <!-- ── Items ── -->
         <Grid Grid.Row="4">
-            <ListView x:Name="ItemsList" SelectionMode="None" Padding="0,0,8,8">
+            <ListView x:Name="ItemsList" SelectionMode="None" Padding="0,0,8,8" Loaded="OnItemsListLoaded">
+                <ListView.Footer>
+                    <ProgressRing x:Name="MoreRing" IsActive="False" Visibility="Collapsed"
+                                  Width="24" Height="24" Margin="0,8,0,16" HorizontalAlignment="Center"
+                                  Foreground="{StaticResource HikariPrimaryBrush}" />
+                </ListView.Footer>
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -187,7 +186,7 @@
 
                                         <CheckBox IsChecked="{x:Bind IsMarked, Mode=TwoWay}"
                                                   MinWidth="0" Margin="6,0,0,0"
-                                                  ToolTipService.ToolTip="Mark for sync" />
+                                                  ToolTipService.ToolTip="Select for download or delete" />
                                     </StackPanel>
                                 </Grid>
 
@@ -231,7 +230,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- ── Sync progress ── -->
+        <!-- ── Download progress ── -->
         <StackPanel x:Name="ProgressPanel" Grid.Row="5" Visibility="Collapsed" Margin="0,4,0,10" Spacing="4">
             <TextBlock x:Name="ProgressLabel" FontSize="12.5" TextWrapping="Wrap"
                        Foreground="{StaticResource HikariTextSoftBrush}" />

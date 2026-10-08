@@ -72,6 +72,10 @@ public sealed class MangaPlugin : ContentPluginBase
         ["language"] = "Language",
     };
 
+    public override IReadOnlyList<ContentSortOption> SortOptions { get; } = ContentSortOption.BaseWith(
+        ContentSortOption.Metadata("author", "Author Name"),
+        ContentSortOption.Metadata("artist", "Artist Name"));
+
     public override string SecondaryLine(ContentItem item) =>
         JoinNonBlank(item.Meta("author"), item.Meta("series"), item.Meta("volume"), item.Meta("status"));
 

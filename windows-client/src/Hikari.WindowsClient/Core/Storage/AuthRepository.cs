@@ -56,8 +56,9 @@ public sealed class AuthRepository : JsonPreferenceStore<AuthRepository.AuthStat
         }
         catch (Exception ex)
         {
-            AppLog.Warn($"DPAPI protect failed, storing token in the clear: {ex.Message}");
-            return value;
+            // Never fall back to writing a bearer token to disk in the clear.
+            AppLog.Error("DPAPI protect failed; refusing to store the session unencrypted", ex);
+            throw new CryptographicException("Hikari could not encrypt your session on this PC.", ex);
         }
     }
 

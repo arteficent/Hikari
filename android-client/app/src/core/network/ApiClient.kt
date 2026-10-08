@@ -6,6 +6,9 @@ import com.example.android_client.core.storage.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
@@ -18,6 +21,7 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import java.io.Closeable
 import java.io.OutputStream
 
 /**
@@ -40,10 +45,14 @@ import java.io.OutputStream
  */
 class AuthExpiredException(message: String = "Session expired, please log in again.") : Exception(message)
 
-class ApiClient(private val authRepository: AuthRepository) {
+class ApiClient(private val authRepository: AuthRepository) : Closeable {
 
     companion object {
         private const val TAG = "ApiClient"
+        private const val CONNECT_TIMEOUT_MS = 30_000L
+        // Inactivity timeout between packets. There is deliberately no whole-request
+        // timeout: multi-gigabyte transfers legitimately run for a long time.
+        private const val SOCKET_TIMEOUT_MS = 60_000L
     }
 
     private val client = HttpClient(CIO) {
@@ -59,6 +68,19 @@ class ApiClient(private val authRepository: AuthRepository) {
                 }
             }
         }
+        install(HttpTimeout) {
+            connectTimeoutMillis = CONNECT_TIMEOUT_MS
+            socketTimeoutMillis = SOCKET_TIMEOUT_MS
+        }
+        // expectSuccess is off, so without this a 401 surfaces as a JSON decoding error and
+        // executeAuthed's refresh-and-retry path never runs.
+        HttpResponseValidator {
+            validateResponse { response ->
+                if (response.status == HttpStatusCode.Unauthorized) {
+                    throw ClientRequestException(response, response.bodyAsText())
+                }
+            }
+        }
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -66,10 +88,18 @@ class ApiClient(private val authRepository: AuthRepository) {
         }
     }
 
+    /** Releases the CIO engine's connection pool and threads. */
+    override fun close() = client.close()
+
     private fun getUrl(serverDomain: String, path: String): String {
+        val domain = serverDomain.trim().trimEnd('/')
+        // An explicit scheme wins, so a full URL shared with the Windows client works as-is.
+        if (domain.startsWith("http://", ignoreCase = true) || domain.startsWith("https://", ignoreCase = true)) {
+            return "$domain$path"
+        }
         // Use http only for explicit localhost development, https for everything else
-        val protocol = if (serverDomain.startsWith("localhost:") || serverDomain.startsWith("127.0.0.1:") || serverDomain.startsWith("10.0.2.2:")) "http" else "https"
-        return "$protocol://$serverDomain$path"
+        val protocol = if (domain.startsWith("localhost:") || domain.startsWith("127.0.0.1:") || domain.startsWith("10.0.2.2:")) "http" else "https"
+        return "$protocol://$domain$path"
     }
 
     // ── Auth helpers ────────────────────────────────────────────
@@ -124,11 +154,10 @@ class ApiClient(private val authRepository: AuthRepository) {
             val response = refreshToken(serverDomain, refreshTokenValue)
             authRepository.saveTokens(response.token, response.refreshToken)
             response.token
-        } catch (e: Exception) {
-            // Refresh failed (rejected, network error, anything). Treat the
-            // session as gone: clear local auth so MainActivity routes back to
-            // the login screen on the next recomposition.
-            Log.w(TAG, "Refresh failed (${e.message}); clearing local auth.")
+        } catch (e: ResponseException) {
+            // Only a server rejection ends the session. Network failures propagate so a
+            // flaky connection doesn't log the user out.
+            Log.w(TAG, "Refresh rejected (${e.response.status}); clearing local auth.")
             authRepository.clearTokens()
             null
         }
@@ -148,10 +177,15 @@ class ApiClient(private val authRepository: AuthRepository) {
 
     suspend fun refreshToken(serverDomain: String, refreshToken: String): LoginResponse {
         Log.d(TAG, "refreshToken() called for serverDomain: $serverDomain")
-        val response: LoginResponse = client.post(getUrl(serverDomain, "/Auth/refresh")) {
+        val httpResponse = client.post(getUrl(serverDomain, "/Auth/refresh")) {
             contentType(ContentType.Application.Json)
             setBody(RefreshTokenRequest(refreshToken))
-        }.body()
+        }
+        // Any 4xx means the token was rejected, which callers treat as "session over".
+        if (httpResponse.status.value in 400..499) {
+            throw ClientRequestException(httpResponse, httpResponse.bodyAsText())
+        }
+        val response: LoginResponse = httpResponse.body()
         Log.d(TAG, "refreshToken() completed successfully")
         return response
     }

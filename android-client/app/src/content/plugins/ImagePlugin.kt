@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import androidx.exifinterface.media.ExifInterface
@@ -223,6 +225,11 @@ class ImagePlugin : ContentPlugin {
         "collection" to "Collection",
         "keywords" to "Keywords",
         "cameraMake" to "Camera Make"
+    )
+
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("creator", "Author Name"),
+        metadataSortOption("collection", "Collection")
     )
 
     override val uploadMimeFilter = "image/*"

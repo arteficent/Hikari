@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import java.io.File
@@ -230,6 +232,11 @@ class AudioPlugin : ContentPlugin {
         "album" to "Album",
         "genre" to "Genre",
         "composer" to "Composer"
+    )
+
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("album", "Album Name"),
+        metadataSortOption("artist", "Author Name")
     )
 
     override val uploadMimeFilter = "audio/*"

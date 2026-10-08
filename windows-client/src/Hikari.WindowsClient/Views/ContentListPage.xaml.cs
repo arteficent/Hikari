@@ -6,29 +6,39 @@ using Hikari.WindowsClient.Content.Plugins;
 using Hikari.WindowsClient.Core.Network;
 using Hikari.WindowsClient.Core.Storage;
 using Hikari.WindowsClient.Core.Sync;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace Hikari.WindowsClient.Views;
 
 /// <summary>
-/// Generic browse screen — works for any plugin. Handles paging, regex filtering,
-/// marking, sync, delete and the upload/edit entry points. Mirrors
-/// <c>android-client/app/src/ui/screens/ContentListScreen.kt</c>.
+/// Generic browse screen — works for any plugin. Handles infinite scrolling, regex
+/// filtering, sorting, selection, download, delete and the upload/edit entry points.
+/// Mirrors <c>android-client/app/src/ui/screens/ContentListScreen.kt</c>.
 /// </summary>
 public sealed partial class ContentListPage : HikariPage
 {
+    /// <summary>Items pulled per server request while scrolling. Never surfaced to the user.</summary>
+    private const int PageSize = 25;
+
+    /// <summary>Distance from the bottom, in pixels, at which the next page is requested.</summary>
+    private const double PrefetchDistance = 400;
+
     private readonly ObservableCollection<ContentItemViewModel> _visible = [];
     private readonly List<ContentItemViewModel> _all = [];
 
     private IContentPlugin _plugin = null!;
     private ContentSyncService _sync = null!;
     private Dictionary<string, string> _serverFilters = new(StringComparer.Ordinal);
+    private ScrollViewer? _scroller;
 
-    private int _page = 1;
-    private int _pageSize = 25;
+    private int _nextPage = 1;
     private bool _canNextPage = true;
+    private bool _loadingMore;
+    private int _loadGeneration;
     private bool _busy;
 
     public ContentListPage()
@@ -63,7 +73,10 @@ public sealed partial class ContentListPage : HikariPage
             ServerFilterToggle.Visibility = Visibility.Collapsed;
         }
 
-        _ = LoadAsync();
+        SortBox.ItemsSource = plugin.SortOptions;
+        SortBox.SelectedIndex = 0;
+
+        _ = LoadPageAsync(reset: true);
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -74,56 +87,122 @@ public sealed partial class ContentListPage : HikariPage
 
     // ── Loading ─────────────────────────────────────────────
 
-    private async Task LoadAsync()
+    /// <summary>
+    /// <paramref name="reset"/> restarts from page 1; otherwise the next page is appended.
+    /// </summary>
+    private async Task LoadPageAsync(bool reset)
     {
-        SetLoading(true);
+        if (!reset && (_loadingMore || !_canNextPage)) return;
+
+        var generation = reset ? ++_loadGeneration : _loadGeneration;
+        var target = reset ? 1 : _nextPage;
+
+        _loadingMore = true;
+        if (reset) SetLoading(true);
+        else SetLoadingMore(true);
+
         try
         {
             var items = await AppServices.Api.GetContentItemsAsync(
                 ServerDomain,
                 _plugin.ContentType,
-                _page,
-                _pageSize,
+                target,
+                PageSize,
                 extraParams: _serverFilters.Count > 0 ? _serverFilters : null);
 
-            _canNextPage = items.Count >= _pageSize;
+            // A reset started while this page was in flight; its results win.
+            if (generation != _loadGeneration) return;
 
-            _all.Clear();
-            foreach (var item in items)
+            if (reset) _all.Clear();
+
+            // Rows can shift between requests, so a page may repeat an item already shown.
+            var known = _all.Select(v => v.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var item in items.Where(i => known.Add(i.Id)))
             {
-                _all.Add(new ContentItemViewModel(item, _plugin, AppServices.SyncPreferences, CanManage));
+                var vm = new ContentItemViewModel(item, _plugin, AppServices.SyncPreferences, CanManage);
+                vm.MarkedChanged += (_, _) => UpdateCounters();
+                _all.Add(vm);
             }
 
-            ReindexLocalState();
+            _canNextPage = items.Count >= PageSize;
+            _nextPage = target + 1;
+
             ApplyFilter();
-            EmptyText.Text = items.Count == 0
-                ? $"No {_plugin.DisplayName.ToLowerInvariant()} on this page."
+            EmptyText.Text = _all.Count == 0
+                ? $"No {_plugin.DisplayName.ToLowerInvariant()} yet."
                 : "Nothing matches that filter.";
         }
         catch (Exception ex) when (!HandleAuthFailure(ex))
         {
-            AppLog.Error($"Failed to load {_plugin.ContentType} items", ex);
+            AppLog.Error($"Failed to load {_plugin.ContentType} items (page {target})", ex);
             ToastError(ex.Message);
-            EmptyText.Text = ex.Message;
-            _all.Clear();
-            ApplyFilter();
+            if (reset)
+            {
+                EmptyText.Text = ex.Message;
+                _all.Clear();
+                ApplyFilter();
+            }
+
+            // Stop auto-paging on failure; Refresh starts over.
+            _canNextPage = false;
         }
         finally
         {
-            SetLoading(false);
-            UpdatePaging();
+            if (generation == _loadGeneration)
+            {
+                _loadingMore = false;
+                SetLoading(false);
+                SetLoadingMore(false);
+                EmptyState.Visibility = _visible.Count == 0 && !_busy ? Visibility.Visible : Visibility.Collapsed;
+
+                // A short or heavily filtered page may not fill the viewport, which means
+                // no scroll event will ever arrive to request the next one.
+                DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, MaybeLoadMore);
+            }
         }
+    }
+
+    private void OnItemsListLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_scroller is not null) return;
+
+        _scroller = FindDescendant<ScrollViewer>(ItemsList);
+        if (_scroller is not null) _scroller.ViewChanged += (_, _) => MaybeLoadMore();
+    }
+
+    private void MaybeLoadMore()
+    {
+        if (_loadingMore || !_canNextPage || _scroller is null) return;
+
+        if (_scroller.ScrollableHeight - _scroller.VerticalOffset <= PrefetchDistance)
+        {
+            _ = LoadPageAsync(reset: false);
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match) return match;
+            if (FindDescendant<T>(child) is { } nested) return nested;
+        }
+
+        return null;
     }
 
     /// <summary>
     /// Re-reads the sync index so the cloud/download glyphs reflect what is really
-    /// on disk after a sync, delete or edit.
+    /// on disk after a download, delete or edit.
     /// </summary>
     private void ReindexLocalState()
     {
         foreach (var vm in _all) vm.RefreshFromStore();
     }
 
+    /// <summary>Applies the regex filter and sort over every page loaded so far.</summary>
     private void ApplyFilter()
     {
         Regex? regex = null;
@@ -141,18 +220,60 @@ public sealed partial class ContentListPage : HikariPage
             }
         }
 
-        _visible.Clear();
-        foreach (var vm in _all.Where(vm => vm.Matches(regex)))
+        var target = _all.Where(vm => vm.Matches(regex)).ToList();
+        if (SortBox.SelectedItem is ContentSortOption sort)
         {
-            _visible.Add(vm);
+            var comparer = sort.Comparer;
+            target.Sort((a, b) => comparer.Compare(a.Item, b.Item));
         }
 
-        var marked = _visible.Count(v => v.IsMarked);
-        CountLabel.Text = $"{_visible.Count} shown · {marked} marked";
-        DeleteLabel.Text = $"Delete ({marked})";
-        EmptyState.Visibility = _visible.Count == 0 && !_busy ? Visibility.Visible : Visibility.Collapsed;
+        SyncVisible(target);
+        UpdateCounters();
+        EmptyState.Visibility = _visible.Count == 0 && !_busy && !LoadingRing.IsActive
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         _ = LoadCoversAsync();
+    }
+
+    /// <summary>
+    /// Brings the bound collection in line with <paramref name="target"/> using moves and
+    /// inserts rather than Clear(), so appending a page doesn't throw the user back to the top.
+    /// </summary>
+    private void SyncVisible(List<ContentItemViewModel> target)
+    {
+        // Common infinite-scroll case: the current list is an unchanged prefix of the target.
+        if (target.Count >= _visible.Count && _visible.Select((vm, i) => ReferenceEquals(vm, target[i])).All(same => same))
+        {
+            for (var i = _visible.Count; i < target.Count; i++) _visible.Add(target[i]);
+            return;
+        }
+
+        var wanted = new HashSet<ContentItemViewModel>(target);
+        for (var i = _visible.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(_visible[i])) _visible.RemoveAt(i);
+        }
+
+        for (var i = 0; i < target.Count; i++)
+        {
+            if (i < _visible.Count && ReferenceEquals(_visible[i], target[i])) continue;
+
+            var existing = _visible.IndexOf(target[i]);
+            if (existing >= 0) _visible.Move(existing, i);
+            else _visible.Insert(i, target[i]);
+        }
+    }
+
+    private void UpdateCounters()
+    {
+        var marked = _visible.Count(v => v.IsMarked);
+        var more = _canNextPage ? "+" : string.Empty;
+        CountLabel.Text = $"{_visible.Count}{more} shown · {marked} selected";
+        DeleteLabel.Text = $"Delete ({marked})";
+        DownloadLabel.Text = $"Download ({marked})";
+        SelectAllLabel.Text = _visible.Count > 0 && marked == _visible.Count ? "Deselect All" : "Select All";
+        SelectAllButton.IsEnabled = _visible.Count > 0 && !_busy;
     }
 
     private async Task LoadCoversAsync()
@@ -168,6 +289,12 @@ public sealed partial class ContentListPage : HikariPage
 
     private void OnFilterChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
+    private void OnSortChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_plugin is null) return;
+        ApplyFilter();
+    }
+
     private void OnServerFilterToggled(object sender, RoutedEventArgs e) =>
         ServerFilterPanel.Visibility = ServerFilterToggle.IsChecked == true
             ? Visibility.Visible
@@ -176,23 +303,21 @@ public sealed partial class ContentListPage : HikariPage
     private void OnApplyServerFiltersClicked(object sender, RoutedEventArgs e)
     {
         _serverFilters = FilterForm.GetValues();
-        _page = 1;
-        _ = LoadAsync();
+        _ = LoadPageAsync(reset: true);
     }
 
     private void OnClearServerFiltersClicked(object sender, RoutedEventArgs e)
     {
         FilterForm.Clear();
         _serverFilters.Clear();
-        _page = 1;
-        _ = LoadAsync();
+        _ = LoadPageAsync(reset: true);
     }
 
     private async void OnFilterHelpClicked(object sender, RoutedEventArgs e)
     {
         var body = new StackPanel { Spacing = 8, Width = 460 };
         body.Children.Add(Paragraph(
-            "Type a regular expression to filter the items on this page. It is matched " +
+            "Type a regular expression to filter the items loaded so far. It is matched " +
             "case-insensitively against the title, description, tags and every metadata value."));
         body.Children.Add(Label("Examples"));
         body.Children.Add(Mono(
@@ -229,46 +354,48 @@ public sealed partial class ContentListPage : HikariPage
         TextWrapping = TextWrapping.Wrap,
     };
 
-    // ── Paging ──────────────────────────────────────────────
-
-    private void UpdatePaging()
-    {
-        PageLabel.Text = $"Page {_page}";
-        PrevButton.IsEnabled = _page > 1 && !_busy;
-        NextButton.IsEnabled = _canNextPage && !_busy;
-    }
-
-    private void OnPrevPageClicked(object sender, RoutedEventArgs e)
-    {
-        if (_page <= 1) return;
-        _page--;
-        _ = LoadAsync();
-    }
-
-    private void OnNextPageClicked(object sender, RoutedEventArgs e)
-    {
-        if (!_canNextPage) return;
-        _page++;
-        _ = LoadAsync();
-    }
-
-    private void OnPageSizeChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
-    {
-        if (double.IsNaN(args.NewValue)) return;
-
-        var size = (int)Math.Clamp(args.NewValue, 5, 200);
-        if (size == _pageSize) return;
-
-        _pageSize = size;
-        _page = 1;
-        _ = LoadAsync();
-    }
-
     // ── Actions ─────────────────────────────────────────────
 
     private void OnBackClicked(object sender, RoutedEventArgs e) => GoBack();
 
-    private void OnRefreshClicked(object sender, RoutedEventArgs e) => _ = LoadAsync();
+    /// <summary>
+    /// Reconciles the per-item downloaded glyph with what is actually on disk, then
+    /// reloads the list from the first page.
+    /// </summary>
+    private void OnRefreshClicked(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+
+        try
+        {
+            var (dropped, found) = _sync.RefreshLocalState(_all.Select(v => v.Item));
+            if (dropped > 0 || found > 0)
+            {
+                var parts = new List<string>();
+                if (dropped > 0) parts.Add($"{dropped} item(s) no longer on this PC");
+                if (found > 0) parts.Add($"{found} item(s) found on this PC");
+                Toast(string.Join(", ", parts) + ".");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Refreshing local state failed", ex);
+            ToastError($"Refresh failed: {ex.Message}");
+        }
+
+        _ = LoadPageAsync(reset: true);
+    }
+
+    /// <summary>Ticks or unticks everything currently shown (post-filter), across all loaded pages.</summary>
+    private void OnSelectAllClicked(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _visible.Count == 0) return;
+
+        var select = _visible.Any(v => !v.IsMarked);
+        AppServices.SyncPreferences.SetSyncEnabled(_visible.Select(v => v.Id), select);
+        foreach (var vm in _visible) vm.RefreshFromStore();
+        UpdateCounters();
+    }
 
     private void OnUploadClicked(object sender, RoutedEventArgs e) =>
         Shell.Navigate(typeof(UploadPage), new UploadArgs(_plugin, null));
@@ -283,7 +410,7 @@ public sealed partial class ContentListPage : HikariPage
         if (Model(sender) is { } vm) Shell.Navigate(typeof(UploadPage), new UploadArgs(_plugin, vm.Item));
     }
 
-    private async void OnOpenLocalFile(object sender, RoutedEventArgs e)
+    private void OnOpenLocalFile(object sender, RoutedEventArgs e)
     {
         if (Model(sender) is not { } vm) return;
 
@@ -294,11 +421,20 @@ public sealed partial class ContentListPage : HikariPage
             return;
         }
 
+        // The extension derives from server metadata; never let the shell execute
+        // something like .exe/.lnk/.bat just because the server labelled it so.
+        var extension = Path.GetExtension(path);
+        if (!_plugin.UploadFileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            AppLog.Warn($"Refusing to shell-open '{path}': '{extension}' is not a {_plugin.ContentType} type");
+            ToastError($"Hikari won't open '{extension}' files. Find it in the library folder instead.");
+            return;
+        }
+
         try
         {
             // Hand off to the shell so the user's default player/reader opens it.
             using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -344,47 +480,55 @@ public sealed partial class ContentListPage : HikariPage
     }
 
     /// <summary>
-    /// Reconciles local storage with the marked set. Deliberately always enabled:
-    /// with nothing marked it still has work to do, namely deleting everything that
-    /// was previously synced.
+    /// Downloads the ticked items that aren't on disk yet. Files already present are
+    /// left alone, and nothing is ever removed locally.
     /// </summary>
-    private async void OnSyncClicked(object sender, RoutedEventArgs e)
+    private async void OnDownloadClicked(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
+
+        var toDownload = _visible.Where(v => v.IsMarked).ToList();
+        if (toDownload.Count == 0)
+        {
+            Toast("Select the items you want to download first.", InfoBarSeverity.Warning);
+            return;
+        }
+
         if (!await EnsureLibraryAsync()) return;
 
         SetBusy(true);
         ProgressPanel.Visibility = Visibility.Visible;
+        ProgressBarControl.Maximum = toDownload.Count;
         ProgressBarControl.Value = 0;
-        ProgressLabel.Text = "Starting sync…";
+        ProgressLabel.Text = "Starting download…";
 
         try
         {
-            var marked = _all.Where(v => v.IsMarked).Select(v => v.Item).ToList();
-
             var progress = new Progress<SyncProgress>(p =>
             {
-                ProgressLabel.Text = p.Message;
+                ProgressLabel.Text = $"{p.Message} ({p.Completed}/{p.Total})";
                 ProgressBarControl.Maximum = Math.Max(1, p.Total);
                 ProgressBarControl.Value = p.Completed;
             });
 
-            var result = await _sync.SyncAsync(marked, progress);
+            var result = await _sync.DownloadItemsAsync(toDownload.Select(v => v.Item).ToList(), progress);
 
-            ReindexLocalState();
-            foreach (var vm in _all) vm.InvalidateCover();
-            ApplyFilter();
-
-            Toast($"{_plugin.DisplayName} sync complete. {result.Describe()}",
+            Toast($"{_plugin.DisplayName}: {result.Describe()}",
                 result.Failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         }
         catch (Exception ex) when (!HandleAuthFailure(ex))
         {
-            AppLog.Error("Sync failed", ex);
-            ToastError($"Sync failed: {ex.Message}");
+            AppLog.Error("Download failed", ex);
+            ToastError($"Download failed: {ex.Message}");
         }
         finally
         {
+            // The batch has been attempted; ticks shouldn't linger for the rest of the session.
+            AppServices.SyncPreferences.SetSyncEnabled(toDownload.Select(v => v.Id), false);
+            ReindexLocalState();
+            foreach (var vm in toDownload) vm.InvalidateCover();
+            ApplyFilter();
+
             ProgressPanel.Visibility = Visibility.Collapsed;
             SetBusy(false);
         }
@@ -400,7 +544,7 @@ public sealed partial class ContentListPage : HikariPage
         var marked = _visible.Where(v => v.IsMarked).ToList();
         if (marked.Count == 0)
         {
-            Toast("Mark the items you want to delete first.", InfoBarSeverity.Warning);
+            Toast("Select the items you want to delete first.", InfoBarSeverity.Warning);
             return;
         }
 
@@ -429,7 +573,7 @@ public sealed partial class ContentListPage : HikariPage
             Toast(summary.Count > 0 ? string.Join(" ", summary) : "Nothing was deleted.",
                 failed.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
 
-            await LoadAsync();
+            await LoadPageAsync(reset: true);
         }
         catch (Exception ex) when (!HandleAuthFailure(ex))
         {
@@ -467,6 +611,12 @@ public sealed partial class ContentListPage : HikariPage
         if (loading) EmptyState.Visibility = Visibility.Collapsed;
     }
 
+    private void SetLoadingMore(bool loading)
+    {
+        MoreRing.IsActive = loading;
+        MoreRing.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void SetBusy(bool busy)
     {
         _busy = busy;
@@ -474,12 +624,11 @@ public sealed partial class ContentListPage : HikariPage
         SyncRing.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         SyncIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
 
-        // Everything except Sync is disabled while busy; Sync itself stays clickable
-        // so a stuck operation is obvious rather than silently swallowing the click.
         RefreshButton.IsEnabled = !busy;
+        DownloadButton.IsEnabled = !busy;
         DeleteButton.IsEnabled = !busy;
         UploadButton.IsEnabled = !busy;
         ItemsList.IsEnabled = !busy;
-        UpdatePaging();
+        UpdateCounters();
     }
 }

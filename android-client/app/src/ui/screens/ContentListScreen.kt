@@ -39,8 +39,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,7 +72,10 @@ import com.example.android_client.core.network.ContentItem
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.theme.PaperSurface
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Items pulled per server request while scrolling. Never surfaced to the user. */
 private const val PAGE_SIZE = 25
@@ -79,11 +83,10 @@ private const val PAGE_SIZE = 25
 /** Distance from the end of the list, in items, at which the next page is requested. */
 private const val PREFETCH_THRESHOLD = 5
 
-//Interesting file size
 /**
  * Generic content list screen — works for any content plugin.
  * The plugin provides FilterPanel and ItemCard Composables,
- * while this screen handles pagination, sync toggle, and sync execution.
+ * while this screen handles infinite scrolling, selection, download and delete.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -109,7 +112,11 @@ fun ContentListScreen(
     var nextPage by remember { mutableIntStateOf(1) }
     var canNextPage by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
+    // Bumped by every reset so a page request that was in flight can't append stale rows.
+    var loadGeneration by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
+    var sortOption by remember(plugin) { mutableStateOf(plugin.sortOptions.first()) }
+    var showSortMenu by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -183,11 +190,18 @@ fun ContentListScreen(
 
     // reset = true restarts from page 1; otherwise the next page is appended.
     fun loadPage(reset: Boolean) {
-        if (isLoadingMore && !reset) return
+        if (!reset && (isLoadingMore || !canNextPage)) return
+        // Claimed before launching: the coroutine is dispatched later, and a second trigger
+        // in the meantime would otherwise fetch the same page twice.
+        isLoadingMore = true
+        if (reset) {
+            loadGeneration++
+            isLoading = true
+            error = null
+        }
+        val generation = loadGeneration
+        val target = if (reset) 1 else nextPage
         scope.launch {
-            isLoadingMore = true
-            if (reset) isLoading = true
-            val target = if (reset) 1 else nextPage
             try {
                 val serverItems = apiClient.getContentItems(
                     serverDomain = serverDomain,
@@ -195,6 +209,7 @@ fun ContentListScreen(
                     page = target,
                     pageSize = PAGE_SIZE
                 )
+                if (generation != loadGeneration) return@launch
                 allItems = if (reset) {
                     serverItems
                 } else {
@@ -205,19 +220,29 @@ fun ContentListScreen(
                 }
                 canNextPage = serverItems.size >= PAGE_SIZE
                 nextPage = target + 1
-                error = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                error = e.message
+                if (generation != loadGeneration) return@launch
+                if (reset) {
+                    error = e.message ?: "Could not load ${plugin.displayName}"
+                } else {
+                    // Keep what's already on screen; stop auto-paging until the user refreshes.
+                    canNextPage = false
+                    Toast.makeText(context, "Could not load more: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             } finally {
-                isLoading = false
-                isLoadingMore = false
+                if (generation == loadGeneration) {
+                    isLoading = false
+                    isLoadingMore = false
+                }
             }
         }
     }
 
-    // Apply regex filter client-side
-    val items = remember(allItems, regexFilter) {
-        if (regexFilter.isBlank()) {
+    // Apply regex filter and sort client-side, over whatever pages are loaded so far.
+    val items = remember(allItems, regexFilter, sortOption) {
+        val filtered = if (regexFilter.isBlank()) {
             allItems
         } else {
             val regex = try {
@@ -237,6 +262,7 @@ fun ContentListScreen(
                 regex.containsMatchIn(searchable)
             }
         }
+        filtered.sortedWith(sortOption.comparator)
     }
 
     LaunchedEffect(Unit) {
@@ -250,8 +276,10 @@ fun ContentListScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, canNextPage) {
-        if (shouldLoadMore && canNextPage && !isLoading) loadPage(reset = false)
+    // isLoadingMore is a key so a page that still leaves the end in view (tall screen,
+    // heavy filter) immediately requests the next one instead of waiting for a scroll.
+    LaunchedEffect(shouldLoadMore, canNextPage, isLoadingMore) {
+        if (shouldLoadMore && canNextPage && !isLoading && !isLoadingMore) loadPage(reset = false)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -322,6 +350,24 @@ fun ContentListScreen(
             }
         }
 
+        // ── Sort selector ──
+        Box {
+            TextButton(onClick = { showSortMenu = true }) {
+                Text("Sort: ${sortOption.label}")
+            }
+            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                plugin.sortOptions.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = {
+                            sortOption = option
+                            showSortMenu = false
+                        }
+                    )
+                }
+            }
+        }
+
         // ── Filter help tooltip card ──
         if (showFilterHelp) {
             PaperSurface(
@@ -368,6 +414,7 @@ fun ContentListScreen(
         // The tick boxes drive both batch actions: whatever is selected is what
         // "Download" fetches and what "Delete" removes from the server.
         val selectedItems = items.filter { syncIds.contains(it.id) }
+        val allSelected = items.isNotEmpty() && selectedItems.size == items.size
         val downloadLabel = syncProgress?.let { (done, total) ->
             if (total == 0) "Downloading…" else "Downloading $done/$total"
         } ?: "Download (${selectedItems.size})"
@@ -379,6 +426,17 @@ fun ContentListScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Selects/deselects everything currently visible (post-filter/sort), not just one page.
+            TextButton(
+                onClick = {
+                    val ids = items.map { it.id }
+                    scope.launch { syncPreferencesRepository.setSyncEnabled(ids, !allSelected) }
+                },
+                enabled = items.isNotEmpty() && !isBusy
+            ) {
+                Text(if (allSelected) "Deselect All" else "Select All")
+            }
+
             // Downloads only what is missing locally — an item already on disk is left as is.
             Button(
                 onClick = {
@@ -399,9 +457,15 @@ fun ContentListScreen(
                                 "Downloaded ${toDownload.size} ${plugin.displayName} item(s)",
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {
+                            // The batch has been attempted; ticks shouldn't linger for the rest of the session.
+                            withContext(NonCancellable) {
+                                syncPreferencesRepository.setSyncEnabled(toDownload.map { it.id }, false)
+                            }
                             syncProgress = null
                             isBusy = false
                         }

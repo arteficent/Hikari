@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Hikari.WindowsClient.Core.Network;
 using Hikari.WindowsClient.Core.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
@@ -22,7 +21,7 @@ public sealed partial class ServerPage : HikariPage
     public ServerPage()
     {
         InitializeComponent();
-        DomainBox.Text = AppServices.Settings.ServerDomain ?? string.Empty;
+        DomainBox.Text = AppServices.Settings.ServerDomain ?? SettingsRepository.DefaultServerDomain;
         UpdateLibraryLabel();
         Loaded += (_, _) => DomainBox.Focus(FocusState.Programmatic);
     }
@@ -70,14 +69,8 @@ public sealed partial class ServerPage : HikariPage
         SetBusy(true);
         try
         {
-            // Probe the server so a typo is caught here rather than on the login
-            // screen. Any HTTP answer — including 401 — proves it is reachable.
-            try
-            {
-                await AppServices.Api.GetPluginsAsync(domain);
-            }
-            catch (AuthExpiredException) { }
-            catch (ApiStatusException) { }
+            // Probe the server so a typo is caught here rather than on the login screen.
+            await AppServices.Api.PingAsync(domain);
 
             AppServices.Settings.SaveServerDomain(domain);
             Shell.ResetTo(typeof(LoginPage));

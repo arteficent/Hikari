@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import net.lingala.zip4j.ZipFile
@@ -237,6 +239,11 @@ class MangaPlugin : ContentPlugin {
         "status" to "Status (ongoing/completed)",
         "demographic" to "Demographic",
         "language" to "Language"
+    )
+
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("author", "Author Name"),
+        metadataSortOption("artist", "Artist Name")
     )
 
     override val uploadMimeFilter = "*/*"

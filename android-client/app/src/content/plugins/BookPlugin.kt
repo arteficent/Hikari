@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import java.io.File
@@ -242,6 +244,11 @@ class BookPlugin : ContentPlugin {
         "language" to "Language",
         "series" to "Series",
         "isbn" to "ISBN"
+    )
+
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("author", "Author Name"),
+        metadataSortOption("series", "Series")
     )
 
     override val uploadMimeFilter = "*/*"

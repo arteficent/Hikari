@@ -16,6 +16,9 @@ public sealed class SettingsRepository : JsonPreferenceStore<SettingsRepository.
 
     public SettingsRepository() : base("settings.json") { }
 
+    /// <summary>Hosted sync-server offered on first run; the user can still point elsewhere.</summary>
+    public const string DefaultServerDomain = "https://hikari-sync-server-982823740583.asia-south2.run.app";
+
     public string? ServerDomain => Read(s => s.ServerDomain);
 
     public string ThemeName => Read(s => string.IsNullOrWhiteSpace(s.ThemeName) ? "Wisteria" : s.ThemeName!);

@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import android.media.MediaMetadataRetriever
@@ -239,6 +241,11 @@ class VideoPlugin : ContentPlugin {
         "series" to "Series",
         "season" to "Season",
         "episode" to "Episode"
+    )
+
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("director", "Author Name"),
+        metadataSortOption("series", "Series")
     )
 
     override val uploadMimeFilter = "video/*"

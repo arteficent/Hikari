@@ -138,9 +138,12 @@ class ContentSyncService(
         onProgress(0, selected.size)
         for ((index, item) in selected.withIndex()) {
             val recorded = syncIndex[item.id]
-            val alreadyLocal = recorded != null && localItems.contains(recorded)
-            if (alreadyLocal) {
+            // Also accept a file already at the item's expected path whose index entry was lost.
+            val existing = recorded?.takeIf { localItems.contains(it) }
+                ?: plugin.displayName(item).takeIf { localItems.contains(it) }
+            if (existing != null) {
                 Log.d(TAG, "Skipping ${item.title} — already downloaded")
+                if (existing != recorded) syncPreferencesRepository.setSyncEntry(item.id, existing)
             } else {
                 val downloaded = downloadItemById(item.id)
                 if (downloaded == null) {

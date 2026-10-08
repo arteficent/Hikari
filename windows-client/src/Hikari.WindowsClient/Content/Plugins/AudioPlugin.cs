@@ -70,6 +70,10 @@ public sealed class AudioPlugin : ContentPluginBase
         ["composer"] = "Composer",
     };
 
+    public override IReadOnlyList<ContentSortOption> SortOptions { get; } = ContentSortOption.BaseWith(
+        ContentSortOption.Metadata("album", "Album Name"),
+        ContentSortOption.Metadata("artist", "Author Name"));
+
     public override string SecondaryLine(ContentItem item) =>
         JoinNonBlank(item.Meta("artist"), item.Meta("album"), item.Meta("genre"));
 

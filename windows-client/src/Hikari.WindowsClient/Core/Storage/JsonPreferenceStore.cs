@@ -10,8 +10,14 @@ namespace Hikari.WindowsClient.Core.Storage;
 /// </summary>
 public static class AppPaths
 {
+    /// <summary>
+    /// <c>HIKARI_DATA_DIR</c> relocates preferences, logs and tokens — used by the tests so
+    /// they never touch a real user's state.
+    /// </summary>
     public static string PreferencesDirectory { get; } = EnsureDirectory(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hikari"));
+        Environment.GetEnvironmentVariable("HIKARI_DATA_DIR") is { Length: > 0 } overridden
+            ? overridden
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hikari"));
 
     public static string DefaultLibraryRoot { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Hikari");

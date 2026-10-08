@@ -47,6 +47,16 @@ class SyncPreferencesRepository(private val context: Context) {
         }
     }
 
+    /** Bulk form of [setSyncEnabled] that commits a single DataStore transaction. */
+    suspend fun setSyncEnabled(ids: Collection<String>, enabled: Boolean) {
+        if (ids.isEmpty()) return
+        Log.d(TAG, "setSyncEnabled() called for ${ids.size} ids, enabled: $enabled")
+        context.syncDataStore.edit {
+            val current = it[syncIdsKey] ?: emptySet()
+            it[syncIdsKey] = if (enabled) current + ids else current - ids.toSet()
+        }
+    }
+
     suspend fun setSyncEntry(id: String, displayName: String) {
         Log.d(TAG, "setSyncEntry() called with id: $id, displayName: $displayName")
         context.syncDataStore.edit {

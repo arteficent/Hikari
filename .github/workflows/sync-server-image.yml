@@ -1,9 +1,13 @@
 name: Sync Server Image
 
 # Builds sync-server/Dockerfile and pushes it to Docker Hub as
-# arteficent/hikari-sync-server.
+# arteficent/hikari-sync-server, in two flavours:
 #
-# Tags produced:
+#   default  linux/amd64             Cloud Run / x86-64 hosts
+#   termux   linux/arm64, linux/arm/v7  Android (Termux + udocker) / ARM boards;
+#                                    every tag carries a -termux suffix
+#
+# Tags produced (termux flavour appends -termux to each):
 #   push to main   -> latest, sha-<short-sha>
 #   push tag v1.2.3 -> 1.2.3, 1.2
 #   manual run     -> the tag supplied as input
@@ -39,8 +43,24 @@ env:
 
 jobs:
   build-and-push:
-    name: Build and push image
+    name: Build and push ${{ matrix.flavour }} image
     runs-on: ubuntu-latest
+    strategy:
+      # One flavour failing must not cancel the other's push.
+      fail-fast: false
+      matrix:
+        include:
+          - flavour: default
+            target: runtime
+            platforms: linux/amd64
+            suffix: ''
+            description: Backend sync-server for Hikari
+          - flavour: termux
+            target: termux
+            # The SDK stage cross-compiles, so no QEMU is needed for these.
+            platforms: linux/arm64,linux/arm/v7
+            suffix: -termux
+            description: Backend sync-server for Hikari - ARM build for Android (Termux + udocker)
 
     steps:
       - name: Check out repository
@@ -64,6 +84,7 @@ jobs:
           # otherwise add; latest must track main, not whichever tag ran last.
           flavor: |
             latest=false
+            ${{ matrix.suffix && format('suffix={0},onlatest=true', matrix.suffix) || '' }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -72,7 +93,7 @@ jobs:
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
           labels: |
             org.opencontainers.image.title=Hikari Sync Server
-            org.opencontainers.image.description=Backend sync-server for Hikari
+            org.opencontainers.image.description=${{ matrix.description }}
 
       # The Dockerfile COPYs src/ relative to its context, so the context must be
       # the sync-server directory rather than the repository root.
@@ -81,17 +102,37 @@ jobs:
         with:
           context: ./sync-server
           file: ./sync-server/Dockerfile
-          platforms: linux/amd64
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Per-flavour scope so the two builds don't evict each other's layers.
+          cache-from: type=gha,scope=${{ matrix.flavour }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavour }}
+
+      # A multi-platform push is always an index, so each target platform must be listed.
+      - name: Verify pushed platforms
+        if: contains(matrix.platforms, ',')
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          EXPECTED: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          ref="$(printf '%s\n' "$TAGS" | head -n1)"
+          manifest="$(docker buildx imagetools inspect "$ref")"
+          printf '%s\n' "$manifest"
+          for platform in ${EXPECTED//,/ }; do
+            if ! printf '%s\n' "$manifest" | grep -q "Platform:[[:space:]]*$platform\$"; then
+              echo "::error::$ref is missing platform $platform"
+              exit 1
+            fi
+          done
 
       - name: Summarise pushed tags
         run: |
           {
-            echo "### Pushed \`${IMAGE_NAME}\`"
+            echo "### Pushed \`${IMAGE_NAME}\` (${{ matrix.flavour }}: ${{ matrix.platforms }})"
             echo
             echo '```'
             echo "${{ steps.meta.outputs.tags }}"
