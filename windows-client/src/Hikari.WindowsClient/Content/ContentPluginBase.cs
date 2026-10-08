@@ -91,6 +91,15 @@ public abstract class ContentPluginBase : IContentPlugin
                 temp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
                 await content.CopyToAsync(destination, 81920, ct).ConfigureAwait(false);
+                await destination.FlushAsync(ct).ConfigureAwait(false);
+
+                // The server records the object's real length at upload-complete; a mismatch
+                // means a truncated transfer that must never be promoted to a "synced" file.
+                if (item.SizeInBytes > 0 && destination.Length != item.SizeInBytes)
+                {
+                    throw new IOException(
+                        $"Download of '{item.Title}' is incomplete: {destination.Length} of {item.SizeInBytes} bytes.");
+                }
             }
 
             File.Move(temp, absolute, overwrite: true);
@@ -219,6 +228,8 @@ public abstract class ContentPluginBase : IContentPlugin
     public abstract IReadOnlyList<FormField> FilterFields { get; }
 
     public abstract IReadOnlyDictionary<string, string> FilterableFields { get; }
+
+    public virtual IReadOnlyList<ContentSortOption> SortOptions => ContentSortOption.Base;
 
     public abstract string SecondaryLine(ContentItem item);
 

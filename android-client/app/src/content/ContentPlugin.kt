@@ -12,6 +12,47 @@ import java.io.File
 import java.io.OutputStream
 
 /**
+ * A field the content list can be sorted by, offered in the sort selector.
+ */
+data class ContentSortOption(
+    val key: String,
+    val label: String,
+    val comparator: Comparator<ContentItem>
+)
+
+/** Sort option for a plugin-specific metadata field, e.g. album or author. */
+fun metadataSortOption(key: String, label: String): ContentSortOption =
+    ContentSortOption(
+        key = key,
+        label = label,
+        comparator = Comparator { a, b -> compareValues(a.metadata?.get(key)?.lowercase(), b.metadata?.get(key)?.lowercase()) }
+    )
+
+/** Sort options every content type offers regardless of its metadata schema. */
+val baseSortOptions: List<ContentSortOption> = listOf(
+    ContentSortOption("dateAdded", "Date Added", Comparator { a, b -> compareValues(a.createdAt, b.createdAt) }),
+    ContentSortOption("modified", "Date Modified", Comparator { a, b -> compareValues(a.lastModified, b.lastModified) }),
+    ContentSortOption("name", "Name", Comparator { a, b -> compareValues(a.title.lowercase(), b.title.lowercase()) })
+)
+
+/**
+ * Copies [uri] into a fresh file in the app cache. The caller owns the result and must
+ * delete it; uploads stream from it so a multi-gigabyte file never sits in the heap.
+ */
+fun copyUriToCacheFile(context: Context, uri: Uri, fileName: String): File {
+    val ext = fileName.substringAfterLast('.', "bin").filter { it.isLetterOrDigit() }.ifEmpty { "bin" }
+    val tmp = File.createTempFile("hikari_upload_", ".$ext", context.cacheDir)
+    try {
+        val input = context.contentResolver.openInputStream(uri) ?: error("Unable to read $fileName")
+        input.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+        return tmp
+    } catch (e: Exception) {
+        tmp.delete()
+        throw e
+    }
+}
+
+/**
  * Contract for a client-side content plugin.
  * Each content type (music, book, manga, etc.) implements this interface
  * to define how items are stored locally, displayed, and filtered.
@@ -27,6 +68,9 @@ interface ContentPlugin {
     val localDirectory: String
     val requiredPermissions: List<String>
     val supportedMimeTypes: Set<String>
+
+    /** Fields the list can be sorted by. Defaults to date added/modified/name only. */
+    val sortOptions: List<ContentSortOption> get() = baseSortOptions
 
     /**
      * Stream binary content into local storage.
@@ -52,6 +96,13 @@ interface ContentPlugin {
             partial.delete()
             val complete = partial.outputStream().use { sink -> writeBody(sink) }
             if (!complete) {
+                partial.delete()
+                return@withContext false
+            }
+            // The server records the object's real length at upload-complete; a mismatch
+            // is a truncated transfer that must never be promoted to a "synced" file.
+            if (item.sizeInBytes > 0 && partial.length() != item.sizeInBytes) {
+                Log.e(LOG_TAG, "saveLocally: ${item.title} is incomplete (${partial.length()} of ${item.sizeInBytes} bytes)")
                 partial.delete()
                 return@withContext false
             }
@@ -135,9 +186,8 @@ interface ContentPlugin {
     }
 
     /**
-     * Rewrite/strip metadata from the binary file before upload.
-     * Default: returns raw bytes unchanged.
-     * Audio plugins override this to strip old ID3/Vorbis tags and write fresh ones.
+     * Produce the file to upload, with its metadata stripped and rewritten from [fields].
+     * Default: an untouched copy. The returned file is a temp file the caller must delete.
      *
      * @param coverImageUri optional URI for a cover/thumbnail image to embed
      */
@@ -148,10 +198,7 @@ interface ContentPlugin {
         title: String,
         fields: Map<String, String>,
         coverImageUri: Uri? = null
-    ): ByteArray {
-        return context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("Unable to read file")
-    }
+    ): File = copyUriToCacheFile(context, uri, fileName)
 
     /**
      * Extract embedded cover art / album art from a locally synced file.

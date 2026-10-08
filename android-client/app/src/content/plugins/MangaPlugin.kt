@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import net.lingala.zip4j.ZipFile
@@ -239,6 +241,11 @@ class MangaPlugin : ContentPlugin {
         "language" to "Language"
     )
 
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("author", "Author Name"),
+        metadataSortOption("artist", "Artist Name")
+    )
+
     override val uploadMimeFilter = "*/*"
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -293,13 +300,13 @@ class MangaPlugin : ContentPlugin {
         return mimeForFormat(fields["mangaFormat"] ?: "cbz")
     }
 
-    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): ByteArray {
+    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): File {
         val allFields = buildMap { putAll(fields); put("title", title) }
         val ext = fileName.substringAfterLast('.', "").lowercase()
         return when (ext) {
             "epub" -> FileMetadataStripper.stripEpub(context, uri, fileName, allFields)
             "cbz" -> FileMetadataStripper.stripCbz(context, uri, fileName, allFields)
-            else -> FileMetadataStripper.stripGeneric(context, uri)
+            else -> FileMetadataStripper.stripGeneric(context, uri, fileName)
         }
     }
 

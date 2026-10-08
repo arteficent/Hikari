@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,6 +65,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -72,6 +74,10 @@ import com.example.android_client.ui.theme.AndroidclientTheme
 import com.example.android_client.ui.theme.CelestialSurface
 import com.example.android_client.ui.theme.HikariTheme
 import com.example.android_client.ui.theme.PaperSurface
+import android.util.Log
+import io.ktor.client.plugins.ResponseException
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -136,6 +142,13 @@ class MainActivity : ComponentActivity() {
         requestStoragePermissionIfNeeded()
     }
 
+    override fun onDestroy() {
+        // A fresh client is built in onCreate on every recreation (rotation, theme change),
+        // so the old one's connection pool and threads must be released here.
+        if (::apiClient.isInitialized) apiClient.close()
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsRepository = SettingsRepository(this)
@@ -172,9 +185,14 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val loginResponse = apiClient.refreshToken(currentDomain, currentRefreshToken)
                                 authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
-                            } catch (e: Exception) {
-                                // If refresh fails, clear the invalid tokens to force a login
+                            } catch (e: ResponseException) {
+                                // Rejected by the server: the stored tokens are dead.
                                 authRepository.clearTokens()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // Offline or server down: keep the refresh token for the next launch.
+                                Log.w("MainActivity", "Startup token refresh failed: ${e.message}")
                             } finally {
                                 isRefreshing = false
                             }
@@ -184,7 +202,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                CelestialSurface(modifier = Modifier.fillMaxSize()) {
+                CelestialSurface(
+                    modifier = Modifier.fillMaxSize(),
+                    darkTheme = hikariTheme.alwaysDark || isSystemInDarkTheme()
+                ) {
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     containerColor = Color.Transparent
                 ) { innerPadding ->
@@ -238,6 +259,16 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.padding(innerPadding),
                                         sharedTransitionScope = this@SharedTransitionLayout,
                                         animatedVisibilityScope = this@AnimatedContent,
+                                        probe = { domain ->
+                                            try {
+                                                apiClient.ping(domain)
+                                                null
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (e: Exception) {
+                                                e.message ?: e::class.java.simpleName
+                                            }
+                                        },
                                         onContinueClicked = { domain ->
                                             scope.launch {
                                                 settingsRepository.saveServerDomain(domain)
@@ -256,6 +287,11 @@ class MainActivity : ComponentActivity() {
                                                 try {
                                                     val loginResponse = apiClient.login(target.domain!!, LoginRequest(username, password))
                                                     authRepository.saveTokens(loginResponse.token, loginResponse.refreshToken)
+                                                } catch (e: ResponseException) {
+                                                    error = if (e.response.status == HttpStatusCode.Unauthorized) "Invalid username or password"
+                                                    else "Login failed (${e.response.status.value})"
+                                                } catch (e: CancellationException) {
+                                                    throw e
                                                 } catch (e: Exception) {
                                                     error = e.message
                                                 }
@@ -357,10 +393,15 @@ fun ServerDomainScreen(
     modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    probe: suspend (String) -> String? = { null },
     onContinueClicked: (String) -> Unit
 ) {
-    var serverDomain by remember { mutableStateOf("") }
+    var serverDomain by remember { mutableStateOf(SettingsRepository.DEFAULT_SERVER_DOMAIN) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var isProbing by remember { mutableStateOf(false) }
+    // Set when the probe failed, so the user can still proceed (e.g. server not up yet).
+    var unreachableDomain by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -387,32 +428,53 @@ fun ServerDomainScreen(
                     onValueChange = {
                         serverDomain = it
                         validationError = null
+                        unreachableDomain = null
                     },
                     label = { Text("Server Address") },
                     isError = validationError != null,
                     supportingText = validationError?.let { { Text(it) } },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
-                val interactionSource = remember { MutableInteractionSource() }
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_planet),
-                    contentDescription = "Connect",
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            val domain = serverDomain.trim()
-                            when {
-                                domain.isBlank() -> validationError = "Domain cannot be empty"
-                                domain.contains(" ") -> validationError = "Domain cannot contain spaces"
-                                !domain.matches(Regex("^[a-zA-Z0-9._:-]+$")) -> validationError = "Invalid domain format"
-                                else -> onContinueClicked(domain)
-                            }
-                        },
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                if (isProbing) {
+                    CircularProgressIndicator(modifier = Modifier.size(80.dp).padding(16.dp))
+                } else {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_planet),
+                        contentDescription = "Connect",
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                val domain = serverDomain.trim()
+                                when {
+                                    domain.isBlank() -> validationError = "Domain cannot be empty"
+                                    domain.contains(" ") -> validationError = "Domain cannot contain spaces"
+                                    !domain.matches(Regex("^[a-zA-Z0-9._:/-]+$")) -> validationError = "Invalid domain format"
+                                    else -> scope.launch {
+                                        isProbing = true
+                                        val error = probe(domain)
+                                        isProbing = false
+                                        if (error == null) {
+                                            onContinueClicked(domain)
+                                        } else {
+                                            validationError = "Couldn't reach the server: $error"
+                                            unreachableDomain = domain
+                                        }
+                                    }
+                                }
+                            },
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                unreachableDomain?.let { domain ->
+                    TextButton(onClick = { onContinueClicked(domain) }) {
+                        Text("Continue anyway")
+                    }
+                }
             }
         }
         } // with sharedTransitionScope

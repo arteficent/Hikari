@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import android.media.MediaMetadataRetriever
@@ -241,6 +243,11 @@ class VideoPlugin : ContentPlugin {
         "episode" to "Episode"
     )
 
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("director", "Author Name"),
+        metadataSortOption("series", "Series")
+    )
+
     override val uploadMimeFilter = "video/*"
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -307,7 +314,7 @@ class VideoPlugin : ContentPlugin {
         return mimeForFormat(fields["videoFormat"] ?: "mp4")
     }
 
-    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): ByteArray {
+    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): File {
         return FileMetadataStripper.stripVideo(context, uri, fileName, buildMap { putAll(fields); put("title", title) })
     }
 

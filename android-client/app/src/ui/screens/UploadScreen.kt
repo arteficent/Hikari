@@ -47,15 +47,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.copyUriToCacheFile
 import com.example.android_client.core.network.ApiClient
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.core.network.ContentUploadCompleteRequest
 import com.example.android_client.core.network.ContentUploadInitRequest
 import com.example.android_client.ui.theme.PaperSurface
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 
 /**
@@ -435,22 +438,23 @@ fun UploadScreen(
                                     // ── Execute 3-step upload (create or replace binary) ──
                                     scope.launch {
                                         isUploading = true
+                                        var payload: File? = null
                                         try {
-                                            // Read binary: strip/rewrite metadata only if checkbox is checked
-                                            val bytes = if (updateMetadataInFile) {
-                                                plugin.rewriteFileMetadata(
-                                                    context = context,
-                                                    uri = currentUri!!,
-                                                    fileName = selectedFileName ?: "file",
-                                                    title = trimmedTitle,
-                                                    fields = pluginFields,
-                                                    coverImageUri = coverImageUri
-                                                )
-                                            } else {
-                                                // Upload raw file without metadata changes
-                                                context.contentResolver.openInputStream(currentUri!!)
-                                                    ?.use { it.readBytes() }
-                                                    ?: throw IllegalStateException("Unable to read file")
+                                            // Strip/rewrite metadata only if checkbox is checked. Both paths
+                                            // stage the file on disk off the main thread so it can be streamed.
+                                            payload = withContext(Dispatchers.IO) {
+                                                if (updateMetadataInFile) {
+                                                    plugin.rewriteFileMetadata(
+                                                        context = context,
+                                                        uri = currentUri!!,
+                                                        fileName = selectedFileName ?: "file",
+                                                        title = trimmedTitle,
+                                                        fields = pluginFields,
+                                                        coverImageUri = coverImageUri
+                                                    )
+                                                } else {
+                                                    copyUriToCacheFile(context, currentUri!!, selectedFileName ?: "file")
+                                                }
                                             }
 
                                             // Build metadata from plugin fields
@@ -471,7 +475,7 @@ fun UploadScreen(
                                                 title = trimmedTitle,
                                                 description = description.trim().ifBlank { null },
                                                 format = mimeType,
-                                                sizeInBytes = bytes.size.toLong(),
+                                                sizeInBytes = payload.length(),
                                                 storagePath = null,
                                                 lastModified = null,
                                                 createdAt = editingItem?.createdAt,
@@ -491,7 +495,7 @@ fun UploadScreen(
                                             // Step 2: PUT binary to presigned URL
                                             apiClient.uploadBinary(
                                                 uploadUrl = initResponse.uploadUrl,
-                                                bytes = bytes,
+                                                file = payload,
                                                 headersFromServer = initResponse.requiredHeaders
                                             )
 
@@ -552,9 +556,12 @@ fun UploadScreen(
                                             }
                                         } catch (e: ResponseException) {
                                             uploadError = "Upload failed (${e.response.status.value}): ${e.message}"
+                                        } catch (e: CancellationException) {
+                                            throw e
                                         } catch (e: Exception) {
                                             uploadError = e.message ?: "Upload failed"
                                         } finally {
+                                            payload?.delete()
                                             isUploading = false
                                         }
                                     }

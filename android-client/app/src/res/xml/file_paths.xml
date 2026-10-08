@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Downloaded content lives under /sdcard/Hikari; only that tree is shareable. -->
+<paths>
+    <external-path name="hikari" path="Hikari/" />
+</paths>

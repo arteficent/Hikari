@@ -16,6 +16,9 @@ class SettingsRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "SettingsRepository"
+
+        /** Hosted sync-server offered on first run; the user can still point elsewhere. */
+        const val DEFAULT_SERVER_DOMAIN = "https://hikari-sync-server-982823740583.asia-south2.run.app"
     }
 
     private val serverDomainKey = stringPreferencesKey("server_domain")

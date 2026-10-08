@@ -1,5 +1,5 @@
-bin/
-obj/
+**/bin/
+**/obj/
 *.md
 *.json
 *.yaml
@@ -13,4 +13,6 @@ Dockerfile
 *.log
 node_modules/
 .env
+*.env
+*.env.example
 .idea/
