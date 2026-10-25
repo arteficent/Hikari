@@ -3,6 +3,7 @@ package com.example.android_client.content.plugins
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.example.android_client.content.copyUriToCacheFile
 import org.mp4parser.IsoFile
 import org.mp4parser.boxes.apple.AppleItemListBox
 import org.mp4parser.boxes.apple.AppleNameBox
@@ -38,36 +39,28 @@ object VideoMetadataRewriter {
         uri: Uri,
         fileName: String,
         fields: Map<String, String>
-    ): ByteArray {
+    ): File {
         val ext = fileName.substringAfterLast('.', "mp4").lowercase()
-        val tmp = File(context.cacheDir, "hikari_vid_rw_${System.currentTimeMillis()}.$ext")
+        val tmp = copyUriToCacheFile(context, uri, fileName)
 
-        try {
-            // Copy source to temp file
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                tmp.outputStream().use { output -> input.copyTo(output) }
-            } ?: return fallback(context, uri)
+        // Non-MP4 containers are uploaded as a clean copy.
+        if (ext !in MP4_FAMILY) return tmp
 
-            if (ext !in MP4_FAMILY) {
-                // Non-MP4 family: return clean byte-copy
-                return tmp.readBytes()
-            }
-
-            return rewriteMp4(tmp, fields)
+        return try {
+            rewriteMp4(tmp, fields)
         } catch (e: Exception) {
-            Log.w(TAG, "Video metadata rewrite failed for $fileName, uploading raw", e)
-            return fallback(context, uri)
-        } finally {
-            tmp.delete()
+            Log.w(TAG, "Video metadata rewrite failed for $fileName, uploading original", e)
+            tmp
         }
     }
 
     /**
      * Opens an ISO base media file (MP4/MOV), removes the existing ilst (iTunes metadata)
-     * box, creates a fresh one with user-provided fields, and writes out the result.
+     * box, and writes the result to a new file. Returns that file (deleting [file]), or
+     * [file] itself when the rewrite fails.
      */
-    private fun rewriteMp4(file: File, fields: Map<String, String>): ByteArray {
-        val out = File(file.parentFile, "hikari_vid_out_${System.currentTimeMillis()}.mp4")
+    private fun rewriteMp4(file: File, fields: Map<String, String>): File {
+        val out = File.createTempFile("hikari_vid_out_", "." + file.extension, file.parentFile)
 
         try {
             val isoFile = IsoFile(file.absolutePath)
@@ -83,12 +76,12 @@ object VideoMetadataRewriter {
             isoFile.close()
 
             Log.d(TAG, "MP4 metadata stripped for ${file.name}")
-            return out.readBytes()
+            file.delete()
+            return out
         } catch (e: Exception) {
             Log.w(TAG, "mp4parser rewrite failed, returning stripped copy", e)
-            return file.readBytes()
-        } finally {
             out.delete()
+            return file
         }
     }
 
@@ -110,9 +103,5 @@ object VideoMetadataRewriter {
                 removeIlst(box)
             }
         }
-    }
-
-    private fun fallback(context: Context, uri: Uri): ByteArray {
-        return context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
     }
 }

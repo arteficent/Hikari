@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import androidx.exifinterface.media.ExifInterface
@@ -225,6 +227,11 @@ class ImagePlugin : ContentPlugin {
         "cameraMake" to "Camera Make"
     )
 
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("creator", "Author Name"),
+        metadataSortOption("collection", "Collection")
+    )
+
     override val uploadMimeFilter = "image/*"
 
     @Composable
@@ -253,7 +260,7 @@ class ImagePlugin : ContentPlugin {
         return "application/octet-stream" // auto-detected from file
     }
 
-    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): ByteArray {
+    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): File {
         return FileMetadataStripper.stripImage(context, uri, fileName, buildMap { putAll(fields); put("title", title) })
     }
 

@@ -68,6 +68,9 @@ public interface IContentPlugin
     /// </summary>
     IReadOnlyDictionary<string, string> FilterableFields { get; }
 
+    /// <summary>Fields the list can be sorted by. The first entry is the default.</summary>
+    IReadOnlyList<ContentSortOption> SortOptions { get; }
+
     /// <summary>Secondary text under the title in the item list.</summary>
     string SecondaryLine(ContentItem item);
 

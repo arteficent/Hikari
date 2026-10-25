@@ -1,6 +1,8 @@
 package com.example.android_client.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -176,7 +178,10 @@ fun ContentPickerScreen(
 
         // ── Theme picker ──
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             HikariTheme.entries.forEach { theme ->
@@ -184,7 +189,6 @@ fun ContentPickerScreen(
                 if (isActive) {
                     Button(
                         onClick = {},
-                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -195,7 +199,6 @@ fun ContentPickerScreen(
                 } else {
                     OutlinedButton(
                         onClick = { onThemeChanged(theme) },
-                        modifier = Modifier.weight(1f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Text(theme.displayName, style = MaterialTheme.typography.labelMedium)

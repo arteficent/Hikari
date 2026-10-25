@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CloudDone
@@ -75,7 +76,8 @@ fun ContentItemCard(
     syncBusy: Boolean = false,
     onSyncToggle: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onOpen: (() -> Unit)? = null
 ) {
     var showDetails by remember { mutableStateOf(false) }
 
@@ -184,6 +186,16 @@ fun ContentItemCard(
                                     imageVector = cloudIcon,
                                     contentDescription = cloudDescription,
                                     tint = if (syncBusy) cloudTint.copy(alpha = 0.45f) else cloudTint
+                                )
+                            }
+                        }
+
+                        if (onOpen != null) {
+                            IconButton(onClick = onOpen, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = "Open",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }

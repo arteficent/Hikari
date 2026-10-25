@@ -63,8 +63,8 @@ public sealed class ContentItemViewModel : ObservableBase
     public string Glyph => _plugin.Glyph;
 
     /// <summary>
-    /// Marked for sync. Writing this persists immediately — including when it is
-    /// turned <i>off</i>, which is what lets a later Sync remove the file.
+    /// Selected for a batch action. Selection is intent only: the sync index — and so
+    /// <see cref="IsLocal"/> — is written by the sync service once a file is on disk.
     /// </summary>
     public bool IsMarked
     {
@@ -74,9 +74,13 @@ public sealed class ContentItemViewModel : ObservableBase
             if (!Set(ref _isMarked, value)) return;
 
             _syncPreferences.SetSyncEnabled(Id, value);
-            if (value) _syncPreferences.SetSyncEntry(Id, _plugin.RelativePathFor(Item));
+            RaiseSyncState();
+            MarkedChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    /// <summary>Raised when the tick box changes so the page can refresh its counters.</summary>
+    public event EventHandler? MarkedChanged;
 
     /// <summary>Whether the binary is currently on disk.</summary>
     public bool IsLocal
@@ -85,14 +89,25 @@ public sealed class ContentItemViewModel : ObservableBase
         set
         {
             if (!Set(ref _isLocal, value)) return;
-            Raise(nameof(SyncGlyph));
-            Raise(nameof(SyncTooltip));
+            RaiseSyncState();
         }
     }
 
-    public string SyncGlyph => IsLocal ? "\uE753" : "\uE896";
+    /// <summary>Ticked for download but not on disk yet, so selection is never mistaken for a completed sync.</summary>
+    public bool IsPending => IsMarked && !IsLocal;
 
-    public string SyncTooltip => IsLocal ? "Downloaded — click to remove from this PC" : "Not downloaded — click to download now";
+    public string SyncGlyph => IsLocal ? "\uE753" : IsPending ? "\uE823" : "\uE896";
+
+    public string SyncTooltip => IsLocal ? "Downloaded — click to remove from this PC"
+        : IsPending ? "Selected, not downloaded yet — click to download now"
+        : "Not downloaded — click to download now";
+
+    private void RaiseSyncState()
+    {
+        Raise(nameof(IsPending));
+        Raise(nameof(SyncGlyph));
+        Raise(nameof(SyncTooltip));
+    }
 
     public ImageSource? Cover
     {
@@ -109,6 +124,7 @@ public sealed class ContentItemViewModel : ObservableBase
         {
             _isMarked = marked;
             Raise(nameof(IsMarked));
+            RaiseSyncState();
         }
 
         IsLocal = _syncPreferences.LocalPathFor(Id) is not null;
@@ -128,7 +144,8 @@ public sealed class ContentItemViewModel : ObservableBase
             var bytes = await Task.Run(() => _plugin.ExtractCoverArt(libraryRoot, Item));
             if (bytes is null || bytes.Length == 0) return;
 
-            Cover = await ImageTools.FromBytesAsync(bytes);
+            // Rows render covers at 64 DIP; 160 px stays crisp up to 250% scaling.
+            Cover = await ImageTools.FromBytesAsync(bytes, decodeWidth: 160);
         }
         catch (Exception ex)
         {
@@ -206,18 +223,24 @@ public sealed class ContentItemViewModel : ObservableBase
 
 public static class ImageTools
 {
-    /// <summary>Decodes raw image bytes into a XAML-ready bitmap.</summary>
-    public static async Task<ImageSource> FromBytesAsync(byte[] bytes)
+    /// <summary>
+    /// Decodes raw image bytes into a XAML-ready bitmap, downscaled to
+    /// <paramref name="decodeWidth"/> so a list of covers doesn't hold full-size artwork.
+    /// </summary>
+    public static async Task<ImageSource> FromBytesAsync(byte[] bytes, int decodeWidth = 0)
     {
         var stream = new InMemoryRandomAccessStream();
-        var writer = new DataWriter(stream);
-        writer.WriteBytes(bytes);
-        await writer.StoreAsync();
-        await writer.FlushAsync();
-        writer.DetachStream();
+        using (var writer = new DataWriter(stream))
+        {
+            writer.WriteBytes(bytes);
+            await writer.StoreAsync();
+            await writer.FlushAsync();
+            writer.DetachStream();
+        }
         stream.Seek(0);
 
         var bitmap = new BitmapImage();
+        if (decodeWidth > 0) bitmap.DecodePixelWidth = decodeWidth;
         await bitmap.SetSourceAsync(stream);
         return bitmap;
     }

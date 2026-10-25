@@ -77,6 +77,10 @@ public sealed class BookPlugin : ContentPluginBase
         ["isbn"] = "ISBN",
     };
 
+    public override IReadOnlyList<ContentSortOption> SortOptions { get; } = ContentSortOption.BaseWith(
+        ContentSortOption.Metadata("author", "Author Name"),
+        ContentSortOption.Metadata("series", "Series"));
+
     public override string SecondaryLine(ContentItem item) =>
         JoinNonBlank(item.Meta("author"), item.Meta("series"), item.Meta("genre"));
 

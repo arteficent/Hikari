@@ -13,6 +13,21 @@ import java.io.IOException
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
+/** Outcome of [ContentSyncService.downloadItems]. */
+data class DownloadResult(val downloaded: Int, val skipped: Int, val failed: Int) {
+    fun describe(): String {
+        if (downloaded == 0 && failed == 0) return if (skipped > 0) "Already downloaded." else "Nothing to download."
+        return buildList {
+            if (downloaded > 0) add("$downloaded downloaded")
+            if (skipped > 0) add("$skipped already on this device")
+            if (failed > 0) add("$failed failed")
+        }.joinToString(", ", postfix = ".")
+    }
+}
+
+/** Outcome of [ContentSyncService.refreshLocalState]. */
+data class LocalStateRefresh(val dropped: Int, val found: Int)
+
 /**
  * Generic sync service that works with any ContentPlugin.
  * Delegates storage/naming to the plugin.
@@ -129,32 +144,37 @@ class ContentSyncService(
     suspend fun downloadItems(
         selected: List<ContentItem>,
         onProgress: (completed: Int, total: Int) -> Unit = { _, _ -> }
-    ) = withContext(Dispatchers.IO) {
+    ): DownloadResult = withContext(Dispatchers.IO) {
         Log.d(TAG, "downloadItems() called with ${selected.size} selected items")
         val localItems = plugin.getLocalItems(context).toSet()
         val syncIndex = syncPreferencesRepository.syncIndex.first()
-        val failed = mutableListOf<String>()
+        var downloadedCount = 0
+        var skipped = 0
+        var failed = 0
 
         onProgress(0, selected.size)
         for ((index, item) in selected.withIndex()) {
             val recorded = syncIndex[item.id]
-            val alreadyLocal = recorded != null && localItems.contains(recorded)
-            if (alreadyLocal) {
+            // Also accept a file already at the item's expected path whose index entry was lost.
+            val existing = recorded?.takeIf { localItems.contains(it) }
+                ?: plugin.displayName(item).takeIf { localItems.contains(it) }
+            if (existing != null) {
                 Log.d(TAG, "Skipping ${item.title} — already downloaded")
+                if (existing != recorded) syncPreferencesRepository.setSyncEntry(item.id, existing)
+                skipped++
             } else {
                 val downloaded = downloadItemById(item.id)
                 if (downloaded == null) {
-                    failed += item.title
+                    failed++
                 } else {
                     syncPreferencesRepository.setSyncEntry(item.id, plugin.displayName(downloaded))
+                    downloadedCount++
                 }
             }
             onProgress(index + 1, selected.size)
         }
 
-        if (failed.isNotEmpty()) {
-            throw IOException("could not download ${failed.size} item(s): ${failed.joinToString()}")
-        }
+        DownloadResult(downloadedCount, skipped, failed)
     }
 
     /**
@@ -162,10 +182,9 @@ class ContentSyncService(
      *
      * Files can disappear behind the app's back (file manager, external SD card),
      * which would otherwise leave the UI claiming a payload the device no longer has.
-     *
-     * @return the number of stale index entries dropped.
+     * Conversely, [known] items whose file is already in the library are recorded.
      */
-    suspend fun refreshLocalState(): Int = withContext(Dispatchers.IO) {
+    suspend fun refreshLocalState(known: List<ContentItem>): LocalStateRefresh = withContext(Dispatchers.IO) {
         val localItems = plugin.getLocalItems(context).toSet()
         val syncIndex = syncPreferencesRepository.syncIndex.first()
         var dropped = 0
@@ -177,7 +196,16 @@ class ContentSyncService(
                 dropped++
             }
         }
-        dropped
+        var found = 0
+        for (item in known) {
+            if (syncIndex.containsKey(item.id)) continue
+            val expected = plugin.displayName(item)
+            if (localItems.contains(expected)) {
+                syncPreferencesRepository.setSyncEntry(item.id, expected)
+                found++
+            }
+        }
+        LocalStateRefresh(dropped, found)
     }
 
     /**

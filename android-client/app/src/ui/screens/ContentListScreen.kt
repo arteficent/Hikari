@@ -1,12 +1,15 @@
 package com.example.android_client.ui.screens
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,11 +39,13 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.example.android_client.R
 import com.example.android_client.core.storage.SyncPreferencesRepository
 import com.example.android_client.core.network.ApiClient
@@ -71,7 +78,10 @@ import com.example.android_client.core.network.ContentItem
 import com.example.android_client.content.ContentPlugin
 import com.example.android_client.core.sync.ContentSyncService
 import com.example.android_client.ui.theme.PaperSurface
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Items pulled per server request while scrolling. Never surfaced to the user. */
 private const val PAGE_SIZE = 25
@@ -79,11 +89,42 @@ private const val PAGE_SIZE = 25
 /** Distance from the end of the list, in items, at which the next page is requested. */
 private const val PREFETCH_THRESHOLD = 5
 
-//Interesting file size
+private const val APK_MIME = "application/vnd.android.package-archive"
+
+/**
+ * Opens a downloaded item in whichever app handles its type. Only types the plugin
+ * itself deals in are handed out, so server metadata can't trick the device into
+ * launching an installer or other executable content.
+ */
+private fun openLocalFile(context: Context, plugin: ContentPlugin, item: ContentItem) {
+    val file = plugin.getLocalFile(context, item)
+    if (file == null) {
+        Toast.makeText(context, "'${item.title}' isn't on this device yet", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase())
+    val prefix = plugin.uploadMimeFilter.substringBefore('/')
+    val allowed = mime != null && mime != APK_MIME &&
+        (mime in plugin.supportedMimeTypes || prefix == "*" || mime.startsWith("$prefix/"))
+    if (!allowed) {
+        Toast.makeText(context, "Hikari won't open .${file.extension} files", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_VIEW)
+        .setDataAndType(uri, mime)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    try {
+        context.startActivity(Intent.createChooser(intent, item.title))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No app can open $mime", Toast.LENGTH_SHORT).show()
+    }
+}
+
 /**
  * Generic content list screen — works for any content plugin.
  * The plugin provides FilterPanel and ItemCard Composables,
- * while this screen handles pagination, sync toggle, and sync execution.
+ * while this screen handles infinite scrolling, selection, download and delete.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -109,7 +150,15 @@ fun ContentListScreen(
     var nextPage by remember { mutableIntStateOf(1) }
     var canNextPage by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
+    // Bumped by every reset so a page request that was in flight can't append stale rows.
+    var loadGeneration by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
+    var sortOption by remember(plugin) { mutableStateOf(plugin.sortOptions.first()) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    // Server-side filters: edited in the panel, sent with requests only once applied.
+    val pendingFilters = remember { mutableStateMapOf<String, String>() }
+    var appliedFilters by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var showServerFilters by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -183,18 +232,27 @@ fun ContentListScreen(
 
     // reset = true restarts from page 1; otherwise the next page is appended.
     fun loadPage(reset: Boolean) {
-        if (isLoadingMore && !reset) return
+        if (!reset && (isLoadingMore || !canNextPage)) return
+        // Claimed before launching: the coroutine is dispatched later, and a second trigger
+        // in the meantime would otherwise fetch the same page twice.
+        isLoadingMore = true
+        if (reset) {
+            loadGeneration++
+            isLoading = true
+            error = null
+        }
+        val generation = loadGeneration
+        val target = if (reset) 1 else nextPage
         scope.launch {
-            isLoadingMore = true
-            if (reset) isLoading = true
-            val target = if (reset) 1 else nextPage
             try {
                 val serverItems = apiClient.getContentItems(
                     serverDomain = serverDomain,
                     contentType = plugin.contentType,
                     page = target,
-                    pageSize = PAGE_SIZE
+                    pageSize = PAGE_SIZE,
+                    extraParams = appliedFilters
                 )
+                if (generation != loadGeneration) return@launch
                 allItems = if (reset) {
                     serverItems
                 } else {
@@ -205,19 +263,29 @@ fun ContentListScreen(
                 }
                 canNextPage = serverItems.size >= PAGE_SIZE
                 nextPage = target + 1
-                error = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                error = e.message
+                if (generation != loadGeneration) return@launch
+                if (reset) {
+                    error = e.message ?: "Could not load ${plugin.displayName}"
+                } else {
+                    // Keep what's already on screen; stop auto-paging until the user refreshes.
+                    canNextPage = false
+                    Toast.makeText(context, "Could not load more: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             } finally {
-                isLoading = false
-                isLoadingMore = false
+                if (generation == loadGeneration) {
+                    isLoading = false
+                    isLoadingMore = false
+                }
             }
         }
     }
 
-    // Apply regex filter client-side
-    val items = remember(allItems, regexFilter) {
-        if (regexFilter.isBlank()) {
+    // Apply regex filter and sort client-side, over whatever pages are loaded so far.
+    val items = remember(allItems, regexFilter, sortOption) {
+        val filtered = if (regexFilter.isBlank()) {
             allItems
         } else {
             val regex = try {
@@ -237,6 +305,7 @@ fun ContentListScreen(
                 regex.containsMatchIn(searchable)
             }
         }
+        filtered.sortedWith(sortOption.comparator)
     }
 
     LaunchedEffect(Unit) {
@@ -250,8 +319,10 @@ fun ContentListScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, canNextPage) {
-        if (shouldLoadMore && canNextPage && !isLoading) loadPage(reset = false)
+    // isLoadingMore is a key so a page that still leaves the end in view (tall screen,
+    // heavy filter) immediately requests the next one instead of waiting for a scroll.
+    LaunchedEffect(shouldLoadMore, canNextPage, isLoadingMore) {
+        if (shouldLoadMore && canNextPage && !isLoading && !isLoadingMore) loadPage(reset = false)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -277,14 +348,16 @@ fun ContentListScreen(
                     scope.launch {
                         isBusy = true
                         try {
-                            val dropped = contentSyncService.refreshLocalState()
-                            if (dropped > 0) {
-                                Toast.makeText(
-                                    context,
-                                    "$dropped item(s) no longer in storage",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            val (dropped, found) = contentSyncService.refreshLocalState(allItems)
+                            val parts = buildList {
+                                if (dropped > 0) add("$dropped item(s) no longer in storage")
+                                if (found > 0) add("$found item(s) found in storage")
                             }
+                            if (parts.isNotEmpty()) {
+                                Toast.makeText(context, parts.joinToString(", "), Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Toast.makeText(context, "Refresh failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {
@@ -319,6 +392,55 @@ fun ContentListScreen(
                     contentDescription = "Filter help",
                     tint = MaterialTheme.colorScheme.primary
                 )
+            }
+            IconButton(onClick = { showServerFilters = !showServerFilters }) {
+                Icon(
+                    Icons.Filled.FilterList,
+                    contentDescription = "Server-side filters",
+                    tint = if (showServerFilters || appliedFilters.isNotEmpty()) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // ── Server-side filter fields, declared by the plugin ──
+        if (showServerFilters) {
+            PaperSurface(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    plugin.FilterPanel(pendingFilters)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = {
+                            pendingFilters.clear()
+                            appliedFilters = emptyMap()
+                            loadPage(reset = true)
+                        }) { Text("Clear") }
+                        Button(onClick = {
+                            appliedFilters = pendingFilters.filterValues { it.isNotBlank() }
+                            loadPage(reset = true)
+                        }) { Text("Apply") }
+                    }
+                }
+            }
+        }
+
+        // ── Sort selector ──
+        Box {
+            TextButton(onClick = { showSortMenu = true }) {
+                Text("Sort: ${sortOption.label}")
+            }
+            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                plugin.sortOptions.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = {
+                            sortOption = option
+                            showSortMenu = false
+                        }
+                    )
+                }
             }
         }
 
@@ -368,6 +490,7 @@ fun ContentListScreen(
         // The tick boxes drive both batch actions: whatever is selected is what
         // "Download" fetches and what "Delete" removes from the server.
         val selectedItems = items.filter { syncIds.contains(it.id) }
+        val allSelected = items.isNotEmpty() && selectedItems.size == items.size
         val downloadLabel = syncProgress?.let { (done, total) ->
             if (total == 0) "Downloading…" else "Downloading $done/$total"
         } ?: "Download (${selectedItems.size})"
@@ -379,6 +502,17 @@ fun ContentListScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Selects/deselects everything currently visible (post-filter/sort), not just one page.
+            TextButton(
+                onClick = {
+                    val ids = items.map { it.id }
+                    scope.launch { syncPreferencesRepository.setSyncEnabled(ids, !allSelected) }
+                },
+                enabled = items.isNotEmpty() && !isBusy
+            ) {
+                Text(if (allSelected) "Deselect All" else "Select All")
+            }
+
             // Downloads only what is missing locally — an item already on disk is left as is.
             Button(
                 onClick = {
@@ -391,17 +525,23 @@ fun ContentListScreen(
                         isBusy = true
                         syncProgress = 0 to toDownload.size
                         try {
-                            contentSyncService.downloadItems(toDownload) { done, total ->
+                            val result = contentSyncService.downloadItems(toDownload) { done, total ->
                                 syncProgress = done to total
                             }
                             Toast.makeText(
                                 context,
-                                "Downloaded ${toDownload.size} ${plugin.displayName} item(s)",
-                                Toast.LENGTH_SHORT
+                                "${plugin.displayName}: ${result.describe()}",
+                                if (result.failed > 0) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
                             ).show()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {
+                            // The batch has been attempted; ticks shouldn't linger for the rest of the session.
+                            withContext(NonCancellable) {
+                                syncPreferencesRepository.setSyncEnabled(toDownload.map { it.id }, false)
+                            }
                             syncProgress = null
                             isBusy = false
                         }
@@ -505,6 +645,9 @@ fun ContentListScreen(
                         } else null,
                         onEdit = if (canManage) {
                             { onEdit(item) }
+                        } else null,
+                        onOpen = if (isSyncedLocally) {
+                            { openLocalFile(context, plugin, item) }
                         } else null
                     )
                 }

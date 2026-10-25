@@ -56,21 +56,28 @@ public sealed class ApiClient : IDisposable
     {
         _authRepository = authRepository;
 
-        var handler = new HttpClientHandler
+        var handler = new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
+            ConnectTimeout = ConnectTimeout,
+            // Recycle pooled connections so DNS changes (server moves, failover) are picked up.
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10),
         };
 #if DEBUG
         // Debug builds only — lets developers point the client at a local server
         // using a self-signed certificate, matching the android client's
         // INSECURE_TLS debug flag. Never enabled in Release.
-        handler.ServerCertificateCustomValidationCallback =
-            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
 #endif
 
+        // No client-wide timeout: multi-gigabyte transfers legitimately run for hours.
+        // Buffered API calls get RequestTimeout per request in SendAsync instead.
         _client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("HikariWindowsClient/1.0");
     }
+
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(90);
 
     /// <summary>
     /// Build an absolute URL. An explicit scheme typed by the user wins; otherwise
@@ -156,10 +163,12 @@ public sealed class ApiClient : IDisposable
                 _authRepository.SaveTokens(response.Token, response.RefreshToken);
                 return response.Token;
             }
-            catch
+            catch (ApiStatusException ex) when ((int)ex.StatusCode is >= 400 and < 500)
             {
-                // Refresh failed (rejected, network error, anything). Treat the session
-                // as gone so the shell routes back to the login screen.
+                // The server rejected the refresh token, so the session is truly gone.
+                // Network and 5xx failures propagate instead: a flaky connection must
+                // not log the user out.
+                AppLog.Warn($"Refresh rejected ({(int)ex.StatusCode}); clearing local auth.");
                 _authRepository.ClearTokens();
                 return null;
             }
@@ -190,7 +199,22 @@ public sealed class ApiClient : IDisposable
             request.Content = content;
         }
 
-        return await _client.SendAsync(request, completion, ct).ConfigureAwait(false);
+        if (completion == HttpCompletionOption.ResponseHeadersRead)
+        {
+            return await _client.SendAsync(request, completion, ct).ConfigureAwait(false);
+        }
+
+        // Fully buffered calls are small JSON exchanges; a stalled server must not hang the UI.
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(RequestTimeout);
+        try
+        {
+            return await _client.SendAsync(request, completion, timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The server did not respond within {RequestTimeout.TotalSeconds:0} seconds.");
+        }
     }
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, string what)
@@ -280,6 +304,20 @@ public sealed class ApiClient : IDisposable
     }
 
     // ── Content API (plugin-based) ──────────────────────────────
+
+    /// <summary>
+    /// Unauthenticated reachability probe. Any HTTP answer — 401 included — proves the
+    /// server is there; network and TLS failures surface as exceptions.
+    /// </summary>
+    public async Task<HttpStatusCode> PingAsync(string serverDomain, CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(20));
+        using var response = await SendAsync(
+            HttpMethod.Get, GetUrl(serverDomain, "/content/plugins"), null, null,
+            HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+        return response.StatusCode;
+    }
 
     /// <summary>List the plugins the server has registered.</summary>
     public Task<List<PluginInfo>> GetPluginsAsync(string serverDomain, CancellationToken ct = default) =>
@@ -410,7 +448,9 @@ public sealed class ApiClient : IDisposable
 
         using (content)
         {
-            using var response = await SendAsync(HttpMethod.Put, uploadUrl, null, content, ct: ct).ConfigureAwait(false);
+            // Headers-read keeps multi-gigabyte PUTs clear of the buffered-request timeout.
+            using var response = await SendAsync(
+                HttpMethod.Put, uploadUrl, null, content, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             await EnsureSuccessAsync(response, "Direct upload").ConfigureAwait(false);
         }
     }

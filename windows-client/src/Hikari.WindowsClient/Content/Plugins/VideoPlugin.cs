@@ -80,6 +80,10 @@ public sealed class VideoPlugin : ContentPluginBase
         ["episode"] = "Episode",
     };
 
+    public override IReadOnlyList<ContentSortOption> SortOptions { get; } = ContentSortOption.BaseWith(
+        ContentSortOption.Metadata("director", "Author Name"),
+        ContentSortOption.Metadata("series", "Series"));
+
     public override string SecondaryLine(ContentItem item) =>
         JoinNonBlank(item.Meta("series"), item.Meta("season"), item.Meta("episode"), item.Meta("genre"));
 

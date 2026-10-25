@@ -42,6 +42,21 @@ public sealed class SyncPreferencesRepository : JsonPreferenceStore<SyncPreferen
         });
     }
 
+    /// <summary>Bulk form of <see cref="SetSyncEnabled(string, bool)"/> that persists once.</summary>
+    public void SetSyncEnabled(IEnumerable<string> ids, bool enabled)
+    {
+        var list = ids.ToList();
+        AppLog.Debug($"SyncPreferences.SetSyncEnabled(count={list.Count}, enabled={enabled})");
+        Mutate(s =>
+        {
+            foreach (var id in list)
+            {
+                if (enabled) s.SyncIds.Add(id);
+                else s.SyncIds.Remove(id);
+            }
+        });
+    }
+
     public void SetSyncEntry(string id, string relativePath)
     {
         AppLog.Debug($"SyncPreferences.SetSyncEntry(id={id}, path={relativePath})");

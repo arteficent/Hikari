@@ -22,16 +22,30 @@ public sealed record SyncResult(int Downloaded, int Removed, int Failed)
     }
 }
 
+public sealed record DownloadResult(int Downloaded, int Skipped, int Failed)
+{
+    public string Describe()
+    {
+        if (Downloaded == 0 && Failed == 0) return Skipped > 0 ? "Already downloaded." : "Nothing to download.";
+
+        var parts = new List<string>();
+        if (Downloaded > 0) parts.Add($"{Downloaded} downloaded");
+        if (Skipped > 0) parts.Add($"{Skipped} already on this PC");
+        if (Failed > 0) parts.Add($"{Failed} failed");
+        return string.Join(", ", parts) + ".";
+    }
+}
+
+public sealed record LocalStateRefresh(int Dropped, int Found);
+
 /// <summary>
 /// Generic sync service that works with any <see cref="IContentPlugin"/>; storage
 /// and naming are delegated to the plugin. Mirrors
 /// <c>android-client/app/src/core/sync/ContentSyncService.kt</c>.
 ///
-/// <para>Sync is a <b>reconciliation</b>, not an append: whatever the user has
-/// marked is downloaded, and anything previously synced that is no longer marked
-/// is deleted from local storage. That is why the Sync button stays enabled even
-/// when nothing is marked — unmarking the last item and pressing Sync must still
-/// clear it off disk.</para>
+/// <para><see cref="SyncAsync"/> is a <b>reconciliation</b>: marked items are
+/// downloaded and anything previously synced that is no longer marked is deleted.
+/// The list page uses the non-destructive <see cref="DownloadItemsAsync"/> instead.</para>
 /// </summary>
 public sealed class ContentSyncService
 {
@@ -164,6 +178,104 @@ public sealed class ContentSyncService
         AppLog.Debug($"{_tag} sync completed. New last sync time: {nowIso}");
 
         return new SyncResult(downloaded, removed, failed);
+    }
+
+    /// <summary>
+    /// Download the selected items that are not already on disk. Unlike
+    /// <see cref="SyncAsync"/> this never deletes anything, and an item already
+    /// present locally is left untouched rather than re-fetched or replaced.
+    /// </summary>
+    public async Task<DownloadResult> DownloadItemsAsync(
+        IReadOnlyList<ContentItem> selected,
+        IProgress<SyncProgress>? progress = null,
+        CancellationToken ct = default)
+    {
+        AppLog.Debug($"{_tag} downloadItems() called with {selected.Count} selected items");
+
+        Directory.CreateDirectory(LibraryRoot);
+
+        var localItems = _plugin.GetLocalItems(LibraryRoot).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        int downloaded = 0, skipped = 0, failed = 0, processed = 0;
+
+        foreach (var item in selected)
+        {
+            ct.ThrowIfCancellationRequested();
+            processed++;
+
+            var existing = ExistingLocalPath(item, localItems);
+            if (existing is not null)
+            {
+                AppLog.Debug($"{_tag} skipping {item.Title} — already at {existing}");
+                _syncPreferences.SetSyncEntry(item.Id, existing);
+                skipped++;
+                progress?.Report(new SyncProgress($"Already downloaded “{item.Title}”", processed, selected.Count));
+                continue;
+            }
+
+            progress?.Report(new SyncProgress($"Downloading “{item.Title}”…", processed - 1, selected.Count));
+
+            var newPath = await DownloadItemByIdAsync(item.Id, ct).ConfigureAwait(false);
+            if (newPath is null)
+            {
+                failed++;
+            }
+            else
+            {
+                _syncPreferences.SetSyncEntry(item.Id, newPath);
+                localItems.Add(newPath);
+                downloaded++;
+            }
+
+            progress?.Report(new SyncProgress($"Processed “{item.Title}”", processed, selected.Count));
+        }
+
+        return new DownloadResult(downloaded, skipped, failed);
+    }
+
+    /// <summary>
+    /// Reconcile the sync index with what is actually on disk: entries whose file
+    /// has vanished (deleted in Explorer, drive unplugged) are dropped, and
+    /// <paramref name="known"/> items whose file is already in the library are recorded.
+    /// </summary>
+    public LocalStateRefresh RefreshLocalState(IEnumerable<ContentItem> known)
+    {
+        var localItems = _plugin.GetLocalItems(LibraryRoot).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var ownedPrefix = _plugin.LocalDirectory.TrimEnd('/') + "/";
+        var dropped = 0;
+
+        // The index is shared by every content type, so only touch entries this plugin owns.
+        foreach (var (id, path) in _syncPreferences.SyncIndex)
+        {
+            if (!path.StartsWith(ownedPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (localItems.Contains(path)) continue;
+
+            AppLog.Warn($"{_tag} refreshLocalState: dropping stale entry for {id} — \"{path}\" is not on disk");
+            _syncPreferences.RemoveSyncEntry(id);
+            dropped++;
+        }
+
+        var found = 0;
+        foreach (var item in known)
+        {
+            if (_syncPreferences.LocalPathFor(item.Id) is not null) continue;
+
+            var expected = _plugin.RelativePathFor(item);
+            if (!localItems.Contains(expected)) continue;
+
+            _syncPreferences.SetSyncEntry(item.Id, expected);
+            found++;
+        }
+
+        return new LocalStateRefresh(dropped, found);
+    }
+
+    private string? ExistingLocalPath(ContentItem item, HashSet<string> localItems)
+    {
+        var recorded = _syncPreferences.LocalPathFor(item.Id);
+        if (recorded is not null && localItems.Contains(recorded)) return recorded;
+
+        var expected = _plugin.RelativePathFor(item);
+        return localItems.Contains(expected) ? expected : null;
     }
 
     /// <summary>Download one item immediately and mark it for sync.</summary>

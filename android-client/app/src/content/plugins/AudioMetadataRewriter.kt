@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import com.example.android_client.content.copyUriToCacheFile
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.AndroidArtwork
@@ -33,18 +34,12 @@ object AudioMetadataRewriter {
      * @param fields         Map of metadata keys: title, artist, album, genre, composer,
      *                       trackNumber, releaseDate, etc.
      * @param coverImageUri  Optional URI of an image to embed as album art / cover
-     * @return ByteArray of the file with rewritten tags
+     * @return the rewritten file, a cache temp file the caller must delete
      */
-    fun rewrite(context: Context, uri: Uri, fileName: String, fields: Map<String, String>, coverImageUri: Uri? = null): ByteArray {
-        val ext = fileName.substringAfterLast('.', "mp3")
-        val tmp = File(context.cacheDir, "hikari_rewrite_${System.currentTimeMillis()}.$ext")
+    fun rewrite(context: Context, uri: Uri, fileName: String, fields: Map<String, String>, coverImageUri: Uri? = null): File {
+        val tmp = copyUriToCacheFile(context, uri, fileName)
 
         try {
-            // Copy source to temp file (JAudioTagger needs a File)
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                tmp.outputStream().use { output -> input.copyTo(output) }
-            } ?: return fallbackRead(context, uri)
-
             val audioFile = AudioFileIO.read(tmp)
 
             // Capture existing artwork BEFORE deleting tags, so we can restore it
@@ -109,17 +104,12 @@ object AudioMetadataRewriter {
 
             fresh.commit()
 
-            return tmp.readBytes()
+            return tmp
         } catch (e: Exception) {
-            Log.w(TAG, "JAudioTagger rewrite failed; uploading raw bytes", e)
-            return fallbackRead(context, uri)
-        } finally {
+            Log.w(TAG, "JAudioTagger rewrite failed; uploading the original file", e)
             tmp.delete()
+            return copyUriToCacheFile(context, uri, fileName)
         }
-    }
-
-    private fun fallbackRead(context: Context, uri: Uri): ByteArray {
-        return context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
     }
 
     private fun restoreArtwork(

@@ -114,6 +114,9 @@ Only the selected backend's client is constructed at startup — a `MongoDb` + `
 
 ### Environment variables
 
+[`sync-server.env.example`](sync-server.env.example) lists every variable below with guidance, in
+`--env-file` format — copy it to `sync-server.env` (git-ignored) and fill it in.
+
 | Variable | Maps to | Notes |
 |---|---|---|
 | `DATABASE_PROVIDER` | `Database.Provider` | `DynamoDb` (default) or `MongoDb` |
@@ -273,6 +276,50 @@ are set and stays a plain local volume otherwise.
 > locking and memory-mapping semantics that network shares don't reliably provide, and can corrupt
 > the database. `MONGO_SMB_SHARE_PATH` exists for operators who explicitly want it (e.g. a tested
 > SMB 3.x setup), but the safe default leaves Mongo on a local volume.
+
+---
+
+## Running on Android (Termux)
+
+When you don't want to pay for cloud compute, a phone can host the API. The image workflow
+publishes an ARM flavour for this — every tag with a `-termux` suffix (`latest-termux`,
+`1.2.3-termux`, …) for `linux/arm64` and `linux/arm/v7`. It is the same server with runtime
+tweaks for proot and low memory (W^X off, workstation GC, memory conservation).
+
+Stock Android can't run Docker without root, so the image is run with
+[udocker](https://github.com/indigo-dc/udocker), which executes OCI images in user space via proot:
+
+```bash
+# In Termux (install from F-Droid; the Play Store build is outdated)
+pkg update && pkg install python proot curl
+pip install udocker
+udocker install
+
+udocker pull arteficent/hikari-sync-server:latest-termux
+udocker create --name=hikari arteficent/hikari-sync-server:latest-termux
+
+# Fill in sync-server.env from sync-server.env.example, then:
+termux-wake-lock   # keep Android from suspending the server
+udocker run --env-file=sync-server.env hikari
+```
+
+proot shares the phone's network, so the API listens directly on port `8080` — point the clients
+at `http://<phone-lan-ip>:8080`. Keep these in mind:
+
+- **Storage and database live elsewhere.** The phone runs only the API; pair it with MongoDB Atlas
+  (free tier) or DynamoDB, and Cloudflare R2 / S3 for binaries. Presigned URLs send file bytes
+  straight to object storage, so the phone never carries the transfer load. A self-hosted MinIO
+  also works (`pkg install minio`) — set `OBJECT_STORAGE_PUBLIC_SERVICE_URL` to the phone's LAN IP.
+- **Ports ≥ 1024 only** without root; change `ASPNETCORE_URLS` if 8080 is taken.
+- **Android kills background apps.** Disable battery optimisation for Termux, and on Android 12+
+  disable the phantom-process killer, or the server will be stopped after a while.
+- **Rooted devices** can run the same image with Docker or Podman instead of udocker.
+
+Build it locally (cross-compiled, no QEMU needed):
+
+```bash
+docker buildx build --platform linux/arm64,linux/arm/v7 --target termux -t hikari-sync-server:termux sync-server
+```
 
 ---
 

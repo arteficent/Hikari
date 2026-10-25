@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_client.content.ContentPlugin
+import com.example.android_client.content.baseSortOptions
+import com.example.android_client.content.metadataSortOption
 import com.example.android_client.core.network.ContentItem
 import com.example.android_client.ui.theme.PaperSurface
 import java.io.File
@@ -232,6 +234,11 @@ class AudioPlugin : ContentPlugin {
         "composer" to "Composer"
     )
 
+    override val sortOptions = baseSortOptions + listOf(
+        metadataSortOption("album", "Album Name"),
+        metadataSortOption("artist", "Author Name")
+    )
+
     override val uploadMimeFilter = "audio/*"
 
     override val supportsCoverImage: Boolean get() = true
@@ -289,7 +296,7 @@ class AudioPlugin : ContentPlugin {
         return mimeForFormat(fields["audioFormat"] ?: "mp3")
     }
 
-    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): ByteArray {
+    override fun rewriteFileMetadata(context: Context, uri: Uri, fileName: String, title: String, fields: Map<String, String>, coverImageUri: Uri?): File {
         return AudioMetadataRewriter.rewrite(context, uri, fileName, buildMap { putAll(fields); put("title", title) }, coverImageUri)
     }
 

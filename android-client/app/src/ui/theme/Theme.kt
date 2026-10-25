@@ -12,10 +12,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // ════ Theme variants ══════════════════════════════════════
-enum class HikariTheme(val displayName: String) {
+enum class HikariTheme(val displayName: String, val alwaysDark: Boolean = false) {
     Wisteria("Wisteria"),
     GoldenLeaf("Golden Leaf"),
-    Sakura("Sakura");
+    Sakura("Sakura"),
+    Celestial("Celestial", alwaysDark = true);
 
     companion object {
         fun fromName(name: String): HikariTheme =
@@ -152,11 +153,34 @@ private val SakuraDarkScheme = darkColorScheme(
     outlineVariant = NightBorder,
 )
 
+// ──── Celestial (night sky / gold) — dark only ────────────
+private val CelestialScheme = darkColorScheme(
+    primary = CelestialGold,
+    onPrimary = SpaceBlack,
+    primaryContainer = SpaceBorder,
+    onPrimaryContainer = CometTail,
+    secondary = CometTail,
+    onSecondary = SpaceBlack,
+    secondaryContainer = SpaceBorder,
+    onSecondaryContainer = CometTail,
+    tertiary = StarBlue,
+    onTertiary = SpaceBlack,
+    background = SpaceBlack,
+    onBackground = SpaceText,
+    surface = SpaceSurface,
+    onSurface = SpaceText,
+    surfaceVariant = SpaceBorder,
+    onSurfaceVariant = SpaceTextSoft,
+    outline = CelestialGoldDim,
+    outlineVariant = SpaceBorder,
+)
+
 // ════ Resolve pair ════════════════════════════════════════
 private fun resolveScheme(theme: HikariTheme, dark: Boolean): ColorScheme = when (theme) {
     HikariTheme.Wisteria   -> if (dark) WisteriaDarkScheme  else WisteriaLightScheme
     HikariTheme.GoldenLeaf -> if (dark) GoldenLeafDark      else GoldenLeafLight
     HikariTheme.Sakura     -> if (dark) SakuraDarkScheme    else SakuraLightScheme
+    HikariTheme.Celestial  -> CelestialScheme
 }
 
 @Composable
@@ -165,14 +189,15 @@ fun AndroidclientTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = resolveScheme(hikariTheme, darkTheme)
+    val dark = darkTheme || hikariTheme.alwaysDark
+    val colorScheme = resolveScheme(hikariTheme, dark)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !dark
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !dark
         }
     }
 

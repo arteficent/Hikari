@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
+import com.example.android_client.content.copyUriToCacheFile
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.model.ZipParameters
 import net.lingala.zip4j.model.enums.CompressionLevel
@@ -58,51 +59,42 @@ object FileMetadataStripper {
 
     fun stripImage(
         context: Context, uri: Uri, fileName: String, fields: Map<String, String>
-    ): ByteArray {
-        val ext = fileName.substringAfterLast('.', "jpg").lowercase()
-        val tmp = File(context.cacheDir, "hikari_img_${System.currentTimeMillis()}.$ext")
+    ): File {
+        val tmp = copyUriToCacheFile(context, uri, fileName)
 
         try {
-            context.contentResolver.openInputStream(uri)?.use { i ->
-                tmp.outputStream().use { o -> i.copyTo(o) }
-            } ?: return fallback(context, uri)
+            val exif = ExifInterface(tmp.absolutePath)
 
-            try {
-                val exif = ExifInterface(tmp.absolutePath)
+            // Strip all existing EXIF/GPS/IPTC tags
+            for (tag in EXIF_TAGS) exif.setAttribute(tag, null)
 
-                // Strip all existing EXIF/GPS/IPTC tags
-                for (tag in EXIF_TAGS) exif.setAttribute(tag, null)
-
-                // Write back user-provided fields
-                fields["title"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION, it)
-                }
-                fields["creator"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_ARTIST, it)
-                }
-                fields["copyright"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_COPYRIGHT, it)
-                }
-                fields["cameraMake"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_MAKE, it)
-                }
-                fields["cameraModel"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_MODEL, it)
-                }
-                fields["dateTaken"]?.takeIf { it.isNotBlank() }?.let {
-                    exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, it)
-                }
-
-                exif.saveAttributes()
-                Log.d(TAG, "EXIF stripped and rewritten for $fileName")
-            } catch (e: Exception) {
-                Log.w(TAG, "EXIF strip failed for $fileName, uploading as-is", e)
+            // Write back user-provided fields
+            fields["title"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION, it)
+            }
+            fields["creator"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_ARTIST, it)
+            }
+            fields["copyright"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_COPYRIGHT, it)
+            }
+            fields["cameraMake"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_MAKE, it)
+            }
+            fields["cameraModel"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_MODEL, it)
+            }
+            fields["dateTaken"]?.takeIf { it.isNotBlank() }?.let {
+                exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, it)
             }
 
-            return tmp.readBytes()
-        } finally {
-            tmp.delete()
+            exif.saveAttributes()
+            Log.d(TAG, "EXIF stripped and rewritten for $fileName")
+        } catch (e: Exception) {
+            Log.w(TAG, "EXIF strip failed for $fileName, uploading as-is", e)
         }
+
+        return tmp
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -111,7 +103,7 @@ object FileMetadataStripper {
 
     fun stripVideo(
         context: Context, uri: Uri, fileName: String, fields: Map<String, String>
-    ): ByteArray {
+    ): File {
         return VideoMetadataRewriter.rewrite(context, uri, fileName, fields)
     }
 
@@ -121,15 +113,11 @@ object FileMetadataStripper {
 
     fun stripEpub(
         context: Context, uri: Uri, fileName: String, fields: Map<String, String>
-    ): ByteArray {
-        val tmp = File(context.cacheDir, "hikari_epub_in_${System.currentTimeMillis()}.epub")
-        val out = File(context.cacheDir, "hikari_epub_out_${System.currentTimeMillis()}.epub")
+    ): File {
+        val tmp = copyUriToCacheFile(context, uri, fileName)
+        val out = File.createTempFile("hikari_epub_out_", ".epub", context.cacheDir)
 
         try {
-            context.contentResolver.openInputStream(uri)?.use { i ->
-                tmp.outputStream().use { o -> i.copyTo(o) }
-            } ?: return fallback(context, uri)
-
             ZipInputStream(tmp.inputStream()).use { zis ->
                 ZipOutputStream(FileOutputStream(out)).use { zos ->
                     var entry: ZipEntry? = zis.nextEntry
@@ -151,13 +139,12 @@ object FileMetadataStripper {
             }
 
             Log.d(TAG, "EPUB metadata rewritten for $fileName")
-            return out.readBytes()
+            tmp.delete()
+            return out
         } catch (e: Exception) {
             Log.w(TAG, "EPUB strip failed for $fileName, uploading as-is", e)
-            return fallback(context, uri)
-        } finally {
-            tmp.delete()
             out.delete()
+            return tmp
         }
     }
 
@@ -209,14 +196,11 @@ object FileMetadataStripper {
 
     fun stripCbz(
         context: Context, uri: Uri, fileName: String, fields: Map<String, String>
-    ): ByteArray {
-        val tmp = File(context.cacheDir, "hikari_cbz_${System.currentTimeMillis()}.cbz")
+    ): File {
+        val tmp = copyUriToCacheFile(context, uri, fileName)
+        val comicInfoFile = File.createTempFile("hikari_comicinfo_", ".xml", context.cacheDir)
 
         try {
-            context.contentResolver.openInputStream(uri)?.use { i ->
-                tmp.outputStream().use { o -> i.copyTo(o) }
-            } ?: return fallback(context, uri)
-
             val zipFile = ZipFile(tmp)
 
             // Remove existing ComicInfo.xml if present
@@ -229,7 +213,6 @@ object FileMetadataStripper {
 
             // Build fresh ComicInfo.xml from user fields
             val comicInfo = buildComicInfoXml(fields)
-            val comicInfoFile = File(context.cacheDir, "ComicInfo.xml")
             comicInfoFile.writeText(comicInfo, Charsets.UTF_8)
 
             val params = ZipParameters().apply {
@@ -240,14 +223,14 @@ object FileMetadataStripper {
             zipFile.addFile(comicInfoFile, params)
 
             Log.d(TAG, "CBZ ComicInfo.xml rewritten for $fileName")
-            val result = tmp.readBytes()
-            comicInfoFile.delete()
-            return result
+            return tmp
         } catch (e: Exception) {
+            // zip4j edits in place, so a failure part-way may leave tmp inconsistent.
             Log.w(TAG, "CBZ strip failed for $fileName, uploading as-is", e)
-            return fallback(context, uri)
-        } finally {
             tmp.delete()
+            return copyUriToCacheFile(context, uri, fileName)
+        } finally {
+            comicInfoFile.delete()
         }
     }
 
@@ -297,15 +280,11 @@ object FileMetadataStripper {
     //  Generic pass-through (PDF, CBR, other binary formats)
     // ══════════════════════════════════════════════════════════════
 
-    fun stripGeneric(context: Context, uri: Uri): ByteArray {
-        return fallback(context, uri)
+    fun stripGeneric(context: Context, uri: Uri, fileName: String): File {
+        return copyUriToCacheFile(context, uri, fileName)
     }
 
     // ── Helpers ──────────────────────────────────────────────────
-
-    private fun fallback(context: Context, uri: Uri): ByteArray {
-        return context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-    }
 
     private fun escapeXml(s: String): String {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
