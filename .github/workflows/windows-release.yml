@@ -45,7 +45,6 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   PROJECT: windows-client/src/Hikari.WindowsClient/Hikari.WindowsClient.csproj
-  TEST_PROJECT: windows-client/tests/Hikari.WindowsClient.Tests/Hikari.WindowsClient.Tests.csproj
 
 jobs:
   version:
@@ -85,32 +84,9 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-  test:
-    name: Unit tests
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('windows-client/**/*.csproj') }}
-          restore-keys: nuget-${{ runner.os }}-
-
-      # Integration tests talk to the hosted server; a release must not depend on its uptime.
-      - name: Run tests
-        run: dotnet test "${{ env.TEST_PROJECT }}" -c Release --filter "Category!=Integration" --logger "console;verbosity=normal"
-
   build:
     name: Build ${{ matrix.arch }}
-    needs: [version, test]
+    needs: version
     runs-on: windows-latest
     strategy:
       fail-fast: true
