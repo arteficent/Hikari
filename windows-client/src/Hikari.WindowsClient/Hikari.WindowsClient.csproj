@@ -21,6 +21,8 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</RuntimeIdentifier>
     <DefaultLanguage>en-US</DefaultLanguage>
     <ApplicationIcon>Assets\Hikari.ico</ApplicationIcon>
+    <!-- MRT falls back to "<exe name>.pri"; a fixed name keeps XAML loading after the exe is renamed. -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
   </PropertyGroup>
 
   <ItemGroup>
