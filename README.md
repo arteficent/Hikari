@@ -14,6 +14,60 @@ No vendor lock-in. No "premium" tier. Your files, your tags, your storage, your 
 - **Cover art straight from the file.** ID3v2 frames, EPUB OPFs, CBZ first pages, MP4 thumbnails — extracted on-device (JAudioTagger on Android, TagLib# on Windows), no separate metadata API.
 - **Pretty.** Material 3 themes over an animated celestial backdrop on Android; a washi-paper WinUI 3 shell with four palettes on Windows — and it overrides the OS accent colour so the app always looks like Hikari.
 
+🌐 **Project site:** [`docs/index.html`](docs/index.html) — an interactive tour of Hikari, ready for GitHub Pages (*Settings → Pages → Deploy from branch → `main` / `docs`*).
+
+---
+
+## ✦ Screenshots
+
+### 🖥 Windows client
+
+<p align="center">
+  <img src="docs/screenshots/windows/audio-list.png" alt="Windows client — Audio library with cover art, sort and bulk actions" width="860">
+</p>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/windows/server.png" alt="Connect to server" width="400"><br><sub><b>Connect</b> — point the app at any sync-server</sub></td>
+    <td align="center"><img src="docs/screenshots/windows/login.png" alt="Sign in" width="400"><br><sub><b>Sign in</b> — JWT auth, tokens sealed with DPAPI</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/windows/picker.png" alt="Content type picker" width="400"><br><sub><b>Pick a library</b> — one tile per content plugin</sub></td>
+    <td align="center"><img src="docs/screenshots/windows/audio-selected.png" alt="Bulk selection" width="400"><br><sub><b>Select All → Download</b> — bulk sync, existing files kept</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/windows/audio-celestial.png" alt="Celestial theme" width="400"><br><sub><b>Celestial</b> theme</sub></td>
+    <td align="center"><img src="docs/screenshots/windows/audio-sakura.png" alt="Sakura theme" width="400"><br><sub><b>Sakura</b> theme</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/windows/profile.png" alt="Profile" width="400"><br><sub><b>Profile</b> — rename, change password</sub></td>
+    <td align="center"><img src="docs/screenshots/windows/users.png" alt="Manage users" width="400"><br><sub><b>Manage users</b> — promote, demote, remove</sub></td>
+  </tr>
+</table>
+
+### 📱 Android client
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/android/server.png" alt="Connect to server" width="200"><br><sub>Connect</sub></td>
+    <td align="center"><img src="docs/screenshots/android/login.png" alt="Sign in" width="200"><br><sub>Sign in</sub></td>
+    <td align="center"><img src="docs/screenshots/android/picker.png" alt="Content picker, Celestial theme" width="200"><br><sub>Picker · Celestial</sub></td>
+    <td align="center"><img src="docs/screenshots/android/picker-sakura.png" alt="Content picker, Sakura theme" width="200"><br><sub>Picker · Sakura</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/android/audio-list.png" alt="Audio library" width="200"><br><sub>Infinite-scroll library</sub></td>
+    <td align="center"><img src="docs/screenshots/android/audio-details.png" alt="Item details" width="200"><br><sub>Embedded tags &amp; details</sub></td>
+    <td align="center"><img src="docs/screenshots/android/audio-sort.png" alt="Sort options" width="200"><br><sub>Per-type sort options</sub></td>
+    <td align="center"><img src="docs/screenshots/android/audio-filters.png" alt="Server-side filters" width="200"><br><sub>Server-side filters</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/android/audio-selected.png" alt="Bulk selection" width="200"><br><sub>Select All → bulk actions</sub></td>
+    <td align="center"><img src="docs/screenshots/android/profile.png" alt="Profile" width="200"><br><sub>Profile</sub></td>
+    <td align="center"><img src="docs/screenshots/android/users.png" alt="Manage users" width="200"><br><sub>Manage users</sub></td>
+    <td></td>
+  </tr>
+</table>
+
 ---
 
 ## ✦ Architecture at a glance
@@ -265,4 +319,4 @@ Pushing a single `v*` tag therefore cuts the client release and the matching ser
 
 ---
 
-*Made with light.*
+<p align="center"><i>Made with light</i> by <b>Sourabh Singh</b></p>
